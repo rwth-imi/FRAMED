@@ -1,18 +1,25 @@
 package com.safety_box.communicator;
 
+import com.safety_box.communicator.manager.DeviceManager;
+import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.VerticleBase;
 
-public class MainVerticle extends VerticleBase {
+public class MainVerticle extends AbstractVerticle {
+
+  private DeviceManager deviceManager;
 
   @Override
-  public Future<?> start() {
-    return vertx.createHttpServer().requestHandler(req -> {
-      req.response()
-        .putHeader("content-type", "text/plain")
-        .end("Hello from Vert.x!");
-    }).listen(8888).onSuccess(http -> {
-      System.out.println("HTTP server started on port 8888");
-    });
+  public void start(Promise<Void> startPromise) {
+    try {
+      this.deviceManager = new DeviceManager();
+      deviceManager.instantiateProtocols();
+      startPromise.complete();
+    } catch (Exception e) {
+      startPromise.fail(e);
+    }
   }
+
+
 }

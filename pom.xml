@@ -70,6 +70,9 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>${maven-compiler-plugin.version}</version>
         <configuration>
+          <compilerArgs>
+            <arg>-parameters</arg>
+          </compilerArgs>
           <release>17</release>
         </configuration>
       </plugin>

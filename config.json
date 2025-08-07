@@ -1,0 +1,8 @@
+{
+  "devices": [
+    {
+      "driver": "com.safety_box.communicator.driver.protocol.simulation.SimulatorProtocol",
+      "deviceID": "test"
+    }
+  ]
+}
