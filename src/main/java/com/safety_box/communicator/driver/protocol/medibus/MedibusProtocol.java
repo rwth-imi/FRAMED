@@ -132,6 +132,10 @@ public class MedibusProtocol extends Protocol<Byte> {
             logger.info("Device ID request received. Sending Device ID.");
             sendDeviceID();
           }
+          case "\u001b\u0030" -> {
+            logger.info("NOP request received.");
+           sendCommand(DataConstants.poll_request_deviceid);
+          }
           case "\u0001R" -> {
             logger.info("Device ID response received.");
             if (realTime) {
@@ -141,7 +145,13 @@ public class MedibusProtocol extends Protocol<Byte> {
             } else {
               logger.info("Transitioning to ACTIVE.");
               currentState = State.ACTIVE;
-              //nopTimerID = vertx.setPeriodic(1500, id -> sendCommand(DataConstants.poll_request_no_operation));
+              nopTimerID = vertx.setPeriodic(1500, id -> sendCommand(DataConstants.poll_request_no_operation));
+            }
+          }
+          default -> {
+            if (echo.startsWith("\u001b")) {
+              byte[] echoResponse = echo.substring(1).getBytes(StandardCharsets.US_ASCII);
+              commandEchoResponse(echoResponse);
             }
           }
         }
@@ -149,10 +159,6 @@ public class MedibusProtocol extends Protocol<Byte> {
 
       case CONFIGURING -> {
         switch (echo) {
-          case "\u0001\u0030" -> {
-            logger.info("NOP response received.");
-            commandEchoResponse(DataConstants.poll_request_no_operation);
-          }
           case "\u001b\u0030" -> {
             logger.info("NOP request received.");
             commandEchoResponse(DataConstants.poll_request_no_operation);
@@ -165,7 +171,7 @@ public class MedibusProtocol extends Protocol<Byte> {
             logger.info("Realtime transmission configured. Transitioning to ACTIVE.");
             setConfiguredDataStreams(false);
             currentState = State.ACTIVE;
-            //nopTimerID = vertx.setPeriodic(1500, id -> sendCommand(DataConstants.poll_request_no_operation));
+            nopTimerID = vertx.setPeriodic(1500, id -> sendCommand(DataConstants.poll_request_no_operation));
           }
           default -> {
             logger.warning("Unknown response in CONFIGURING: " + stringToHex(echo));
@@ -305,21 +311,28 @@ public class MedibusProtocol extends Protocol<Byte> {
 
   public void sendDeviceID() {
     byte[] deviceIDCommandResponse = { 0x52 };
-    byte[] devID = "0161".getBytes();
-    byte[] devName = "'SafetyBox'".getBytes();
-    byte[] devRevision = "01.03".getBytes();
-    byte[] medibusVer = ":06.00".getBytes();
+    byte[] devID = "0161".getBytes(StandardCharsets.US_ASCII);
+    byte[] devName = "'SafetyBox'".getBytes(StandardCharsets.US_ASCII);
+    byte[] devRevision = "01.03".getBytes(StandardCharsets.US_ASCII);
+    byte[] medibusVer = ":06.00".getBytes(StandardCharsets.US_ASCII);
 
-    byte[] txBuffer = new byte[deviceIDCommandResponse.length + devID.length + devName.length + devRevision.length + medibusVer.length];
+    byte[] txBuffer = new byte[
+      deviceIDCommandResponse.length +
+        devID.length +
+        devName.length +
+        devRevision.length +
+        medibusVer.length
+      ];
+
     System.arraycopy(deviceIDCommandResponse, 0, txBuffer, 0, deviceIDCommandResponse.length);
     System.arraycopy(devID, 0, txBuffer, deviceIDCommandResponse.length, devID.length);
     System.arraycopy(devName, 0, txBuffer, deviceIDCommandResponse.length + devID.length, devName.length);
     System.arraycopy(devRevision, 0, txBuffer, deviceIDCommandResponse.length + devID.length + devName.length, devRevision.length);
     System.arraycopy(medibusVer, 0, txBuffer, deviceIDCommandResponse.length + devID.length + devName.length + devRevision.length, medibusVer.length);
 
-    logger.log(Level.FINE, "Sending device ID");
     commandEchoResponse(txBuffer);
   }
+
 
   public void setConfiguredDataStreams(boolean disable){
     if (this.waveFormType == 0) return;
