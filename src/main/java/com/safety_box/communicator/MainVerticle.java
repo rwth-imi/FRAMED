@@ -6,20 +6,14 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.VerticleBase;
 
-public class MainVerticle extends AbstractVerticle {
-
+public class MainVerticle extends VerticleBase {
   private DeviceManager deviceManager;
 
   @Override
-  public void start(Promise<Void> startPromise) {
-    try {
-      this.deviceManager = new DeviceManager();
-      deviceManager.instantiateProtocols();
-      startPromise.complete();
-    } catch (Exception e) {
-      startPromise.fail(e);
-    }
+  public Future<?> start() throws Exception {
+    deviceManager = new DeviceManager(vertx);
+    deviceManager.startAll();
+    return super.start();
   }
-
-
 }
+

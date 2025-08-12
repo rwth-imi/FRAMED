@@ -3,6 +3,17 @@
     {
       "driver": "com.safety_box.communicator.driver.protocol.simulation.SimulatorProtocol",
       "deviceID": "test"
+    },
+    {
+      "driver": "com.safety_box.communicator.driver.protocol.medibus.MedibusProtocol",
+      "deviceID": "Oxylog-3000-Plus-00",
+      "portName": "/dev/ttyUSB0",
+      "baudRate": 19200,
+      "dataBits": 8,
+      "stopBits": 1,
+      "bufferSize": 4096,
+      "waveFormType": 1,
+      "realTime": true
     }
   ]
 }

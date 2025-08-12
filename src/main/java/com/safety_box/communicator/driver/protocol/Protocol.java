@@ -1,10 +1,10 @@
 package com.safety_box.communicator.driver.protocol;
 
-public abstract class Protocol<T> {
-  String deviceID;
-  public Protocol(String deviceID) {
-    this.deviceID = deviceID;
-  }
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.VerticleBase;
+
+public abstract class Protocol<T> extends VerticleBase {
+  protected String deviceID;
   public abstract void connect();
   public abstract void disconnect();
   public abstract T readData();
