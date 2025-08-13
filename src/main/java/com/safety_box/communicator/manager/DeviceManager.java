@@ -41,13 +41,14 @@ public class DeviceManager {
       }).onFailure(err -> {
         System.err.println("Failed to deploy " + verticleClassName + ": " + err.getMessage());
       });
-      deploymentIDs.put(deviceConfig.getString("deviceID"), verticleClassName);
     }
   }
 
 
   public void stopAll() {
-    // stop all protocol handlers logic
+    for (String deviceID : deploymentIDs.keySet()) {
+      vertx.undeploy(deploymentIDs.get(deviceID));
+    }
   }
 
 }

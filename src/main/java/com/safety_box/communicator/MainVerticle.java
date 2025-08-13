@@ -15,5 +15,11 @@ public class MainVerticle extends VerticleBase {
     deviceManager.startAll();
     return super.start();
   }
+
+  @Override
+  public Future<?> stop() throws Exception {
+    deviceManager.stopAll();
+    return super.stop();
+  }
 }
 
