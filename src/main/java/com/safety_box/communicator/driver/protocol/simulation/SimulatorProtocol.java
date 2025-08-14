@@ -25,14 +25,4 @@ public class SimulatorProtocol extends Protocol<String> {
 
   }
 
-  @Override
-  public String readData() {
-    return null;
-  }
-
-  @Override
-  public void writeData(String data) {
-
-  }
-
 }

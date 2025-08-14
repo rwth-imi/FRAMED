@@ -13,17 +13,28 @@
       "stopBits": 1,
       "bufferSize": 4096,
       "waveFormType": 4,
-      "realTime": false,
+      "realTime": true,
       "slowData": true
     }
   ],
   "writers": [
     {
-      "writer": "com.safety_box.communicator.io.raw",
+      "writer": "com.safety_box.communicator.io.raw.RawByteWriter",
       "writerID": "Raw-Byte-Writer",
-      "ports": [
-        "/dev/ttyUSB0"
-      ]
+      "devices": [
+        "Oxylog-3000-Plus-00"
+      ],
+      "path": "output/raw/"
+    }
+  ],
+  "parsers": [
+    {
+      "parser": "com.safety_box.communicator.driver.parser.medibus.MedibusSlowParser",
+      "parserID": "Medibus-Slow-Parser",
+      "devices":
+        [
+          "Oxylog-3000-Plus-00"
+        ]
     }
   ]
 }

@@ -1,0 +1,194 @@
+package com.safety_box.communicator.driver.parser.medibus;
+
+import com.safety_box.communicator.driver.parser.Parser;
+import com.safety_box.communicator.driver.utils.DataConstants;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+
+public class MedibusSlowParser extends Parser<byte[]> {
+  @Override
+  public void init(Vertx vertx, Context context) {
+    super.init(vertx, context);
+  }
+
+  public Future<?> start() throws Exception {
+    JsonArray devices = config.getJsonArray("devices");
+    for  (Object device : devices) {
+      String deviceName = (String) device;
+      vertx.eventBus().consumer(deviceName, msg -> {
+        JsonObject jsonMsg = (JsonObject) msg.body();
+        byte[] data = jsonMsg.getBinary("data");
+        parse(data);
+      });
+    }
+    return super.start();
+  }
+  @Override
+  public void parse(byte[] message) {
+    String data = new String(message, StandardCharsets.US_ASCII);
+
+    String echo = data.substring(0, 2);
+    switch (echo) {
+      case "\u0001$" -> { // Data cp1
+        parseNumMessage(message, 6, "MeasurementCP1");
+      }
+      case "\u0001+" -> { // Data cp2
+        parseNumMessage(message, 6, "MeasurementCP2");
+      }
+      case "\u0001)" -> { // Data device settings
+        parseNumMessage(message, 7, "DeviceSettings");
+      }
+      case "\u0001*" -> { // Data text messages
+        parseTextMessage(message);
+      }
+      case "\u0001'" -> { // Alarm cp1
+        parseAlarmMessage(message, "AlarmCP1");
+      }
+      case "\u0001." -> { // Alarm cp2
+        parseAlarmMessage(message, "AlarmCP2");
+      }
+    }
+  }
+
+
+  private void parseTextMessage(byte[] message) {
+    int offset = 4;
+    int dataArrayLength = message.length - 2;
+    byte[] dataArray = new byte[dataArrayLength];
+    System.arraycopy(message, 2, dataArray, 0, dataArrayLength);
+    String response = new String(dataArray, StandardCharsets.US_ASCII);
+    int responseLength = response.length();
+
+    String dataCode;
+    String dataValue;
+    String physioID;
+
+    int lastItemLength = 0;
+    for (int i = 0; i < responseLength; i += offset + lastItemLength) {
+      dataCode = response.substring(i, i + 1);
+      String lastItemLengthString = response.substring(i+2, i+3);
+      byte textItemLengthByte = lastItemLengthString.getBytes(StandardCharsets.US_ASCII)[0];
+      lastItemLength = textItemLengthByte - 0x30;
+
+      if (!(lastItemLength == 0)) {
+        dataValue = response.substring(i+3, i+3 + lastItemLength);
+        dataValue = dataValue.trim();
+        byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
+        physioID = Arrays.stream(DataConstants.MedibusXTextMessages.values())
+          .filter(e -> e.value == dataCodeByte)
+          .map(Enum::name)
+          .findFirst()
+          .orElse("Unknown");
+        System.out.printf("TextMessage - %s: %s%n", physioID, dataValue);
+        vertx.eventBus().send("parsed_medibus", new JsonObject().put(physioID, dataValue));
+      }
+
+    }
+  }
+
+  private void parseNumMessage(byte[] message, int offset, String reqType) {
+    // init local parser variables
+    String dataCode;
+    double dataValue;
+    String physioID;
+
+    int dataLength = 4;
+    int dataArrayLength = message.length - 2;
+    byte[] dataArray = new byte[dataArrayLength];
+    System.arraycopy(message, 2, dataArray, 0, dataArrayLength);
+    String response = new String(dataArray, StandardCharsets.US_ASCII);
+
+    int responseLength = response.length();
+
+    for (int i = 0; i < responseLength; i += offset) {
+      if (i + 2 + dataLength > responseLength) {
+        break;
+      }
+      dataCode = response.substring(i, i + 2).trim();
+
+      String dataValueStr = response.substring(i + 2, i + 2 + dataLength).trim();
+      int dataValueLen = dataValueStr.length();
+
+      if (dataValueLen != 0) {
+        dataValue = Double.parseDouble(dataValueStr);
+      } else {
+        dataValue = -1;
+      }
+
+      byte dataCodeByte = (byte) (Integer.parseInt(dataCode, 16) % 256);
+
+      physioID = switch (reqType) {
+        case "MeasurementCP1" -> Arrays.stream(DataConstants.MedibusXMeasurementCP1.values())
+          .filter(e -> e.value == dataCodeByte)
+          .map(Enum::name)
+          .findFirst()
+          .orElse(null);
+        case "MeasurementCP2" -> Arrays.stream(DataConstants.MedibusXMeasurementCP2.values())
+          .filter(e -> e.value == dataCodeByte)
+          .map(Enum::name)
+          .findFirst()
+          .orElse(null);
+        case "DeviceSettings" -> DataConstants.MedibusXDeviceSettings.values()[dataCodeByte].name();
+        default -> throw new IllegalStateException("Unexpected value: " + reqType);
+      };
+
+      System.out.printf("DataMessage - %s: %s%n", physioID, dataValue);
+      vertx.eventBus().send("parsed_medibus", new JsonObject().put(physioID, dataValue));
+    }
+  }
+
+  private void parseAlarmMessage(byte[] message, String reqType) {
+    int offset = 15;
+    int dataArrayLength = message.length - 2;
+    byte[] dataArray = new byte[dataArrayLength];
+    System.arraycopy(message, 2, dataArray, 0, dataArrayLength);
+    String response = new String(dataArray, StandardCharsets.US_ASCII);
+    int responseLength = response.length();
+    String dataCode = "";
+    String dataValue = "";
+    String physioID = "";
+
+    if (responseLength > 0) {
+      for (int i = 0; i < responseLength; i += offset) {
+        dataCode = response.substring(i + 1, i + 3);
+
+        int j = Math.min(responseLength, i + 15);
+        if (j <= i + 3) {
+          break;
+        }
+        dataValue = response.substring(i + 3, j);
+        dataValue = dataValue.trim();
+        byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
+        switch (reqType) {
+          case "AlarmCP1":
+            physioID = Arrays.stream(DataConstants.MedibusXAlarmsCP1.values()).filter(e -> e.value == dataCodeByte)
+              .map(Enum::name)
+              .findFirst()
+              .orElse("Unknown");
+            System.out.printf("%s: %s%n", physioID, dataValue);
+            break;
+          case "AlarmCP2":
+            physioID = Arrays.stream(DataConstants.MedibusXAlarmsCP2.values()).filter(e -> e.value == dataCodeByte)
+              .map(Enum::name)
+              .findFirst()
+              .orElse("Unknown");
+            System.out.printf("%s: %s%n", physioID, dataValue);
+            break;
+          default:
+            throw new IllegalStateException("Unexpected value: " + reqType);
+        }
+        System.out.printf("Alarms-Message - %s: %s%n", physioID, dataValue);
+        vertx.eventBus().send("parsed_medibus", new JsonObject().put(physioID, dataValue));
+      }
+    }
+  }
+
+
+
+  }

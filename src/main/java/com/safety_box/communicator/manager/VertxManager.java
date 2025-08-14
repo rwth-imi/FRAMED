@@ -23,7 +23,7 @@ public class VertxManager {
     this.verticles = config.getJsonArray(vertxType);
   }
 
-  public void startAll(String classKey, String idKey) throws Exception {
+  public void startAll(String classKey, String idKey) {
     for (Object deviceObj : verticles) {
       JsonObject vertxConfig = (JsonObject) deviceObj;
       String verticleClassName = vertxConfig.getString(classKey);

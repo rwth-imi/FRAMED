@@ -9,19 +9,14 @@ import com.safety_box.communicator.driver.utils.DataConstants;
 import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class MedibusProtocol extends Protocol<byte[]> {
 
-  private long nopTimerID;
   private Boolean slowData;
 
   private enum State {
@@ -38,9 +33,7 @@ public class MedibusProtocol extends Protocol<byte[]> {
   private int waveFormType;
   private boolean realTime;
   private SerialPort serialPort;
-  private MedibusFramer frameParser;
-
-  private Vertx vertx;
+  private MedibusFramer framer;
 
   private static final Logger logger = Logger.getLogger(MedibusProtocol.class.getName());
 
@@ -71,8 +64,9 @@ public class MedibusProtocol extends Protocol<byte[]> {
     serialPort.setDTR();
 
 
-    this.frameParser = new MedibusFramer(this::handleResponse);
-    logger.info("Trying to initialize communication...");
+
+    this.framer = new MedibusFramer(this::handleResponse);
+    logger.fine("Trying to initialize communication...");
 
     if (serialPort.openPort()) {
       connect();
@@ -87,8 +81,37 @@ public class MedibusProtocol extends Protocol<byte[]> {
     return super.stop();
   }
 
+
+  @Override
+  public void connect() {
+    listenToSerial();
+    sendICC();
+  }
+
+  @Override
+  public void disconnect() {
+    currentState = State.TERMINATING;
+    logger.fine("Sending command: poll_request_stop_com");
+    sendCommand(DataConstants.poll_request_stop_com);
+  }
+
+
+  private void readData(){
+    byte[] buffer = new byte[serialPort.bytesAvailable()];
+    int numRead = serialPort.readBytes(buffer, buffer.length);
+    if (numRead > 0) {
+      for (int i = 0; i < numRead; i++) {
+        framer.createFrameListFromByte(buffer[i]);
+      }
+    }
+  }
+
+  private void writeData(byte[] data) {
+    vertx.eventBus().send("Oxylog-3000-Plus-00", new JsonObject().put("data", data));
+  }
+
   private void listenToSerial() {
-    this.frameParser = new MedibusFramer(this::handleResponse);
+    this.framer = new MedibusFramer(this::handleResponse);
 
     serialPort.addDataListener(new SerialPortDataListener() {
       @Override
@@ -100,42 +123,35 @@ public class MedibusProtocol extends Protocol<byte[]> {
       public void serialEvent(SerialPortEvent event) {
         if (event.getEventType() != SerialPort.LISTENING_EVENT_DATA_AVAILABLE) return;
 
-        byte[] buffer = new byte[serialPort.bytesAvailable()];
-        int numRead = serialPort.readBytes(buffer, buffer.length);
-        if (numRead > 0) {
-          //writeData(buffer);
-          for (int i = 0; i < numRead; i++) {
-            frameParser.createFrameListFromByte(buffer[i]);
-          }
-        }
+       readData();
       }
     });
   }
 
   private void handleResponse(byte[] packetBuffer) {
     String response = new String(packetBuffer, StandardCharsets.US_ASCII);
-
     if (response.length() < 2) {
       logger.warning("Received response too short: " + response);
       return;
     }
 
+    writeData(packetBuffer);
     String echo = response.substring(0, 2);
-    logger.info("Handling response with echo: " + DataUtils.stringToHex(echo) + " in state " + currentState);
+    logger.fine("Handling response with echo: " + DataUtils.stringToHex(echo) + " in state " + currentState);
 
     switch (currentState) {
       case INITIALIZING -> {
         switch (echo) {
           case "\u001bQ" -> {
-            logger.info("ICC command received.");
+            logger.fine("ICC command received.");
             commandEchoResponse(DataConstants.poll_request_icc_msg);
-            logger.info("Sending command: poll_request_deviceid");
+            logger.fine("Sending command: poll_request_deviceid");
             sendCommand(DataConstants.poll_request_deviceid);
             currentState = State.IDENTIFYING;
           }
           case "\u0001Q" -> {
-            logger.info("ICC response received. Transitioning to IDENTIFYING.");
-            logger.info("Sending command: poll_request_deviceid");
+            logger.fine("ICC response received. Transitioning to IDENTIFYING.");
+            logger.fine("Sending command: poll_request_deviceid");
             sendCommand(DataConstants.poll_request_deviceid);
             currentState = State.IDENTIFYING;
           }
@@ -144,24 +160,24 @@ public class MedibusProtocol extends Protocol<byte[]> {
       case IDENTIFYING -> {
         switch (echo) {
           case "\u001bR" -> {
-            logger.info("Device ID request received. Sending Device ID.");
+            logger.fine("Device ID request received. Sending Device ID.");
             sendDeviceID();
           }
           case "\u001b\u0030" -> {
-            logger.info("NOP request received.");
-            logger.info("Sending command: poll_request_deviceid");
+            logger.fine("NOP request received.");
+            logger.fine("Sending command: poll_request_deviceid");
             sendCommand(DataConstants.poll_request_deviceid);
           }
           case "\u0001R" -> {
-            logger.info("Device ID response received.");
+            logger.fine("Device ID response received.");
             if (realTime) {
-              logger.info("Realtime enabled. Transitioning to CONFIGURING.");
+              logger.fine("Realtime enabled. Transitioning to CONFIGURING.");
               currentState = State.CONFIGURING;
               vertx.setTimer(200, id -> {
                 sendCommand(DataConstants.poll_request_real_time_data_config);
               });
             } else {
-              logger.info("Transitioning to ACTIVE.");
+              logger.fine("Transitioning to ACTIVE.");
               currentState = State.ACTIVE;
               transitToActive();
             }
@@ -178,19 +194,19 @@ public class MedibusProtocol extends Protocol<byte[]> {
       case CONFIGURING -> {
         switch (echo) {
           case "\u001b\u0030" -> {
-            logger.info("NOP request received.");
+            logger.fine("NOP request received.");
             commandEchoResponse(DataConstants.poll_request_no_operation);
           }
           case "\u0001S" -> {
-            logger.info("Realtime config received. Sending transmission config.");
-            logger.info("Sending command: poll_configure_real_time_transmission");
+            logger.fine("Realtime config received. Sending transmission config.");
+            logger.fine("Sending command: poll_configure_real_time_transmission");
             readRealtimeConfigResponse(packetBuffer);
             configureRealtimeTransmission();
           }
           case "\u0001T" -> {
-            logger.info("Realtime transmission configured. Transitioning to ACTIVE.");
+            logger.fine("Realtime transmission configured. Transitioning to ACTIVE.");
             currentState = State.ACTIVE;
-            logger.info("Sending Sync-Command to enable datastreams.");
+            logger.fine("Sending Sync-Command to enable datastreams.");
             setConfiguredDataStreams(false);
             transitToActive();
           }
@@ -203,59 +219,59 @@ public class MedibusProtocol extends Protocol<byte[]> {
       case ACTIVE -> {
         switch (echo) {
           case "\u0001\u0030" -> {
-            logger.info("NOP response received.");
+            logger.fine("NOP response received.");
             if (this.slowData) {
-              logger.info("Sending command: poll_request_config_measured_data_codepage1");
+              logger.fine("Sending command: poll_request_config_measured_data_codepage1");
               sendCommand(DataConstants.poll_request_config_measured_data_codepage1);
             }
           }
           case "\u001b\u0030" -> {
-            logger.info("NOP request received.");
+            logger.fine("NOP request received.");
             commandEchoResponse(DataConstants.poll_request_no_operation);
             if (this.slowData) {
-              logger.info("Sending command: poll_request_config_measured_data_codepage1");
+              logger.fine("Sending command: poll_request_config_measured_data_codepage1");
               sendCommand(DataConstants.poll_request_config_measured_data_codepage1);
             }
           }
           case "\u001bV" -> {
-            logger.info("Realtime config changed. Reconfiguring.");
+            logger.fine("Realtime config changed. Reconfiguring.");
             setConfiguredDataStreams(true);
             currentState = State.CONFIGURING;
-            logger.info("Sending command: poll_request_real_time_data_config");
+            logger.fine("Sending command: poll_request_real_time_data_config");
             sendCommand(DataConstants.poll_request_real_time_data_config);
           }
           case "\u001bQ" -> {
-            logger.info("ICC command received. Returning to INITIALIZING.");
+            logger.fine("ICC command received. Returning to INITIALIZING.");
             currentState = State.INITIALIZING;
             commandEchoResponse(DataConstants.poll_request_icc_msg);
           }
           case "\u0001$" -> { // Data response cp1
             logger.log(Level.FINE, "Received: Data CP1 response");
-            logger.info("Sending command: poll_request_config_measured_data_codepage2");
+            logger.fine("Sending command: poll_request_config_measured_data_codepage2");
             sendCommand(DataConstants.poll_request_config_measured_data_codepage2);}
           case "\u0001+" -> { // Data response cp2
             logger.log(Level.FINE, "Received: Data CP2 response");
-            logger.info("Sending command: poll_request_device_settings");
+            logger.fine("Sending command: poll_request_device_settings");
             sendCommand(DataConstants.poll_request_device_settings);
           }
           case "\u0001)" -> { // Data response device settings
             logger.log(Level.FINE, "Received: Data device settings response");
-            logger.info("Sending command: poll_request_text_messages");
+            logger.fine("Sending command: poll_request_text_messages");
             sendCommand(DataConstants.poll_request_text_messages);
           }
           case "\u0001*" -> { // Data response text messages
             logger.log(Level.FINE, "Received: Data text messages response");
-            logger.info("Sending command: poll_request_config_alarms_codepage1");
+            logger.fine("Sending command: poll_request_config_alarms_codepage1");
             sendCommand(DataConstants.poll_request_config_alarms_codepage1);
           }
           case "\u0001'" -> { // Alarm response cp1
             logger.log(Level.FINE, "Received: Alarm CP1 response");
-            logger.info("Sending command: poll_request_config_alarms_codepage2");
+            logger.fine("Sending command: poll_request_config_alarms_codepage2");
             sendCommand(DataConstants.poll_request_config_alarms_codepage2);
           }
           case "\u0001." -> { // Alarm response cp2
             logger.log(Level.FINE, "Received: Alarm CP2 response");
-            logger.info("Sending command: poll_request_config_measured_data_codepage1");
+            logger.fine("Sending command: poll_request_config_measured_data_codepage1");
             sendCommand(DataConstants.poll_request_config_measured_data_codepage1);
           }
           default -> {
@@ -271,11 +287,11 @@ public class MedibusProtocol extends Protocol<byte[]> {
       default -> {
         switch (echo) {
           case "\u0001\u0030" -> {
-            logger.info("NOP response received.");
+            logger.fine("NOP response received.");
             commandEchoResponse(DataConstants.poll_request_no_operation);
           }
           case "\u001b\u0030" -> {
-            logger.info("NOP request received.");
+            logger.fine("NOP request received.");
             commandEchoResponse(DataConstants.poll_request_no_operation);
           }
           default -> {
@@ -288,13 +304,13 @@ public class MedibusProtocol extends Protocol<byte[]> {
 
   private void transitToActive() {
     if (this.slowData) {
-      logger.info("Slow Data transmission configured.");
-      logger.info("Sending command: poll_request_config_measured_data_codepage1");
+      logger.fine("Slow Data transmission configured.");
+      logger.fine("Sending command: poll_request_config_measured_data_codepage1");
       sendCommand(DataConstants.poll_request_config_measured_data_codepage1);
     } else {
-      logger.info("Slow Data transmission not configured.");
-      logger.info("Keeping connection alive by NOP");
-      nopTimerID = vertx.setPeriodic(2000, id -> sendCommand(DataConstants.poll_request_no_operation));
+      logger.fine("Slow Data transmission not configured.");
+      logger.fine("Keeping connection alive by NOP");
+      vertx.setPeriodic(2000, id -> sendCommand(DataConstants.poll_request_no_operation));
     }
   }
 
@@ -330,32 +346,9 @@ public class MedibusProtocol extends Protocol<byte[]> {
   }
 
   private void sendICC() {
-    logger.info("Sending command: poll_request_icc_msg");
+    logger.fine("Sending command: poll_request_icc_msg");
     sendCommand(DataConstants.poll_request_icc_msg); // ICC
     currentState = State.INITIALIZING;
-  }
-
-  @Override
-  public void connect() {
-    listenToSerial();
-    sendICC();
-  }
-
-  @Override
-  public void disconnect() {
-    currentState = State.TERMINATING;
-    logger.info("Sending command: poll_request_stop_com");
-    sendCommand(DataConstants.poll_request_stop_com);
-  }
-
-  @Override
-  public byte[] readData() {
-    return null;
-  }
-
-  @Override
-  public void writeData(byte[] data) {
-    vertx.eventBus().send(portName, new JsonObject().put("data", data));
   }
 
   public void configureRealtimeTransmission() {
@@ -398,6 +391,7 @@ public class MedibusProtocol extends Protocol<byte[]> {
     logger.log(Level.FINE, "Send: Configure realtime transmission (command)");
     sendCommand(finalBuffer);
   }
+
   private void sendCommand(byte[] commandBytes) {
     if (commandBytes.length == 0) {
       return;
@@ -417,7 +411,6 @@ public class MedibusProtocol extends Protocol<byte[]> {
       System.err.println("Error writing to serial port: " + e.getMessage());
     }
   }
-
 
   public void commandEchoResponse(byte[] commandBuffer) {
     byte[] inputBuffer = new byte[commandBuffer.length + 2]; // +2 for BOF and checksum
@@ -461,7 +454,6 @@ public class MedibusProtocol extends Protocol<byte[]> {
 
     commandEchoResponse(txBuffer);
   }
-
 
   public void setConfiguredDataStreams(boolean disable){
     if (this.waveFormType == 0) return;

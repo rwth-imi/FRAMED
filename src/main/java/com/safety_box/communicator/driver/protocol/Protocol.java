@@ -19,6 +19,4 @@ public abstract class Protocol<T> extends VerticleBase {
   protected String deviceID;
   public abstract void connect();
   public abstract void disconnect();
-  public abstract T readData();
-  public abstract void writeData(T data) throws IOException;
 }
