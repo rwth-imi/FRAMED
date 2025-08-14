@@ -12,8 +12,9 @@
       "dataBits": 8,
       "stopBits": 1,
       "bufferSize": 4096,
-      "waveFormType": 1,
-      "realTime": true
+      "waveFormType": 4,
+      "realTime": true,
+      "slowData": true
     }
   ]
 }

@@ -1,6 +1,5 @@
-package com.safety_box.communicator.driver.parser.medibus;
+package com.safety_box.communicator.driver.protocol.medibus;
 
-import com.safety_box.communicator.driver.protocol.medibus.MedibusProtocol;
 import com.safety_box.communicator.driver.utils.DataUtils;
 import com.safety_box.communicator.driver.utils.DataConstants;
 
@@ -11,7 +10,7 @@ import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 
-public class MedibusFrameParser {
+public class MedibusFramer {
 
   private boolean storeStartResp = false;
   private boolean storeStartCom = false;
@@ -22,12 +21,12 @@ public class MedibusFrameParser {
   private final List<Byte> bList = new ArrayList<>();
   private final List<Byte> bRTList = new ArrayList<>();
 
-  private final Consumer<String> frameHandler;
+  private final Consumer<byte[]> frameHandler;
 
-  private static final Logger logger = Logger.getLogger(MedibusFrameParser.class.getName());
+  private static final Logger logger = Logger.getLogger(MedibusFramer.class.getName());
 
 
-  public MedibusFrameParser(Consumer<String> frameHandler) {
+  public MedibusFramer(Consumer<byte[]> frameHandler) {
     this.frameHandler = frameHandler;
   }
 
@@ -67,15 +66,6 @@ public class MedibusFrameParser {
 
       default:
         if ((bValue & DataConstants.RT_BYTE) == DataConstants.RT_BYTE) {
-          logger.info(String.format("Realtime byte received: 0x%02X", bValue));
-          bRTList.add(bValue);
-          if (bRTList.size() >= 2) {
-            byte high = bRTList.remove(0);
-            byte low = bRTList.remove(0);
-            int value = ((high & 0x3F) << 6) | (low & 0x3F);
-            logger.info("Parsed Realtime Value: " + value);
-          }
-          logger.info("Received REALTIME Data!!!!");
           bRTList.add(bValue);
         } else if (storeStartCom && !storeEnd) {
           bComList.add(bValue);
@@ -112,8 +102,7 @@ private void finalizeFrame() {
   String checksumComputedStr = String.format("%02X", checksumComputed & 0xFF).toUpperCase();
 
   if (checksumComputedStr.equals(checksumStr)) {
-    String response = new String(userDataArray, StandardCharsets.US_ASCII);
-    frameHandler.accept(response);
+    frameHandler.accept(userDataArray);
   } else {
     System.err.println("Checksum Error");
   }
