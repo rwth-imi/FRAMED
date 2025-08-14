@@ -2,21 +2,17 @@ package com.safety_box.communicator.manager;
 
 import com.safety_box.communicator.io.ConfigLoader;
 import io.vertx.core.*;
-import io.vertx.core.internal.ContextInternal;
-import io.vertx.core.internal.deployment.Deployment;
-import io.vertx.core.internal.deployment.DeploymentContext;
-import io.vertx.core.internal.deployment.DeploymentManager;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 import java.util.*;
 
-public class DeviceManager {
-  private final JsonArray devices;
+public class VertxManager {
+  private final JsonArray verticles;
   private final Vertx vertx;
   private final Map<String, String> deploymentIDs = new HashMap<>();
 
-  public DeviceManager(Vertx vertx) {
+  public VertxManager(Vertx vertx, String vertxType) {
     this.vertx = vertx;
     JsonObject config;
     try {
@@ -24,19 +20,19 @@ public class DeviceManager {
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
-    this.devices = config.getJsonArray("devices");
+    this.verticles = config.getJsonArray(vertxType);
   }
 
-  public void startAll() throws Exception {
-    for (Object deviceObj : devices) {
-      JsonObject deviceConfig = (JsonObject) deviceObj;
-      String verticleClassName = deviceConfig.getString("driver");
-      DeploymentOptions options = new DeploymentOptions().setConfig(deviceConfig);
+  public void startAll(String classKey, String idKey) throws Exception {
+    for (Object deviceObj : verticles) {
+      JsonObject vertxConfig = (JsonObject) deviceObj;
+      String verticleClassName = vertxConfig.getString(classKey);
+      DeploymentOptions options = new DeploymentOptions().setConfig(vertxConfig);
 
       Future<String> deploymentFuture = vertx.deployVerticle(verticleClassName, options);
 
       deploymentFuture.onSuccess(deploymentID -> {
-        deploymentIDs.put(deviceConfig.getString("deviceID"), deploymentID);
+        deploymentIDs.put(vertxConfig.getString(idKey), deploymentID);
         System.out.println("Successfully deployed: " + verticleClassName);
       }).onFailure(err -> {
         System.err.println("Failed to deploy " + verticleClassName + ": " + err.getMessage());

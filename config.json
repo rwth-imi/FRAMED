@@ -13,8 +13,17 @@
       "stopBits": 1,
       "bufferSize": 4096,
       "waveFormType": 4,
-      "realTime": true,
+      "realTime": false,
       "slowData": true
+    }
+  ],
+  "writers": [
+    {
+      "writer": "com.safety_box.communicator.io.raw",
+      "writerID": "Raw-Byte-Writer",
+      "ports": [
+        "/dev/ttyUSB0"
+      ]
     }
   ]
 }

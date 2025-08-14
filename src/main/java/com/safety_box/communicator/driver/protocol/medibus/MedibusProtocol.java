@@ -41,7 +41,6 @@ public class MedibusProtocol extends Protocol<byte[]> {
   private MedibusFramer frameParser;
 
   private Vertx vertx;
-  private JsonObject config;
 
   private static final Logger logger = Logger.getLogger(MedibusProtocol.class.getName());
 
@@ -49,8 +48,6 @@ public class MedibusProtocol extends Protocol<byte[]> {
   @Override
   public void init(Vertx vertx, Context context) {
     super.init(vertx, context);
-    this.vertx = vertx;
-    this.config = context.config();
     this.deviceID = config.getString("deviceID");
     this.portName = config.getString("portName");
     this.baudRate = config.getInteger("baudRate");
@@ -106,11 +103,7 @@ public class MedibusProtocol extends Protocol<byte[]> {
         byte[] buffer = new byte[serialPort.bytesAvailable()];
         int numRead = serialPort.readBytes(buffer, buffer.length);
         if (numRead > 0) {
-          try {
-            writeData(buffer);
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
+          //writeData(buffer);
           for (int i = 0; i < numRead; i++) {
             frameParser.createFrameListFromByte(buffer[i]);
           }
@@ -361,11 +354,8 @@ public class MedibusProtocol extends Protocol<byte[]> {
   }
 
   @Override
-  public void writeData(byte[] data) throws IOException {
+  public void writeData(byte[] data) {
     vertx.eventBus().send(portName, new JsonObject().put("data", data));
-    Files.write(Path.of("output/debug_bytes.txt"), data, StandardOpenOption.APPEND);
-
-
   }
 
   public void configureRealtimeTransmission() {
