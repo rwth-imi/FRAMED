@@ -2,11 +2,10 @@ package com.safety_box.communicator.driver.protocol.simulation;
 
 import io.vertx.core.Future;
 
-import com.safety_box.communicator.driver.protocol.Protocol;
-import io.vertx.core.Promise;
+import com.safety_box.communicator.driver.protocol.ProtocolVerticle;
 import io.vertx.core.json.JsonObject;
 
-public class SimulatorProtocol extends Protocol<String> {
+public class SimulatorProtocolVerticle extends ProtocolVerticle {
 
   @Override
   public Future<?> start() throws Exception {

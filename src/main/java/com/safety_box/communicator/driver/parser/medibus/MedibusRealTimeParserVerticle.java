@@ -1,6 +1,6 @@
 package com.safety_box.communicator.driver.parser.medibus;
 
-import com.safety_box.communicator.driver.parser.Parser;
+import com.safety_box.communicator.driver.parser.ParserVerticle;
 import com.safety_box.communicator.driver.utils.DataConstants;
 import com.safety_box.communicator.driver.utils.DataUtils;
 import io.vertx.core.Context;
@@ -9,13 +9,12 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MedibusRealTimeParser extends Parser<Byte> {
+public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
   private final ArrayList<Byte> realTimeByteList = new ArrayList<>();
 
   private ArrayList<Byte> realTimeReqWaveList = new ArrayList<>();
@@ -139,7 +138,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
                 // Store or process the result
                 Map<String, Object> result = new HashMap<>();
                 result.put("dataStreamIndex", streamIndex);
-                result.put("timestamp", LocalDateTime.now());
+                result.put("timestamp", System.currentTimeMillis());
                 result.put("physioID", DataConstants.MedibusXRealTimeData.values()[waveCode].name());
                 result.put("respiratoryCycleState", respSyncState);
                 result.put("value", finalValue);
@@ -171,10 +170,10 @@ public class MedibusRealTimeParser extends Parser<Byte> {
       double value = (double) map.get("value");
       // System.out.printf("RT_Message - %s: %s%n", physioID, value);
       JsonObject waveValResult = new JsonObject();
-      waveValResult.put("timestamp", LocalDateTime.now().toString());
+      waveValResult.put("timestamp", System.currentTimeMillis());
       waveValResult.put("realTime", true);
       waveValResult.put(physioID, value);
-      vertx.eventBus().send("parsed_"+deviceName, waveValResult);
+      vertx.eventBus().publish("parsed_"+deviceName, waveValResult);
     }
   }
 

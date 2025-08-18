@@ -1,11 +1,11 @@
-package com.safety_box.communicator.driver.parser;
+package com.safety_box.communicator.driver.protocol;
 
 import io.vertx.core.Context;
 import io.vertx.core.VerticleBase;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 
-public abstract class Parser<T> extends VerticleBase {
+public abstract class ProtocolVerticle extends VerticleBase {
   protected JsonObject config;
   @Override
   public void init(Vertx vertx, Context context) {
@@ -13,5 +13,7 @@ public abstract class Parser<T> extends VerticleBase {
     this.vertx = vertx;
     this.config = context.config();
   }
-  public abstract void parse(T message, String deviceName);
+  protected String deviceID;
+  public abstract void connect();
+  public abstract void disconnect();
 }

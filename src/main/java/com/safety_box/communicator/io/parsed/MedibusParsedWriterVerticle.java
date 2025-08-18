@@ -1,6 +1,6 @@
 package com.safety_box.communicator.io.parsed;
 
-import com.safety_box.communicator.io.Writer;
+import com.safety_box.communicator.io.WriterVerticle;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -9,13 +9,12 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-public class MedibusParsedWriter extends Writer<JsonObject> {
+public class MedibusParsedWriterVerticle extends WriterVerticle<JsonObject> {
   private long timeOnStart;
   @Override
   public void init(Vertx vertx, Context context) {

@@ -1,6 +1,6 @@
 package com.safety_box.communicator.io.raw;
 
-import com.safety_box.communicator.io.Writer;
+import com.safety_box.communicator.io.WriterVerticle;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -8,14 +8,12 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.time.LocalDateTime;
 
-public class RawByteWriter extends Writer<byte[]> {
+public class RawByteWriterVerticle extends WriterVerticle<byte[]> {
   private long timeOnStart;
   public void init(Vertx vertx, Context context) {
     this.timeOnStart =  System.currentTimeMillis();

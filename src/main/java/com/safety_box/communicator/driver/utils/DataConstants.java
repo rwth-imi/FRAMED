@@ -1,33 +1,6 @@
 package com.safety_box.communicator.driver.utils;
 
 public class DataConstants {
-    /*
-         Request current Alarms (Codepage 3) 23H
-         Request current measured Data (Codepage 1) 24H
-         Request current low Alarm Limits (Codepage 1) 25H
-         Request current high Alarm Limits (Codepage 1) 26H
-         Request current Alarms (Codepage 1) 27H
-         Request current Date and Time 28H
-         Request current Device Setting 29H
-         Request current Text Messages 2AH
-         Request current measured Data (Codepage 2) 2BH
-         Request current low Alarm Limits (Codepage 2) 2CH
-         Request current high Alarm Limits (Codepage 2) 2DH
-         Request current Alarms (Codepage 2) 2EH
-         Request Device Identification 52H
-         Request Trend Data Status 6CH
-         Request Trend Data 6DH
-
-		 Configure Data response
-         24H for current Data, low Alarm Limits and high Alarm Limits (codepage 1)
-         27H for current Alarms (codepage 1)
-         29H for current Device Settings
-         2AH for current Textmessages
-         2BH for current Data, low Alarm Limits and high Alarm Limits (codepage 2)
-         2EH for current Alarms (codepage 2)
-
-        */
-
     public static final byte BOFCOMCHAR = (byte) 0x1B;
     public static final byte BOFRESPCHAR = (byte) 0x01;
     public static final byte EOFCHAR = (byte) 0x0D;
