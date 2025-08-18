@@ -28,6 +28,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
   public void init(Vertx vertx, Context context) {
     super.init(vertx, context);
     int waveFormType = config.getInteger("waveFormType");
+    String deviceID = config.getString("deviceID");
     realTimeReqWaveList = DataUtils.createWaveFormTypeList(waveFormType);
   }
 
@@ -39,7 +40,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
         if (msg.body() instanceof JsonObject) {
           realTimeConfigResponsesList.add((JsonObject) msg.body());
         } else if (msg.body() instanceof Byte) {
-          parse((Byte) msg.body());
+          parse((Byte) msg.body(), deviceName);
         }
       });
     }
@@ -47,7 +48,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
   }
 
   @Override
-  public void parse(Byte message) {
+  public void parse(Byte message, String deviceName) {
 
     realTimeByteList.add(message);
 
@@ -159,17 +160,21 @@ public class MedibusRealTimeParser extends Parser<Byte> {
     }
 
     if (!waveValResultList.isEmpty()) {
-      write();
+      write(deviceName);
     }
   }
 
 
-  public void write() {
+  public void write(String deviceName) {
     for (Map<String, Object> map : waveValResultList) {
       String physioID = (String) map.get("physioID");
       double value = (double) map.get("value");
       System.out.printf("RT_Message - %s: %s%n", physioID, value);
-      vertx.eventBus().send("parsed_medibus", new JsonObject().put(physioID, value));
+      JsonObject waveValResult = new JsonObject();
+      waveValResult.put("timestamp", LocalDateTime.now().toString());
+      waveValResult.put("realTime", true);
+      waveValResult.put(physioID, value);
+      vertx.eventBus().send("parsed_"+deviceName, waveValResult);
     }
   }
 

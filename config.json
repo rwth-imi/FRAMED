@@ -25,6 +25,14 @@
         "Oxylog-3000-Plus-00"
       ],
       "path": "output/raw/"
+    },
+    {
+      "writer": "com.safety_box.communicator.io.parsed.MedibusParsedWriter",
+      "writerID": "'Medibus-Parsed-Writer",
+      "devices": [
+        "Oxylog-3000-Plus-00"
+      ],
+      "path": "output/parsed/"
     }
   ],
   "parsers": [

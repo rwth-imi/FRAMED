@@ -9,6 +9,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 
 public class MedibusSlowParser extends Parser<byte[]> {
@@ -17,6 +18,7 @@ public class MedibusSlowParser extends Parser<byte[]> {
     super.init(vertx, context);
   }
 
+  @Override
   public Future<?> start() throws Exception {
     JsonArray devices = config.getJsonArray("devices");
     for  (Object device : devices) {
@@ -24,40 +26,40 @@ public class MedibusSlowParser extends Parser<byte[]> {
       vertx.eventBus().consumer(deviceName, msg -> {
         JsonObject jsonMsg = (JsonObject) msg.body();
         byte[] data = jsonMsg.getBinary("data");
-        parse(data);
+        parse(data, deviceName);
       });
     }
     return super.start();
   }
   @Override
-  public void parse(byte[] message) {
+  public void parse(byte[] message, String deviceName) {
     String data = new String(message, StandardCharsets.US_ASCII);
 
     String echo = data.substring(0, 2);
     switch (echo) {
       case "\u0001$" -> { // Data cp1
-        parseNumMessage(message, 6, "MeasurementCP1");
+        parseNumMessage(message, 6, "MeasurementCP1", deviceName);
       }
       case "\u0001+" -> { // Data cp2
-        parseNumMessage(message, 6, "MeasurementCP2");
+        parseNumMessage(message, 6, "MeasurementCP2", deviceName);
       }
       case "\u0001)" -> { // Data device settings
-        parseNumMessage(message, 7, "DeviceSettings");
+        parseNumMessage(message, 7, "DeviceSettings", deviceName);
       }
       case "\u0001*" -> { // Data text messages
-        parseTextMessage(message);
+        parseTextMessage(message, deviceName);
       }
       case "\u0001'" -> { // Alarm cp1
-        parseAlarmMessage(message, "AlarmCP1");
+        parseAlarmMessage(message, "AlarmCP1", deviceName);
       }
       case "\u0001." -> { // Alarm cp2
-        parseAlarmMessage(message, "AlarmCP2");
+        parseAlarmMessage(message, "AlarmCP2", deviceName);
       }
     }
   }
 
 
-  private void parseTextMessage(byte[] message) {
+  private void parseTextMessage(byte[] message, String deviceName) {
     int offset = 4;
     int dataArrayLength = message.length - 2;
     byte[] dataArray = new byte[dataArrayLength];
@@ -86,13 +88,13 @@ public class MedibusSlowParser extends Parser<byte[]> {
           .findFirst()
           .orElse("Unknown");
         System.out.printf("TextMessage - %s: %s%n", physioID, dataValue);
-        vertx.eventBus().send("parsed_medibus", new JsonObject().put(physioID, dataValue));
+        JsonObject result =  new JsonObject().put(physioID, dataValue);
+        write(deviceName, result);
       }
-
     }
   }
 
-  private void parseNumMessage(byte[] message, int offset, String reqType) {
+  private void parseNumMessage(byte[] message, int offset, String reqType, String deviceName) {
     // init local parser variables
     String dataCode;
     double dataValue;
@@ -139,11 +141,12 @@ public class MedibusSlowParser extends Parser<byte[]> {
       };
 
       System.out.printf("DataMessage - %s: %s%n", physioID, dataValue);
-      vertx.eventBus().send("parsed_medibus", new JsonObject().put(physioID, dataValue));
+      JsonObject result =  new JsonObject().put(physioID, dataValue);
+      write(deviceName, result);
     }
   }
 
-  private void parseAlarmMessage(byte[] message, String reqType) {
+  private void parseAlarmMessage(byte[] message, String reqType, String deviceName) {
     int offset = 15;
     int dataArrayLength = message.length - 2;
     byte[] dataArray = new byte[dataArrayLength];
@@ -184,9 +187,16 @@ public class MedibusSlowParser extends Parser<byte[]> {
             throw new IllegalStateException("Unexpected value: " + reqType);
         }
         System.out.printf("Alarms-Message - %s: %s%n", physioID, dataValue);
-        vertx.eventBus().send("parsed_medibus", new JsonObject().put(physioID, dataValue));
+        JsonObject result =  new JsonObject().put(physioID, dataValue);
+        write(deviceName, result);
       }
     }
+  }
+
+  private void write(String deviceName, JsonObject result) {
+    result.put("timestamp", LocalDateTime.now().toString());
+    result.put("realTime", false);
+    vertx.eventBus().send("parsed_"+deviceName, result);
   }
 
 

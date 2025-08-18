@@ -14,11 +14,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.logging.Logger;
 
 public class RawByteWriter extends Writer<byte[]> {
-  private static final Logger logger = Logger.getLogger(RawByteWriter.class.getName());
   private BufferedWriter bufferedWriter;
   public void init(Vertx vertx, Context context) {
     super.init(vertx, context);
@@ -38,20 +35,12 @@ public class RawByteWriter extends Writer<byte[]> {
     return super.start();
   }
 
-  public void handleEventBus(Message<Object> msg) {
-    JsonObject jsonMsg = (JsonObject) msg.body();
-    byte[] data = jsonMsg.getBinary("data");
-    try {
-      write(data);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
   @Override
   public void write(byte[] data) throws IOException {
     if (data.length <= 2) return;
+    bufferedWriter.write(LocalDateTime.now().toString());
     for (byte b : data) {
-      bufferedWriter.write(LocalDateTime.now() + " " + b);
+      bufferedWriter.write(b);
     }
     bufferedWriter.newLine();
   }
@@ -60,5 +49,15 @@ public class RawByteWriter extends Writer<byte[]> {
   public Future<?> stop() throws Exception {
     bufferedWriter.close();
     return super.stop();
+  }
+
+  public void handleEventBus(Message<Object> msg) {
+    JsonObject jsonMsg = (JsonObject) msg.body();
+    byte[] data = jsonMsg.getBinary("data");
+    try {
+      write(data);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

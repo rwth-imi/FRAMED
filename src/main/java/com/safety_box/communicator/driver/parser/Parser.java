@@ -13,5 +13,5 @@ public abstract class Parser<T> extends VerticleBase {
     this.vertx = vertx;
     this.config = context.config();
   }
-  public abstract void parse(T message);
+  public abstract void parse(T message, String deviceName);
 }
