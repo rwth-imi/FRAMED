@@ -1,12 +1,20 @@
 package com.safety_box.communicator.driver.protocol.simulation;
 
+import io.vertx.core.Future;
+
 import com.safety_box.communicator.driver.protocol.Protocol;
+import io.vertx.core.Promise;
+import io.vertx.core.json.JsonObject;
 
-public class SimulatorProtocol extends Protocol {
+public class SimulatorProtocol extends Protocol<String> {
 
-  public SimulatorProtocol(String deviceID) {
-    super(deviceID);
+  @Override
+  public Future<?> start() throws Exception {
+    JsonObject config = this.config();
+    this.deviceID = config.getString("deviceID");
+    return super.start();
   }
+
   @Override
   public void connect() {
 
@@ -17,13 +25,4 @@ public class SimulatorProtocol extends Protocol {
 
   }
 
-  @Override
-  public Object readData() {
-    return null;
-  }
-
-  @Override
-  public void writeData(Object data) {
-
-  }
 }

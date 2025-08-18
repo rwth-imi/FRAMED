@@ -176,6 +176,7 @@ nbbuild/
 dist/
 nbdist/
 .nb-gradle/
+output/*
 
 ### VisualStudioCode ###
 .vscode/*

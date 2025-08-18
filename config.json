@@ -3,6 +3,55 @@
     {
       "driver": "com.safety_box.communicator.driver.protocol.simulation.SimulatorProtocol",
       "deviceID": "test"
+    },
+    {
+      "driver": "com.safety_box.communicator.driver.protocol.medibus.MedibusProtocol",
+      "deviceID": "Oxylog-3000-Plus-00",
+      "portName": "/dev/ttyUSB0",
+      "baudRate": 19200,
+      "dataBits": 8,
+      "stopBits": 1,
+      "bufferSize": 4096,
+      "waveFormType": 4,
+      "realTime": true,
+      "slowData": true
+    }
+  ],
+  "writers": [
+    {
+      "writer": "com.safety_box.communicator.io.raw.RawByteWriter",
+      "writerID": "Raw-Byte-Writer",
+      "devices": [
+        "Oxylog-3000-Plus-00"
+      ],
+      "path": "output/raw/"
+    },
+    {
+      "writer": "com.safety_box.communicator.io.parsed.MedibusParsedWriter",
+      "writerID": "'Medibus-Parsed-Writer",
+      "devices": [
+        "Oxylog-3000-Plus-00"
+      ],
+      "path": "output/parsed/"
+    }
+  ],
+  "parsers": [
+    {
+      "parser": "com.safety_box.communicator.driver.parser.medibus.MedibusSlowParser",
+      "parserID": "Medibus-Slow-Parser",
+      "devices":
+        [
+          "Oxylog-3000-Plus-00"
+        ]
+    },
+    {
+      "parser": "com.safety_box.communicator.driver.parser.medibus.MedibusRealTimeParser",
+      "parserID": "Medibus-RT-Parser",
+      "devices":
+      [
+        "Oxylog-3000-Plus-00"
+      ],
+      "waveFormType": 4
     }
   ]
 }
