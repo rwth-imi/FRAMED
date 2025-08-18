@@ -16,22 +16,23 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
 public class MedibusParsedWriter extends Writer<JsonObject> {
-  private BufferedWriter bufferedWriterRT;
-  private BufferedWriter bufferedWriterSD;
-
+  private long timeOnStart;
   @Override
   public void init(Vertx vertx, Context context) {
+    this.timeOnStart =  System.currentTimeMillis();
     super.init(vertx, context);
   }
 
   @Override
-  public void write(JsonObject data) throws IOException {
+  public void write(JsonObject data, String deviceName) throws IOException {
     if (data.getBoolean("realTime")) {
-      bufferedWriterRT.write(data.encode());
-      bufferedWriterRT.newLine();
+      Path filePath = path.resolve(deviceName + "_" + timeOnStart + "_parsed_RT.jsonl");
+      Files.write(filePath, data.encode().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+      Files.write(filePath, "\n".getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     } else {
-      bufferedWriterSD.write(data.encode());
-      bufferedWriterSD.newLine();
+      Path filePath = path.resolve(deviceName + "_" + timeOnStart + "_parsed_SD.jsonl");
+      Files.write(filePath, data.encode().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+      Files.write(filePath, "\n".getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
 
   }
@@ -41,30 +42,22 @@ public class MedibusParsedWriter extends Writer<JsonObject> {
     JsonArray devices = config.getJsonArray("devices");
     for  (Object device : devices) {
       String deviceName = (String) device;
-      Path filePathRT = path.resolve(deviceName + "_" + System.currentTimeMillis() + "_parsed_RT.jsonl");
-      Path filePathSD = path.resolve(deviceName + "_" + System.currentTimeMillis() + "_parsed_SD.jsonl");
-      try {
-        bufferedWriterRT = Files.newBufferedWriter(filePathRT, StandardOpenOption.CREATE);
-        bufferedWriterSD = Files.newBufferedWriter(filePathSD, StandardOpenOption.CREATE);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-      vertx.eventBus().consumer("parsed_" + deviceName, this::handleEventBus);
+      vertx.eventBus().consumer("parsed_" + deviceName, msg -> {
+        handleEventBus(msg, deviceName);
+      });
     }
     return super.start();
   }
 
   @Override
   public Future<?> stop() throws Exception {
-    bufferedWriterRT.close();
-    bufferedWriterSD.close();
     return super.stop();
   }
 
-  public void handleEventBus(Message<Object> msg) {
+  public void handleEventBus(Message<Object> msg, String deviceName) {
     JsonObject jsonMsg = (JsonObject) msg.body();
     try {
-      write(jsonMsg);
+      write(jsonMsg, deviceName);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

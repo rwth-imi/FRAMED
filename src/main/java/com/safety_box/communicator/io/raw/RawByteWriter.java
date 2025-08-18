@@ -16,46 +16,40 @@ import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 
 public class RawByteWriter extends Writer<byte[]> {
-  private BufferedWriter bufferedWriter;
+  private long timeOnStart;
   public void init(Vertx vertx, Context context) {
+    this.timeOnStart =  System.currentTimeMillis();
     super.init(vertx, context);
   }
   public Future<?> start() throws Exception {
     JsonArray devices = config.getJsonArray("devices");
     for  (Object device : devices) {
       String deviceName = (String) device;
-      Path filePath = path.resolve(deviceName + "_" + System.currentTimeMillis() + "_raw.txt");
-      try {
-        bufferedWriter = Files.newBufferedWriter(filePath, StandardOpenOption.CREATE);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-      vertx.eventBus().consumer(deviceName, this::handleEventBus);
+      vertx.eventBus().consumer(deviceName, msg -> {
+        handleEventBus(msg, deviceName);
+      });
     }
     return super.start();
   }
 
   @Override
-  public void write(byte[] data) throws IOException {
+  public void write(byte[] data, String deviceName) throws IOException {
     if (data.length <= 2) return;
-    bufferedWriter.write(LocalDateTime.now().toString());
-    for (byte b : data) {
-      bufferedWriter.write(b);
-    }
-    bufferedWriter.newLine();
+    Path filePath = path.resolve(deviceName + "_" + timeOnStart + "_raw.txt");
+    Files.write(filePath, data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+    Files.write(filePath, "\n".getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
   }
 
   @Override
   public Future<?> stop() throws Exception {
-    bufferedWriter.close();
     return super.stop();
   }
 
-  public void handleEventBus(Message<Object> msg) {
+  public void handleEventBus(Message<Object> msg, String deviceName) {
     JsonObject jsonMsg = (JsonObject) msg.body();
     byte[] data = jsonMsg.getBinary("data");
     try {
-      write(data);
+      write(data, deviceName);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

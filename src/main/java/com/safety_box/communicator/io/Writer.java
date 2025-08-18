@@ -20,5 +20,5 @@ public abstract class Writer<T> extends VerticleBase {
   }
 
 
-  public abstract void write(T data) throws IOException;
+  public abstract void write(T data, String deviceName) throws IOException;
 }

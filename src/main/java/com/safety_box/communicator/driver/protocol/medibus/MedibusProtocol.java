@@ -32,6 +32,7 @@ public class MedibusProtocol extends Protocol<byte[]> {
   private int bufferSize;
   private int waveFormType;
   private boolean realTime;
+  private String multiplier;
   private SerialPort serialPort;
   private MedibusFramer framer;
 
@@ -49,6 +50,8 @@ public class MedibusProtocol extends Protocol<byte[]> {
     this.realTime = config.getBoolean("realTime");
     this.waveFormType = config.getInteger("waveFormType");
     this.slowData = config.getBoolean("slowData");
+    this.multiplier = config.getString("multiplier");
+
   }
 
   @Override
@@ -365,12 +368,9 @@ public class MedibusProtocol extends Protocol<byte[]> {
       tempTxBuffList.add(b);
     }
 
-    //this.realTimeParser.addTimeReqWaves(waveTrType);
-
     for (byte b : rtdListArray) {
       String rtdToAsciiHex = String.format("%02x", b).toUpperCase();
       byte[] rtdAsciiHexBytes = rtdToAsciiHex.getBytes(StandardCharsets.US_ASCII);
-      String multiplier = "01";
       byte[] multiplierHexBytes = multiplier.getBytes(StandardCharsets.US_ASCII);
 
       for (byte c : rtdAsciiHexBytes) {
