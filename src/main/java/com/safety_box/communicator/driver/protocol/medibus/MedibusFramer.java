@@ -2,6 +2,7 @@ package com.safety_box.communicator.driver.protocol.medibus;
 
 import com.safety_box.communicator.driver.utils.DataUtils;
 import com.safety_box.communicator.driver.utils.DataConstants;
+import io.vertx.core.Vertx;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -12,6 +13,8 @@ import java.util.logging.Logger;
 
 public class MedibusFramer {
 
+  private final Vertx vertx;
+  private final String deviceID;
   private boolean storeStartResp = false;
   private boolean storeStartCom = false;
   private boolean storeEnd = false;
@@ -23,10 +26,9 @@ public class MedibusFramer {
 
   private final Consumer<byte[]> frameHandler;
 
-  private static final Logger logger = Logger.getLogger(MedibusFramer.class.getName());
-
-
-  public MedibusFramer(Consumer<byte[]> frameHandler) {
+  public MedibusFramer(Consumer<byte[]> frameHandler, Vertx vertx, String deviceID) {
+    this.deviceID = deviceID;
+    this.vertx = vertx;
     this.frameHandler = frameHandler;
   }
 
@@ -66,6 +68,7 @@ public class MedibusFramer {
 
       default:
         if ((bValue & DataConstants.RT_BYTE) == DataConstants.RT_BYTE) {
+          vertx.eventBus().send(deviceID+"_rt", bValue);
           bRTList.add(bValue);
         } else if (storeStartCom && !storeEnd) {
           bComList.add(bValue);

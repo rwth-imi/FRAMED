@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.logging.Logger;
 
@@ -48,8 +49,9 @@ public class RawByteWriter extends Writer<byte[]> {
   }
   @Override
   public void write(byte[] data) throws IOException {
+    if (data.length <= 2) return;
     for (byte b : data) {
-      bufferedWriter.write(b);
+      bufferedWriter.write(LocalDateTime.now() + " " + b);
     }
     bufferedWriter.newLine();
   }

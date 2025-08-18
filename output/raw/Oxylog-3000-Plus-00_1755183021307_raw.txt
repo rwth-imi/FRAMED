@@ -1,0 +1,20 @@
+R5050'Oxylog_3000_plus'01.09:05.00
+*01< Mode VC-CMV8A?disposable hose8C@Hose size: adult
+*01< Mode VC-CMV8A?disposable hose8C@Hose size: adult
+*01< Mode VC-CMV8A?disposable hose8C@Hose size: adult
+*01< Mode VC-CMV8A?disposable hose8C@Hose size: adult
+*01< Mode VC-CMV8A?disposable hose8C@Hose size: adult
+*01< Mode VC-CMV8A?disposable hose8C@Hose size: adult
+*01< Mode VC-CMV8A?disposable hose8C@Hose size: adult
+*01< Mode VC-CMV8A?disposable hose8C@Hose size: adult
+*01< Mode VC-CMV8A?disposable hose8C@Hose size: adult
+)01  40 040.30009 12.00B  5.013 30.027    049 66.7
+)01  40 040.30009 12.00B  5.013 30.027    049 66.7
+)01  40 040.30009 12.00B  5.013 30.027    049 66.7
+)01  40 040.30009 12.00B  5.013 30.027    049 66.7
+)01  40 040.30009 12.00B  5.013 30.027    049 66.7
+)01  40 040.30009 12.00B  5.013 30.027    049 66.7
+)01  40 040.30009 12.00B  5.013 30.027    049 66.7
+)01  40 040.30009 12.00B  5.013 30.027    049 66.7
+)01  40 040.30009 12.00B  5.013 30.027    049 66.7
+)01  40 040.30009 12.00B  5.013 30.027    049 66.7

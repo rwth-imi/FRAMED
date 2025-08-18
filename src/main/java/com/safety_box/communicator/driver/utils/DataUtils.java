@@ -40,7 +40,7 @@ public class DataUtils {
     return sb.toString().trim();
   }
 
-  public static ArrayList<Byte> createWaveFormTypeList(int waveType, ArrayList<Byte> waveForms) {
+  public static ArrayList<Byte> createWaveFormTypeList(int waveType) {
     ArrayList<Byte> waveTypesEnums = new ArrayList<>();
     switch (waveType) {
       case 0:

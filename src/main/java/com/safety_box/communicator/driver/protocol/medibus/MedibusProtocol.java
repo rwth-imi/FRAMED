@@ -63,9 +63,7 @@ public class MedibusProtocol extends Protocol<byte[]> {
     serialPort.setRTS();
     serialPort.setDTR();
 
-
-
-    this.framer = new MedibusFramer(this::handleResponse);
+    this.framer = new MedibusFramer(this::handleResponse, vertx, deviceID);
     logger.fine("Trying to initialize communication...");
 
     if (serialPort.openPort()) {
@@ -111,8 +109,6 @@ public class MedibusProtocol extends Protocol<byte[]> {
   }
 
   private void listenToSerial() {
-    this.framer = new MedibusFramer(this::handleResponse);
-
     serialPort.addDataListener(new SerialPortDataListener() {
       @Override
       public int getListeningEvents() {
@@ -323,25 +319,28 @@ public class MedibusProtocol extends Protocol<byte[]> {
     while (bb.remaining() >= 23) {
       byte[] dataCode = new byte[2];
       bb.get(dataCode);
+      String dataCodeString = new String(dataCode).trim().replaceAll("\\s+", "");
       byte[] interval = new byte[8];
       bb.get(interval);
+      String intervalString = new String(interval).trim().replaceAll("\\s+", "");
       byte[] minValue = new byte[5];
       bb.get(minValue);
+      String minValueString = new String(minValue).trim().replaceAll("\\s+", "");
       byte[] maxValue = new byte[5];
       bb.get(maxValue);
+      String maxValueString = new String(maxValue).trim().replaceAll("\\s+", "");
       byte[] maxBinValue = new byte[3];
       bb.get(maxBinValue);
-      int i = 0;
-       /*
-      RealTimeConfigResponse rtConfigResp = new RealTimeConfigResponse();
-      rtConfigResp.setDataCode(new String(dataCode).trim().replaceAll("\\s+", ""));
-      rtConfigResp.setInterval(new String(interval).trim().replaceAll("\\s+", ""));
-      rtConfigResp.setMinValue(new String(minValue).trim().replaceAll("\\s+", ""));
-      rtConfigResp.setMaxValue(new String(maxValue).trim().replaceAll("\\s+", ""));
-      rtConfigResp.setMaxBinValue(new String(maxBinValue).trim().replaceAll("\\s+", ""));
+      String maxBinValueString = new String(maxBinValue).trim().replaceAll("\\s+", "");
 
-      this.realTimeParser.addConfigResponse(rtConfigResp);
-      */
+      JsonObject rtConfig = new JsonObject();
+      rtConfig.put("dataCode", dataCodeString);
+      rtConfig.put("Interval", Integer.parseInt(intervalString));
+      rtConfig.put("minValue", Integer.parseInt(minValueString));
+      rtConfig.put("maxValue", Integer.parseInt(maxValueString));
+      rtConfig.put("maxBinValue", Integer.parseInt(maxBinValueString, 16));
+
+      vertx.eventBus().send(deviceID+"_rt", rtConfig);
     }
   }
 
@@ -356,7 +355,7 @@ public class MedibusProtocol extends Protocol<byte[]> {
     ArrayList<Byte> tempTxBuffList = new ArrayList<>();
     ArrayList<Byte> waveTrType = new ArrayList<>();
 
-    waveTrType = DataUtils.createWaveFormTypeList(this.waveFormType, waveTrType);
+    waveTrType = DataUtils.createWaveFormTypeList(this.waveFormType);
 
     byte[] rtdListArray = new byte[waveTrType.size()];
     for (int i = 0; i < waveTrType.size(); i++) {

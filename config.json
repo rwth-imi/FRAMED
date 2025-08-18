@@ -35,6 +35,15 @@
         [
           "Oxylog-3000-Plus-00"
         ]
+    },
+    {
+      "parser": "com.safety_box.communicator.driver.parser.medibus.MedibusRealTimeParser",
+      "parserID": "Medibus-RT-Parser",
+      "devices":
+      [
+        "Oxylog-3000-Plus-00"
+      ],
+      "waveFormType": 4
     }
   ]
 }
