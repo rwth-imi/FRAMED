@@ -68,7 +68,7 @@ public class MedibusFramer {
 
       default:
         if ((bValue & DataConstants.RT_BYTE) == DataConstants.RT_BYTE) {
-          vertx.eventBus().send(deviceID+"_rt", bValue);
+          vertx.eventBus().publish(deviceID+"_rt", bValue);
           bRTList.add(bValue);
         } else if (storeStartCom && !storeEnd) {
           bComList.add(bValue);

@@ -8,7 +8,7 @@ import io.vertx.core.json.JsonObject;
 import java.io.IOException;
 import java.nio.file.Path;
 
-public abstract class Writer<T> extends VerticleBase {
+public abstract class WriterVerticle<T> extends VerticleBase {
   protected JsonObject config;
   protected Path path;
   @Override
@@ -20,5 +20,5 @@ public abstract class Writer<T> extends VerticleBase {
   }
 
 
-  public abstract void write(T data) throws IOException;
+  public abstract void write(T data, String deviceName) throws IOException;
 }

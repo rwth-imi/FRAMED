@@ -4,6 +4,9 @@ import com.safety_box.communicator.manager.VertxManager;
 import io.vertx.core.Future;
 import io.vertx.core.VerticleBase;
 import io.vertx.core.Vertx;
+import io.vertx.ext.bridge.BridgeOptions;
+import io.vertx.ext.bridge.PermittedOptions;
+import io.vertx.ext.eventbus.bridge.tcp.TcpEventBusBridge;
 
 public class MainVerticle extends VerticleBase {
   private VertxManager deviceManager;
@@ -23,6 +26,18 @@ public class MainVerticle extends VerticleBase {
     // start all configured parsers
     parserManager = new VertxManager(vertx, "parsers");
     parserManager.startAll("parser", "parserID");
+
+    BridgeOptions bridgeOptions = new BridgeOptions()
+      .addInboundPermitted(new PermittedOptions().setAddressRegex(".*"))
+      .addOutboundPermitted(new PermittedOptions().setAddressRegex(".*"));
+
+    TcpEventBusBridge bridge = TcpEventBusBridge.create(vertx, bridgeOptions);
+    Future<TcpEventBusBridge> bridgeFuture = bridge.listen(8080);
+    bridgeFuture.onSuccess(event -> {
+      System.out.println("Bridge started");
+    }).onFailure(event -> {
+      event.printStackTrace();
+    });
 
     return super.start();
   }

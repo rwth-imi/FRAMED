@@ -2,7 +2,7 @@ package com.safety_box.communicator.driver.protocol.medibus;
 
 import com.fazecast.jSerialComm.SerialPortDataListener;
 import com.fazecast.jSerialComm.SerialPortEvent;
-import com.safety_box.communicator.driver.protocol.Protocol;
+import com.safety_box.communicator.driver.protocol.ProtocolVerticle;
 import com.fazecast.jSerialComm.SerialPort;
 import com.safety_box.communicator.driver.utils.DataUtils;
 import com.safety_box.communicator.driver.utils.DataConstants;
@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class MedibusProtocol extends Protocol<byte[]> {
+public class MedibusProtocolVerticle extends ProtocolVerticle {
 
   private Boolean slowData;
 
@@ -32,10 +32,11 @@ public class MedibusProtocol extends Protocol<byte[]> {
   private int bufferSize;
   private int waveFormType;
   private boolean realTime;
+  private String multiplier;
   private SerialPort serialPort;
   private MedibusFramer framer;
 
-  private static final Logger logger = Logger.getLogger(MedibusProtocol.class.getName());
+  private static final Logger logger = Logger.getLogger(MedibusProtocolVerticle.class.getName());
 
 
   @Override
@@ -49,6 +50,8 @@ public class MedibusProtocol extends Protocol<byte[]> {
     this.realTime = config.getBoolean("realTime");
     this.waveFormType = config.getInteger("waveFormType");
     this.slowData = config.getBoolean("slowData");
+    this.multiplier = config.getString("multiplier");
+
   }
 
   @Override
@@ -105,7 +108,7 @@ public class MedibusProtocol extends Protocol<byte[]> {
   }
 
   private void writeData(byte[] data) {
-    vertx.eventBus().send("Oxylog-3000-Plus-00", new JsonObject().put("data", data));
+    vertx.eventBus().publish("Oxylog-3000-Plus-00", new JsonObject().put("data", data));
   }
 
   private void listenToSerial() {
@@ -340,7 +343,7 @@ public class MedibusProtocol extends Protocol<byte[]> {
       rtConfig.put("maxValue", Integer.parseInt(maxValueString));
       rtConfig.put("maxBinValue", Integer.parseInt(maxBinValueString, 16));
 
-      vertx.eventBus().send(deviceID+"_rt", rtConfig);
+      vertx.eventBus().publish(deviceID+"_rt", rtConfig);
     }
   }
 
@@ -365,12 +368,9 @@ public class MedibusProtocol extends Protocol<byte[]> {
       tempTxBuffList.add(b);
     }
 
-    //this.realTimeParser.addTimeReqWaves(waveTrType);
-
     for (byte b : rtdListArray) {
       String rtdToAsciiHex = String.format("%02x", b).toUpperCase();
       byte[] rtdAsciiHexBytes = rtdToAsciiHex.getBytes(StandardCharsets.US_ASCII);
-      String multiplier = "01";
       byte[] multiplierHexBytes = multiplier.getBytes(StandardCharsets.US_ASCII);
 
       for (byte c : rtdAsciiHexBytes) {
