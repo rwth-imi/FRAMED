@@ -1,38 +1,33 @@
-package com.safety_box.communicator;
+package com.safety_box.orchestrator;
 
-import com.safety_box.communicator.manager.VertxManager;
+import com.safety_box.orchestrator.io.ConfigLoader;
+import com.safety_box.orchestrator.manager.VertxManager;
 import io.vertx.core.Future;
 import io.vertx.core.VerticleBase;
-import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.bridge.BridgeOptions;
 import io.vertx.ext.bridge.PermittedOptions;
 import io.vertx.ext.eventbus.bridge.tcp.TcpEventBusBridge;
 
 public class MainVerticle extends VerticleBase {
-  private VertxManager deviceManager;
-  private VertxManager writerManager;
-  private VertxManager parserManager;
+  private VertxManager vertxManager;
+  private  TcpEventBusBridge bridge;
   @Override
   public Future<?> start() throws Exception {
     // start all configured device protocol handlers
+    JsonObject config = ConfigLoader.loadConfig("config.json");
 
-    deviceManager = new VertxManager(vertx, "devices");
-    deviceManager.startAll("driver", "deviceID");
-
-    // start all configured writers
-    writerManager = new VertxManager(vertx, "writers");
-    writerManager.startAll("writer", "writerID");
-
-    // start all configured parsers
-    parserManager = new VertxManager(vertx, "parsers");
-    parserManager.startAll("parser", "parserID");
+    vertxManager = new VertxManager(vertx, config);
+    for (String key:config.getMap().keySet()) {
+      vertxManager.startAll(key);
+    }
 
     BridgeOptions bridgeOptions = new BridgeOptions()
       .addInboundPermitted(new PermittedOptions().setAddressRegex(".*"))
       .addOutboundPermitted(new PermittedOptions().setAddressRegex(".*"));
 
-    TcpEventBusBridge bridge = TcpEventBusBridge.create(vertx, bridgeOptions);
-    Future<TcpEventBusBridge> bridgeFuture = bridge.listen(8080);
+    bridge = TcpEventBusBridge.create(vertx, bridgeOptions);
+    Future<TcpEventBusBridge> bridgeFuture = bridge.listen(3030);
     bridgeFuture.onSuccess(event -> {
       System.out.println("Bridge started");
     }).onFailure(event -> {
@@ -44,9 +39,9 @@ public class MainVerticle extends VerticleBase {
 
   @Override
   public Future<?> stop() throws Exception {
-    deviceManager.stopAll();
-    writerManager.stopAll();
-
+    System.out.println("Stopping Verticle");
+    bridge.close();
+    vertxManager.stopAll();
     return super.stop();
   }
 }

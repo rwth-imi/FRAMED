@@ -1,12 +1,12 @@
 {
   "devices": [
     {
-      "driver": "com.safety_box.communicator.driver.protocol.simulation.SimulatorProtocolVerticle",
-      "deviceID": "test"
+      "class": "com.safety_box.communicator.driver.protocol.simulation.SimulatorProtocolVerticle",
+      "id": "test"
     },
     {
-      "driver": "com.safety_box.communicator.driver.protocol.medibus.MedibusProtocolVerticle",
-      "deviceID": "Oxylog-3000-Plus-00",
+      "class": "com.safety_box.communicator.driver.protocol.medibus.MedibusProtocolVerticle",
+      "id": "Oxylog-3000-Plus-00",
       "portName": "/dev/ttyUSB0",
       "baudRate": 19200,
       "dataBits": 8,
@@ -20,16 +20,16 @@
   ],
   "writers": [
     {
-      "writer": "com.safety_box.communicator.io.raw.RawByteWriterVerticle",
-      "writerID": "Raw-Byte-Writer",
+      "class": "com.safety_box.communicator.io.raw.RawByteWriterVerticle",
+      "id": "Raw-Byte-Writer",
       "devices": [
         "Oxylog-3000-Plus-00"
       ],
       "path": "output/raw/"
     },
     {
-      "writer": "com.safety_box.communicator.io.parsed.MedibusParsedWriterVerticle",
-      "writerID": "'Medibus-Parsed-Writer",
+      "class": "com.safety_box.communicator.io.parsed.MedibusParsedWriterVerticle",
+      "id": "'Medibus-Parsed-Writer",
       "devices": [
         "Oxylog-3000-Plus-00"
       ],
@@ -38,21 +38,34 @@
   ],
   "parsers": [
     {
-      "parser": "com.safety_box.communicator.driver.parser.medibus.MedibusSlowParserVerticle",
-      "parserID": "Medibus-Slow-Parser",
+      "class": "com.safety_box.communicator.driver.parser.medibus.MedibusSlowParserVerticle",
+      "id": "Medibus-Slow-Parser",
       "devices":
         [
           "Oxylog-3000-Plus-00"
         ]
     },
     {
-      "parser": "com.safety_box.communicator.driver.parser.medibus.MedibusRealTimeParserVerticle",
-      "parserID": "Medibus-RT-Parser",
+      "class": "com.safety_box.communicator.driver.parser.medibus.MedibusRealTimeParserVerticle",
+      "id": "Medibus-RT-Parser",
       "devices":
       [
         "Oxylog-3000-Plus-00"
       ],
       "waveFormType": 4
+    }
+  ],
+  "Dispatchers": [
+    {
+      "class": "com.safety_box.streamer.dispatcher.influx.InfluxDispatcherVerticle",
+      "id": "InfluxDB",
+      "port": 8086,
+      "token": "ThoKiNpWG1QpK8NjBayxWiXq2vwj4L7q-0NvisFVpp-af9tt1qh8ohL00V_pRDksSKTt7hqLkOKRQ6GKxFmKzg==",
+      "org": "IMI-MSE",
+      "devices":
+      [
+        "Oxylog-3000-Plus-00"
+      ]
     }
   ]
 }

@@ -9,6 +9,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Arrays;
 
 public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
@@ -81,11 +82,7 @@ public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
         dataValue = response.substring(i+3, i+3 + lastItemLength);
         dataValue = dataValue.trim();
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
-        physioID = Arrays.stream(DataConstants.MedibusXTextMessages.values())
-          .filter(e -> e.value == dataCodeByte)
-          .map(Enum::name)
-          .findFirst()
-          .orElse("Unknown");
+        physioID = DataConstants.MedibusXTextMessages.get(dataCodeByte);
         System.out.printf("TextMessage - %s: %s%n", physioID, dataValue);
         JsonObject result =  new JsonObject().put("physioID", physioID);
         result.put("value", dataValue);
@@ -126,17 +123,9 @@ public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
       byte dataCodeByte = (byte) (Integer.parseInt(dataCode, 16) % 256);
 
       physioID = switch (reqType) {
-        case "MeasurementCP1" -> Arrays.stream(DataConstants.MedibusXMeasurementCP1.values())
-          .filter(e -> e.value == dataCodeByte)
-          .map(Enum::name)
-          .findFirst()
-          .orElse(null);
-        case "MeasurementCP2" -> Arrays.stream(DataConstants.MedibusXMeasurementCP2.values())
-          .filter(e -> e.value == dataCodeByte)
-          .map(Enum::name)
-          .findFirst()
-          .orElse(null);
-        case "DeviceSettings" -> DataConstants.MedibusXDeviceSettings.values()[dataCodeByte].name();
+        case "MeasurementCP1" -> DataConstants.MedibusXMeasurementCP1.get(dataCodeByte);
+        case "MeasurementCP2" -> DataConstants.MedibusXMeasurementCP2.get(dataCodeByte);
+        case "DeviceSettings" -> DataConstants.MedibusXDeviceSettings.get(dataCodeByte);
         default -> throw new IllegalStateException("Unexpected value: " + reqType);
       };
 
@@ -171,17 +160,11 @@ public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
         switch (reqType) {
           case "AlarmCP1":
-            physioID = Arrays.stream(DataConstants.MedibusXAlarmsCP1.values()).filter(e -> e.value == dataCodeByte)
-              .map(Enum::name)
-              .findFirst()
-              .orElse("Unknown");
+            physioID = DataConstants.MedibusXAlarmsCP1.get(dataCodeByte);
             System.out.printf("%s: %s%n", physioID, dataValue);
             break;
           case "AlarmCP2":
-            physioID = Arrays.stream(DataConstants.MedibusXAlarmsCP2.values()).filter(e -> e.value == dataCodeByte)
-              .map(Enum::name)
-              .findFirst()
-              .orElse("Unknown");
+            physioID = DataConstants.MedibusXAlarmsCP2.get(dataCodeByte);
             System.out.printf("%s: %s%n", physioID, dataValue);
             break;
           default:
@@ -196,9 +179,9 @@ public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
   }
 
   private void write(String deviceName, JsonObject result) {
-    result.put("timestamp", System.currentTimeMillis());
+    result.put("timestamp", Instant.now());
     result.put("realTime", false);
-    vertx.eventBus().publish("parsed_"+deviceName, result);
+    vertx.eventBus().publish(deviceName+".parsed", result);
   }
 
 

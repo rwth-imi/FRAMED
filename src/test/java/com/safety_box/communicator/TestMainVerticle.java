@@ -1,5 +1,6 @@
 package com.safety_box.communicator;
 
+import com.safety_box.orchestrator.MainVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;

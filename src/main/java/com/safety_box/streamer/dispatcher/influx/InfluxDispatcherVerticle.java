@@ -9,15 +9,13 @@ import com.safety_box.streamer.model.DataPoint;
 import com.safety_box.streamer.model.TimeSeries;
 import io.vertx.core.Context;
 
-import io.vertx.core.VerticleBase;
 import io.vertx.core.Vertx;
 
 import com.influxdb.client.write.Point;
-import java.awt.*;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.util.Locale;
 
 public class InfluxDispatcherVerticle extends Dispatcher {
   private String port;
@@ -40,12 +38,11 @@ public class InfluxDispatcherVerticle extends Dispatcher {
     zoneOffset = zone.getRules().getOffset(now);
   }
 
-
   @Override
   public void push(DataPoint<?> dataPoint) {
     Point point = Point
       .measurement(dataPoint.physioID())
-      .time(dataPoint.timestamp(), WritePrecision.NS);
+      .time(dataPoint.timestamp().atOffset(zoneOffset).toInstant(), WritePrecision.NS);
     Object value = dataPoint.value();
     if (value instanceof String) {
       point.addField("value", (String) value);
@@ -59,7 +56,6 @@ public class InfluxDispatcherVerticle extends Dispatcher {
     WriteApiBlocking writeApi = this.client.getWriteApiBlocking();
     writeApi.writePoint(dataPoint.deviceID(), org, point);
   }
-
 
   @Override
   public void pushBatch(TimeSeries timeSeries) {

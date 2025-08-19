@@ -9,6 +9,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +28,6 @@ public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
   public void init(Vertx vertx, Context context) {
     super.init(vertx, context);
     int waveFormType = config.getInteger("waveFormType");
-    String deviceID = config.getString("deviceID");
     realTimeReqWaveList = DataUtils.createWaveFormTypeList(waveFormType);
   }
 
@@ -139,7 +139,7 @@ public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
                 Map<String, Object> result = new HashMap<>();
                 result.put("dataStreamIndex", streamIndex);
                 result.put("timestamp", System.currentTimeMillis());
-                result.put("physioID", DataConstants.MedibusXRealTimeData.values()[waveCode].name());
+                result.put("physioID", DataConstants.MedibusXRealTimeData.get(waveCode));
                 result.put("respiratoryCycleState", respSyncState);
                 result.put("value", finalValue);
                 result.put("relativeTimeCounter", unixTimestamp);
@@ -168,12 +168,12 @@ public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
     for (Map<String, Object> map : waveValResultList) {
       String physioID = (String) map.get("physioID");
       double value = (double) map.get("value");
-      // System.out.printf("RT_Message - %s: %s%n", physioID, value);
+      System.out.printf("RT_Message - %s: %s%n", physioID, value);
       JsonObject waveValResult = new JsonObject();
-      waveValResult.put("timestamp", System.currentTimeMillis());
+      waveValResult.put("timestamp", Instant.now());
       waveValResult.put("realTime", true);
       waveValResult.put(physioID, value);
-      vertx.eventBus().publish("parsed_"+deviceName, waveValResult);
+      vertx.eventBus().publish(deviceName+".parsed", waveValResult);
     }
   }
 

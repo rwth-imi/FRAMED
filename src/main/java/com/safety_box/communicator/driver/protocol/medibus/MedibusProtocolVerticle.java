@@ -42,7 +42,7 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
   @Override
   public void init(Vertx vertx, Context context) {
     super.init(vertx, context);
-    this.deviceID = config.getString("deviceID");
+    this.deviceID = config.getString("id");
     this.portName = config.getString("portName");
     this.baudRate = config.getInteger("baudRate");
     this.dataBits = config.getInteger("dataBits");
@@ -67,7 +67,7 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
     serialPort.setDTR();
 
     this.framer = new MedibusFramer(this::handleResponse, vertx, deviceID);
-    logger.fine("Trying to initialize communication...");
+    logger.info("Trying to initialize communication...");
 
     if (serialPort.openPort()) {
       connect();
@@ -92,7 +92,7 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
   @Override
   public void disconnect() {
     currentState = State.TERMINATING;
-    logger.fine("Sending command: poll_request_stop_com");
+    logger.info("Sending command: poll_request_stop_com");
     sendCommand(DataConstants.poll_request_stop_com);
   }
 
@@ -136,21 +136,21 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
 
     writeData(packetBuffer);
     String echo = response.substring(0, 2);
-    logger.fine("Handling response with echo: " + DataUtils.stringToHex(echo) + " in state " + currentState);
+    logger.info("Handling response with echo: " + DataUtils.stringToHex(echo) + " in state " + currentState);
 
     switch (currentState) {
       case INITIALIZING -> {
         switch (echo) {
           case "\u001bQ" -> {
-            logger.fine("ICC command received.");
+            logger.info("ICC command received.");
             commandEchoResponse(DataConstants.poll_request_icc_msg);
-            logger.fine("Sending command: poll_request_deviceid");
+            logger.info("Sending command: poll_request_deviceid");
             sendCommand(DataConstants.poll_request_deviceid);
             currentState = State.IDENTIFYING;
           }
           case "\u0001Q" -> {
-            logger.fine("ICC response received. Transitioning to IDENTIFYING.");
-            logger.fine("Sending command: poll_request_deviceid");
+            logger.info("ICC response received. Transitioning to IDENTIFYING.");
+            logger.info("Sending command: poll_request_deviceid");
             sendCommand(DataConstants.poll_request_deviceid);
             currentState = State.IDENTIFYING;
           }
@@ -159,24 +159,24 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
       case IDENTIFYING -> {
         switch (echo) {
           case "\u001bR" -> {
-            logger.fine("Device ID request received. Sending Device ID.");
+            logger.info("Device ID request received. Sending Device ID.");
             sendDeviceID();
           }
           case "\u001b\u0030" -> {
-            logger.fine("NOP request received.");
-            logger.fine("Sending command: poll_request_deviceid");
+            logger.info("NOP request received.");
+            logger.info("Sending command: poll_request_deviceid");
             sendCommand(DataConstants.poll_request_deviceid);
           }
           case "\u0001R" -> {
-            logger.fine("Device ID response received.");
+            logger.info("Device ID response received.");
             if (realTime) {
-              logger.fine("Realtime enabled. Transitioning to CONFIGURING.");
+              logger.info("Realtime enabled. Transitioning to CONFIGURING.");
               currentState = State.CONFIGURING;
               vertx.setTimer(200, id -> {
                 sendCommand(DataConstants.poll_request_real_time_data_config);
               });
             } else {
-              logger.fine("Transitioning to ACTIVE.");
+              logger.info("Transitioning to ACTIVE.");
               currentState = State.ACTIVE;
               transitToActive();
             }
@@ -193,19 +193,19 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
       case CONFIGURING -> {
         switch (echo) {
           case "\u001b\u0030" -> {
-            logger.fine("NOP request received.");
+            logger.info("NOP request received.");
             commandEchoResponse(DataConstants.poll_request_no_operation);
           }
           case "\u0001S" -> {
-            logger.fine("Realtime config received. Sending transmission config.");
-            logger.fine("Sending command: poll_configure_real_time_transmission");
+            logger.info("Realtime config received. Sending transmission config.");
+            logger.info("Sending command: poll_configure_real_time_transmission");
             readRealtimeConfigResponse(packetBuffer);
             configureRealtimeTransmission();
           }
           case "\u0001T" -> {
-            logger.fine("Realtime transmission configured. Transitioning to ACTIVE.");
+            logger.info("Realtime transmission configured. Transitioning to ACTIVE.");
             currentState = State.ACTIVE;
-            logger.fine("Sending Sync-Command to enable datastreams.");
+            logger.info("Sending Sync-Command to enable datastreams.");
             setConfiguredDataStreams(false);
             transitToActive();
           }
@@ -218,59 +218,59 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
       case ACTIVE -> {
         switch (echo) {
           case "\u0001\u0030" -> {
-            logger.fine("NOP response received.");
+            logger.info("NOP response received.");
             if (this.slowData) {
-              logger.fine("Sending command: poll_request_config_measured_data_codepage1");
+              logger.info("Sending command: poll_request_config_measured_data_codepage1");
               sendCommand(DataConstants.poll_request_config_measured_data_codepage1);
             }
           }
           case "\u001b\u0030" -> {
-            logger.fine("NOP request received.");
+            logger.info("NOP request received.");
             commandEchoResponse(DataConstants.poll_request_no_operation);
             if (this.slowData) {
-              logger.fine("Sending command: poll_request_config_measured_data_codepage1");
+              logger.info("Sending command: poll_request_config_measured_data_codepage1");
               sendCommand(DataConstants.poll_request_config_measured_data_codepage1);
             }
           }
           case "\u001bV" -> {
-            logger.fine("Realtime config changed. Reconfiguring.");
+            logger.info("Realtime config changed. Reconfiguring.");
             setConfiguredDataStreams(true);
             currentState = State.CONFIGURING;
-            logger.fine("Sending command: poll_request_real_time_data_config");
+            logger.info("Sending command: poll_request_real_time_data_config");
             sendCommand(DataConstants.poll_request_real_time_data_config);
           }
           case "\u001bQ" -> {
-            logger.fine("ICC command received. Returning to INITIALIZING.");
+            logger.info("ICC command received. Returning to INITIALIZING.");
             currentState = State.INITIALIZING;
             commandEchoResponse(DataConstants.poll_request_icc_msg);
           }
           case "\u0001$" -> { // Data response cp1
             logger.log(Level.FINE, "Received: Data CP1 response");
-            logger.fine("Sending command: poll_request_config_measured_data_codepage2");
+            logger.info("Sending command: poll_request_config_measured_data_codepage2");
             sendCommand(DataConstants.poll_request_config_measured_data_codepage2);}
           case "\u0001+" -> { // Data response cp2
             logger.log(Level.FINE, "Received: Data CP2 response");
-            logger.fine("Sending command: poll_request_device_settings");
+            logger.info("Sending command: poll_request_device_settings");
             sendCommand(DataConstants.poll_request_device_settings);
           }
           case "\u0001)" -> { // Data response device settings
             logger.log(Level.FINE, "Received: Data device settings response");
-            logger.fine("Sending command: poll_request_text_messages");
+            logger.info("Sending command: poll_request_text_messages");
             sendCommand(DataConstants.poll_request_text_messages);
           }
           case "\u0001*" -> { // Data response text messages
             logger.log(Level.FINE, "Received: Data text messages response");
-            logger.fine("Sending command: poll_request_config_alarms_codepage1");
+            logger.info("Sending command: poll_request_config_alarms_codepage1");
             sendCommand(DataConstants.poll_request_config_alarms_codepage1);
           }
           case "\u0001'" -> { // Alarm response cp1
             logger.log(Level.FINE, "Received: Alarm CP1 response");
-            logger.fine("Sending command: poll_request_config_alarms_codepage2");
+            logger.info("Sending command: poll_request_config_alarms_codepage2");
             sendCommand(DataConstants.poll_request_config_alarms_codepage2);
           }
           case "\u0001." -> { // Alarm response cp2
             logger.log(Level.FINE, "Received: Alarm CP2 response");
-            logger.fine("Sending command: poll_request_config_measured_data_codepage1");
+            logger.info("Sending command: poll_request_config_measured_data_codepage1");
             sendCommand(DataConstants.poll_request_config_measured_data_codepage1);
           }
           default -> {
@@ -286,11 +286,11 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
       default -> {
         switch (echo) {
           case "\u0001\u0030" -> {
-            logger.fine("NOP response received.");
+            logger.info("NOP response received.");
             commandEchoResponse(DataConstants.poll_request_no_operation);
           }
           case "\u001b\u0030" -> {
-            logger.fine("NOP request received.");
+            logger.info("NOP request received.");
             commandEchoResponse(DataConstants.poll_request_no_operation);
           }
           default -> {
@@ -303,12 +303,12 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
 
   private void transitToActive() {
     if (this.slowData) {
-      logger.fine("Slow Data transmission configured.");
-      logger.fine("Sending command: poll_request_config_measured_data_codepage1");
+      logger.info("Slow Data transmission configured.");
+      logger.info("Sending command: poll_request_config_measured_data_codepage1");
       sendCommand(DataConstants.poll_request_config_measured_data_codepage1);
     } else {
-      logger.fine("Slow Data transmission not configured.");
-      logger.fine("Keeping connection alive by NOP");
+      logger.info("Slow Data transmission not configured.");
+      logger.info("Keeping connection alive by NOP");
       vertx.setPeriodic(2000, id -> sendCommand(DataConstants.poll_request_no_operation));
     }
   }
@@ -348,7 +348,7 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
   }
 
   private void sendICC() {
-    logger.fine("Sending command: poll_request_icc_msg");
+    logger.info("Sending command: poll_request_icc_msg");
     sendCommand(DataConstants.poll_request_icc_msg); // ICC
     currentState = State.INITIALIZING;
   }

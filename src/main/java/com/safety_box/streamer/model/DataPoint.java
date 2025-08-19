@@ -1,3 +1,5 @@
 package com.safety_box.streamer.model;
 
-public record DataPoint<T>(long timestamp, T value, String physioID, String deviceID) {}
+import java.time.Instant;
+
+public record DataPoint<T>(Instant timestamp, T value, String physioID, String deviceID) {}
