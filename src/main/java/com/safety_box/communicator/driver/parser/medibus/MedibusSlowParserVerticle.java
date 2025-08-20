@@ -82,9 +82,9 @@ public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
         dataValue = response.substring(i+3, i+3 + lastItemLength);
         dataValue = dataValue.trim();
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
-        physioID = DataConstants.MedibusXTextMessages.get(dataCodeByte);
-        System.out.printf("TextMessage - %s: %s%n", physioID, dataValue);
-        JsonObject result =  new JsonObject().put("physioID", physioID);
+        // physioID = DataConstants.MedibusXTextMessages.get(dataCodeByte);
+        System.out.printf("TextMessage: %s%n", dataValue);
+        JsonObject result =  new JsonObject().put("physioID", "TextMessage");
         result.put("value", dataValue);
         write(deviceName, result);
       }
@@ -129,7 +129,7 @@ public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
         default -> throw new IllegalStateException("Unexpected value: " + reqType);
       };
 
-      System.out.printf("DataMessage - %s: %s%n", physioID, dataValue);
+      //System.out.printf("DataMessage - %s: %s%n", physioID, dataValue);
       JsonObject result =  new JsonObject().put("physioID", physioID);
       result.put("value", dataValue);
       write(deviceName, result);
@@ -161,16 +161,16 @@ public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
         switch (reqType) {
           case "AlarmCP1":
             physioID = DataConstants.MedibusXAlarmsCP1.get(dataCodeByte);
-            System.out.printf("%s: %s%n", physioID, dataValue);
+            //System.out.printf("%s: %s%n", physioID, dataValue);
             break;
           case "AlarmCP2":
             physioID = DataConstants.MedibusXAlarmsCP2.get(dataCodeByte);
-            System.out.printf("%s: %s%n", physioID, dataValue);
+            //System.out.printf("%s: %s%n", physioID, dataValue);
             break;
           default:
             throw new IllegalStateException("Unexpected value: " + reqType);
         }
-        System.out.printf("Alarms-Message - %s: %s%n", physioID, dataValue);
+        //System.out.printf("Alarms-Message - %s: %s%n", physioID, dataValue);
         JsonObject result =  new JsonObject().put("physioID", physioID);
         result.put("value", dataValue);
         write(deviceName, result);

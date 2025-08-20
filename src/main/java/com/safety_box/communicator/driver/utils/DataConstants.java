@@ -359,20 +359,20 @@ public class DataConstants {
       entry((byte)0x06, "CO2 concentration, CO2 (mmHg)"),
       entry((byte)0x07, "CO2 concentration, CO2 (kPa)"),
       entry((byte)0x08, "CO2 concentration, CO2 (%)"),
-      entry((byte)0x0A, "Concentration of primary agent (inspiratory/expiratory)"),
-      entry((byte)0x0B, "Halothane concentration (inspiratory/expiratory), Hal"),
-      entry((byte)0x0C, "Enflurane concentration (inspiratory/expiratory), Enf"),
-      entry((byte)0x0D, "Isoflurane concentration (inspiratory/expiratory), Iso"),
-      entry((byte)0x0E, "Desflurane concentration (inspiratory/expiratory), Des"),
-      entry((byte)0x0F, "Sevoflurane concentration (inspiratory/expiratory), Sev"),
+      entry((byte)0x0A, "Concentration of primary agent (inspiratory/expiratory) (%)"),
+      entry((byte)0x0B, "Halothane concentration (inspiratory/expiratory), Hal (%)"),
+      entry((byte)0x0C, "Enflurane concentration (inspiratory/expiratory), Enf (%)"),
+      entry((byte)0x0D, "Isoflurane concentration (inspiratory/expiratory), Iso (%)"),
+      entry((byte)0x0E, "Desflurane concentration (inspiratory/expiratory), Des (%)"),
+      entry((byte)0x0F, "Sevoflurane concentration (inspiratory/expiratory), Sev (%)"),
       entry((byte)0x1C, "Tracheal pressure, Ptrach"),
       entry((byte)0x1E, "Inspiratory device flow, Flow dev insp"),
       entry((byte)0x2A, "Concentration of primary agent (inspiratory/expiratory) (kPa)"),
       entry((byte)0x2B, "Halothane concentration (inspiratory/expiratory), Hal (kPa)"),
-      entry((byte)0x2C, "Enflurane concentration (inspiratory/expiratory), Enf"),
-      entry((byte)0x2D, "Isoflurane concentration (inspiratory/expiratory), Iso"),
-      entry((byte)0x2E, "Desflurane concentration (inspiratory/expiratory), Des"),
-      entry((byte)0x2F, "Sevoflurane concentration (inspiratory/expiratory), Sev")
+      entry((byte)0x2C, "Enflurane concentration (inspiratory/expiratory), Enf (kPa)"),
+      entry((byte)0x2D, "Isoflurane concentration (inspiratory/expiratory), Iso (kPa)"),
+      entry((byte)0x2E, "Desflurane concentration (inspiratory/expiratory), Des (kPa)"),
+      entry((byte)0x2F, "Sevoflurane concentration (inspiratory/expiratory), Sev (kPa)")
     );
 
     public static Map<Byte, String> MedibusXAlarmsCP1 = Map.<Byte, String>ofEntries(

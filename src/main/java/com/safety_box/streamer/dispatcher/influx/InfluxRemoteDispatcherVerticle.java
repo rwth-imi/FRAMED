@@ -4,7 +4,7 @@ import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.InfluxDBClientFactory;
 import com.influxdb.client.WriteApiBlocking;
 import com.influxdb.client.domain.WritePrecision;
-import com.safety_box.streamer.dispatcher.Dispatcher;
+import com.safety_box.streamer.dispatcher.RemoteDispatcher;
 import com.safety_box.streamer.model.DataPoint;
 import com.safety_box.streamer.model.TimeSeries;
 import io.vertx.core.Context;
@@ -17,13 +17,13 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 
-public class InfluxDispatcherVerticle extends Dispatcher {
+public class InfluxRemoteDispatcherVerticle extends RemoteDispatcher {
   private String port;
   private String token;
   private String org;
   private InfluxDBClient client;
   private ZoneOffset zoneOffset;
-
+  private String bucket;
 
 
   @Override
@@ -33,6 +33,7 @@ public class InfluxDispatcherVerticle extends Dispatcher {
     token = config().getString("token");
     org = config().getString("org");
     client = InfluxDBClientFactory.create("http://localhost:"+port, token.toCharArray());
+    bucket = config().getString("bucket");
     LocalDateTime now = LocalDateTime.now();
     ZoneId zone = ZoneId.of("Europe/Berlin");
     zoneOffset = zone.getRules().getOffset(now);
@@ -41,20 +42,20 @@ public class InfluxDispatcherVerticle extends Dispatcher {
   @Override
   public void push(DataPoint<?> dataPoint) {
     Point point = Point
-      .measurement(dataPoint.physioID())
+      .measurement(dataPoint.deviceID())
       .time(dataPoint.timestamp().atOffset(zoneOffset).toInstant(), WritePrecision.NS);
     Object value = dataPoint.value();
     if (value instanceof String) {
-      point.addField("value", (String) value);
+      point.addField(dataPoint.physioID(), (String) value);
     } else if (value instanceof Number) {
-      point.addField("value", (Number) value);
+      point.addField(dataPoint.physioID(), (Number) value);
     } else if (value instanceof Boolean) {
-      point.addField("value", (Boolean) value);
+      point.addField(dataPoint.physioID(), (Boolean) value);
     } else {
       System.err.printf("Invalid value for data point %s\n", dataPoint.physioID());
     }
     WriteApiBlocking writeApi = this.client.getWriteApiBlocking();
-    writeApi.writePoint(dataPoint.deviceID(), org, point);
+    writeApi.writePoint(bucket, org, point);
   }
 
   @Override

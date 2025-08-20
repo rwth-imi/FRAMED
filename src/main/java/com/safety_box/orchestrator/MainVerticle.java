@@ -27,7 +27,7 @@ public class MainVerticle extends VerticleBase {
       .addOutboundPermitted(new PermittedOptions().setAddressRegex(".*"));
 
     bridge = TcpEventBusBridge.create(vertx, bridgeOptions);
-    Future<TcpEventBusBridge> bridgeFuture = bridge.listen(3030);
+    Future<TcpEventBusBridge> bridgeFuture = bridge.listen(1111);
     bridgeFuture.onSuccess(event -> {
       System.out.println("Bridge started");
     }).onFailure(event -> {

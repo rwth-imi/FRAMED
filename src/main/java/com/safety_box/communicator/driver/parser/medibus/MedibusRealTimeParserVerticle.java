@@ -18,7 +18,7 @@ import java.util.Map;
 public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
   private final ArrayList<Byte> realTimeByteList = new ArrayList<>();
 
-  private ArrayList<Byte> realTimeReqWaveList = new ArrayList<>();
+  private ArrayList<Byte> waveFormTypeList = new ArrayList<>();
   private final ArrayList<Map<String, Object>> waveValResultList = new ArrayList<>();
 
   private final ArrayList<JsonObject> realTimeConfigResponsesList = new ArrayList<>();
@@ -28,7 +28,7 @@ public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
   public void init(Vertx vertx, Context context) {
     super.init(vertx, context);
     int waveFormType = config.getInteger("waveFormType");
-    realTimeReqWaveList = DataUtils.createWaveFormTypeList(waveFormType);
+    waveFormTypeList = DataUtils.createWaveFormTypeList(waveFormType);
   }
 
   public Future<?> start() throws Exception {
@@ -117,8 +117,8 @@ public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
           long unixTimestamp = System.currentTimeMillis();
           for (int k = 0; k < dataStreamList.size(); k++) {
             int streamIndex = dataStreamList.get(k);
-            if (streamIndex < realTimeReqWaveList.size()) {
-              byte waveCode = realTimeReqWaveList.get(streamIndex);
+            if (streamIndex < waveFormTypeList.size()) {
+              byte waveCode = waveFormTypeList.get(streamIndex);
               String waveDataCode = String.format("%02x", waveCode);
               JsonObject config = realTimeConfigResponsesList.stream()
                 .filter(x -> x.getString("dataCode").equals(waveDataCode))
@@ -172,7 +172,8 @@ public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
       JsonObject waveValResult = new JsonObject();
       waveValResult.put("timestamp", Instant.now());
       waveValResult.put("realTime", true);
-      waveValResult.put(physioID, value);
+      waveValResult.put("physioID", physioID);
+      waveValResult.put("value", value);
       vertx.eventBus().publish(deviceName+".parsed", waveValResult);
     }
   }

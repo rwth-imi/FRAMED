@@ -13,7 +13,7 @@
       "stopBits": 1,
       "bufferSize": 4096,
       "waveFormType": 4,
-      "multiplier": "08",
+      "multiplier": "22",
       "realTime": false,
       "slowData": true
     }
@@ -57,7 +57,8 @@
   ],
   "Dispatchers": [
     {
-      "class": "com.safety_box.streamer.dispatcher.influx.InfluxDispatcherVerticle",
+      "class": "com.safety_box.streamer.dispatcher.influx.InfluxLocalDispatcherVerticle",
+      "bucket": "safety-box",
       "id": "InfluxDB",
       "port": 8086,
       "token": "ThoKiNpWG1QpK8NjBayxWiXq2vwj4L7q-0NvisFVpp-af9tt1qh8ohL00V_pRDksSKTt7hqLkOKRQ6GKxFmKzg==",
