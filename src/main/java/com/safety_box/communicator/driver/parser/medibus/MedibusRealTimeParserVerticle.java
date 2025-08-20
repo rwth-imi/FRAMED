@@ -174,7 +174,9 @@ public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
       waveValResult.put("realTime", true);
       waveValResult.put("physioID", physioID);
       waveValResult.put("value", value);
-      vertx.eventBus().publish(deviceName+".parsed", waveValResult);
+      String address = deviceName+"."+physioID+".parsed";
+      vertx.eventBus().publish(deviceName+".addresses", address);
+      vertx.eventBus().publish(address, waveValResult);
     }
   }
 

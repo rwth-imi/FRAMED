@@ -181,7 +181,10 @@ public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
   private void write(String deviceName, JsonObject result) {
     result.put("timestamp", Instant.now());
     result.put("realTime", false);
-    vertx.eventBus().publish(deviceName+".parsed", result);
+    String physioID = result.getString("physioID");
+    String address = deviceName+"."+physioID+".parsed";
+    vertx.eventBus().publish(deviceName+".addresses", address);
+    vertx.eventBus().publish(address, result);
   }
 
 
