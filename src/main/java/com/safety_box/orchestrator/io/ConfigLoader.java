@@ -1,4 +1,4 @@
-package com.safety_box.communicator.io;
+package com.safety_box.orchestrator.io;
 
 
 import io.vertx.core.json.JsonObject;

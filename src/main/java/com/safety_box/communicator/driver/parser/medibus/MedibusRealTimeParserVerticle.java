@@ -9,6 +9,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,7 +18,7 @@ import java.util.Map;
 public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
   private final ArrayList<Byte> realTimeByteList = new ArrayList<>();
 
-  private ArrayList<Byte> realTimeReqWaveList = new ArrayList<>();
+  private ArrayList<Byte> waveFormTypeList = new ArrayList<>();
   private final ArrayList<Map<String, Object>> waveValResultList = new ArrayList<>();
 
   private final ArrayList<JsonObject> realTimeConfigResponsesList = new ArrayList<>();
@@ -27,8 +28,7 @@ public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
   public void init(Vertx vertx, Context context) {
     super.init(vertx, context);
     int waveFormType = config.getInteger("waveFormType");
-    String deviceID = config.getString("deviceID");
-    realTimeReqWaveList = DataUtils.createWaveFormTypeList(waveFormType);
+    waveFormTypeList = DataUtils.createWaveFormTypeList(waveFormType);
   }
 
   public Future<?> start() throws Exception {
@@ -117,8 +117,8 @@ public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
           long unixTimestamp = System.currentTimeMillis();
           for (int k = 0; k < dataStreamList.size(); k++) {
             int streamIndex = dataStreamList.get(k);
-            if (streamIndex < realTimeReqWaveList.size()) {
-              byte waveCode = realTimeReqWaveList.get(streamIndex);
+            if (streamIndex < waveFormTypeList.size()) {
+              byte waveCode = waveFormTypeList.get(streamIndex);
               String waveDataCode = String.format("%02x", waveCode);
               JsonObject config = realTimeConfigResponsesList.stream()
                 .filter(x -> x.getString("dataCode").equals(waveDataCode))
@@ -139,7 +139,7 @@ public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
                 Map<String, Object> result = new HashMap<>();
                 result.put("dataStreamIndex", streamIndex);
                 result.put("timestamp", System.currentTimeMillis());
-                result.put("physioID", DataConstants.MedibusXRealTimeData.values()[waveCode].name());
+                result.put("physioID", DataConstants.MedibusXRealTimeData.get(waveCode));
                 result.put("respiratoryCycleState", respSyncState);
                 result.put("value", finalValue);
                 result.put("relativeTimeCounter", unixTimestamp);
@@ -168,12 +168,13 @@ public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
     for (Map<String, Object> map : waveValResultList) {
       String physioID = (String) map.get("physioID");
       double value = (double) map.get("value");
-      // System.out.printf("RT_Message - %s: %s%n", physioID, value);
+      System.out.printf("RT_Message - %s: %s%n", physioID, value);
       JsonObject waveValResult = new JsonObject();
-      waveValResult.put("timestamp", System.currentTimeMillis());
+      waveValResult.put("timestamp", Instant.now());
       waveValResult.put("realTime", true);
-      waveValResult.put(physioID, value);
-      vertx.eventBus().publish("parsed_"+deviceName, waveValResult);
+      waveValResult.put("physioID", physioID);
+      waveValResult.put("value", value);
+      vertx.eventBus().publish(deviceName+".parsed", waveValResult);
     }
   }
 

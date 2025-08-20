@@ -42,7 +42,7 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
   @Override
   public void init(Vertx vertx, Context context) {
     super.init(vertx, context);
-    this.deviceID = config.getString("deviceID");
+    this.deviceID = config.getString("id");
     this.portName = config.getString("portName");
     this.baudRate = config.getInteger("baudRate");
     this.dataBits = config.getInteger("dataBits");
@@ -51,7 +51,6 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
     this.waveFormType = config.getInteger("waveFormType");
     this.slowData = config.getBoolean("slowData");
     this.multiplier = config.getString("multiplier");
-
   }
 
   @Override
@@ -356,13 +355,11 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
   public void configureRealtimeTransmission() {
     if (this.waveFormType == 0) return; // config set to "No waveform data"
     ArrayList<Byte> tempTxBuffList = new ArrayList<>();
-    ArrayList<Byte> waveTrType = new ArrayList<>();
+    ArrayList<Byte> waveFormTypeList = DataUtils.createWaveFormTypeList(this.waveFormType);
 
-    waveTrType = DataUtils.createWaveFormTypeList(this.waveFormType);
-
-    byte[] rtdListArray = new byte[waveTrType.size()];
-    for (int i = 0; i < waveTrType.size(); i++) {
-      rtdListArray[i] = waveTrType.get(i);
+    byte[] rtdListArray = new byte[waveFormTypeList.size()];
+    for (int i = 0; i < waveFormTypeList.size(); i++) {
+      rtdListArray[i] = waveFormTypeList.get(i);
     }
     for (byte b : DataConstants.poll_configure_real_time_transmission) {
       tempTxBuffList.add(b);

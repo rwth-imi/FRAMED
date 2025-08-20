@@ -46,29 +46,28 @@ public class DataUtils {
       case 0:
         break;
       case 1:
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.Airway_pressure.ordinal());
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.Flow_inspiratory_expiratory.ordinal());
+        waveTypesEnums.add((byte) 0x00); // PAW
+        waveTypesEnums.add((byte) 0x01); // Flow
         break;
       case 2:
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.O2_saturation_pulse_Pleth.ordinal());
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.O2_concentration_inspiratory_expiratory.ordinal());
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.CO2_concentration_mmHg.ordinal());
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.Concentration_of_primary_agent_inspiratory_expiratory_Percent.ordinal());
+        waveTypesEnums.add((byte) 0x02); // Pleth
+        waveTypesEnums.add((byte) 0x05); // O2 Concentration
+        waveTypesEnums.add((byte) 0x06); // CO2 Concentration mmHg
+        waveTypesEnums.add((byte) 0x0A); // Concentration of primary agent percent
         break;
       case 3:
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.Tracheal_pressure.ordinal());
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.Inspiratory_device_flow.ordinal());
+        waveTypesEnums.add((byte) 0x1C); // Tracheal pressure
+        waveTypesEnums.add((byte) 0x1E); // Desflurane concentration percent
         break;
       case 4:
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.Airway_pressure.ordinal());
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.Flow_inspiratory_expiratory.ordinal());
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.Respiratory_volume_since_start_of_inspiration.ordinal());
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.O2_saturation_pulse_Pleth.ordinal());
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.O2_concentration_inspiratory_expiratory.ordinal());
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.CO2_concentration_mmHg.ordinal());
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.Concentration_of_primary_agent_inspiratory_expiratory_Percent.ordinal());
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.Inspiratory_device_flow.ordinal());
-        waveTypesEnums.add((byte) DataConstants.MedibusXRealTimeData.Tracheal_pressure.ordinal());
+        waveTypesEnums.add((byte) 0x00); // PAW
+        waveTypesEnums.add((byte) 0x01); // Flow
+        waveTypesEnums.add((byte) 0x02); // Pleth
+        waveTypesEnums.add((byte) 0x05); // O2 Concentration
+        waveTypesEnums.add((byte) 0x06); // CO2 Concentration mmHg
+        waveTypesEnums.add((byte) 0x0A); // Concentration of primary agent percent
+        waveTypesEnums.add((byte) 0x1C); // Tracheal pressure
+        waveTypesEnums.add((byte) 0x1E); // Desflurane concentration percent
         break;
     }
     return waveTypesEnums;

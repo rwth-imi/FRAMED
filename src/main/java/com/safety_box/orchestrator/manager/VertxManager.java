@@ -1,6 +1,5 @@
-package com.safety_box.communicator.manager;
+package com.safety_box.orchestrator.manager;
 
-import com.safety_box.communicator.io.ConfigLoader;
 import io.vertx.core.*;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -8,31 +7,25 @@ import io.vertx.core.json.JsonObject;
 import java.util.*;
 
 public class VertxManager {
-  private final JsonArray verticles;
   private final Vertx vertx;
   private final Map<String, String> deploymentIDs = new HashMap<>();
-
-  public VertxManager(Vertx vertx, String vertxType) {
+  private final JsonObject config;
+  public VertxManager(Vertx vertx, JsonObject config) {
     this.vertx = vertx;
-    JsonObject config;
-    try {
-      config = ConfigLoader.loadConfig("config.json");
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-    this.verticles = config.getJsonArray(vertxType);
+    this.config = config;
   }
 
-  public void startAll(String classKey, String idKey) {
-    for (Object deviceObj : verticles) {
-      JsonObject vertxConfig = (JsonObject) deviceObj;
-      String verticleClassName = vertxConfig.getString(classKey);
+  public void startAll(String vertxType) {
+    JsonArray verticles = config.getJsonArray(vertxType);
+    for (Object verticleObj : verticles) {
+      JsonObject vertxConfig = (JsonObject) verticleObj;
+      String verticleClassName = vertxConfig.getString("class");
       DeploymentOptions options = new DeploymentOptions().setConfig(vertxConfig);
 
       Future<String> deploymentFuture = vertx.deployVerticle(verticleClassName, options);
 
       deploymentFuture.onSuccess(deploymentID -> {
-        deploymentIDs.put(vertxConfig.getString(idKey), deploymentID);
+        deploymentIDs.put(vertxConfig.getString("id"), deploymentID);
         System.out.println("Successfully deployed: " + verticleClassName);
       }).onFailure(err -> {
         System.err.println("Failed to deploy " + verticleClassName + ": " + err.getMessage());

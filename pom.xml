@@ -19,7 +19,7 @@
     <vertx.version>5.0.2</vertx.version>
     <junit-jupiter.version>5.9.1</junit-jupiter.version>
 
-    <main.verticle>com.safety_box.communicator.MainVerticle</main.verticle>
+    <main.verticle>com.safety_box.orchestrator.MainVerticle</main.verticle>
     <launcher.class>io.vertx.launcher.application.VertxApplication</launcher.class>
   </properties>
 
@@ -44,7 +44,11 @@
       <groupId>io.vertx</groupId>
       <artifactId>vertx-tcp-eventbus-bridge</artifactId>
     </dependency>
-
+    <dependency>
+      <groupId>com.influxdb</groupId>
+      <artifactId>influxdb-client-java</artifactId>
+      <version>6.6.0</version>
+    </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-junit5</artifactId>
