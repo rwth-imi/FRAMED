@@ -191,6 +191,11 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
 
       case CONFIGURING -> {
         switch (echo) {
+          case "\u001bQ" -> {
+            logger.fine("ICC command received. Returning to INITIALIZING.");
+            currentState = State.INITIALIZING;
+            commandEchoResponse(DataConstants.poll_request_icc_msg);
+          }
           case "\u001b\u0030" -> {
             logger.fine("NOP request received.");
             commandEchoResponse(DataConstants.poll_request_no_operation);

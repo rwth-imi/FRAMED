@@ -83,10 +83,10 @@ public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
         dataValue = dataValue.trim();
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
         // physioID = DataConstants.MedibusXTextMessages.get(dataCodeByte);
-        System.out.printf("TextMessage: %s%n", dataValue);
+        // System.out.printf("TextMessage: %s%n", dataValue);
         JsonObject result =  new JsonObject().put("physioID", "TextMessage");
         result.put("value", dataValue);
-        write(deviceName, result);
+        write(deviceName, result, "TextMessage");
       }
     }
   }
@@ -121,18 +121,28 @@ public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
       }
 
       byte dataCodeByte = (byte) (Integer.parseInt(dataCode, 16) % 256);
+      String className = "";
 
-      physioID = switch (reqType) {
-        case "MeasurementCP1" -> DataConstants.MedibusXMeasurementCP1.get(dataCodeByte);
-        case "MeasurementCP2" -> DataConstants.MedibusXMeasurementCP2.get(dataCodeByte);
-        case "DeviceSettings" -> DataConstants.MedibusXDeviceSettings.get(dataCodeByte);
+       switch (reqType) {
+        case "MeasurementCP1" -> {
+          className = "Measurement";
+          physioID = DataConstants.MedibusXMeasurementCP1.get(dataCodeByte);
+        }
+        case "MeasurementCP2" -> {
+          className = "Measurement";
+          physioID = DataConstants.MedibusXMeasurementCP2.get(dataCodeByte);
+        }
+        case "DeviceSettings" -> {
+          className = "Settings";
+          physioID = DataConstants.MedibusXDeviceSettings.get(dataCodeByte);
+        }
         default -> throw new IllegalStateException("Unexpected value: " + reqType);
       };
 
       //System.out.printf("DataMessage - %s: %s%n", physioID, dataValue);
       JsonObject result =  new JsonObject().put("physioID", physioID);
       result.put("value", dataValue);
-      write(deviceName, result);
+      write(deviceName, result, className);
     }
   }
 
@@ -158,29 +168,25 @@ public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
         dataValue = response.substring(i + 3, j);
         dataValue = dataValue.trim();
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
-        switch (reqType) {
-          case "AlarmCP1":
-            physioID = DataConstants.MedibusXAlarmsCP1.get(dataCodeByte);
-            //System.out.printf("%s: %s%n", physioID, dataValue);
-            break;
-          case "AlarmCP2":
-            physioID = DataConstants.MedibusXAlarmsCP2.get(dataCodeByte);
-            //System.out.printf("%s: %s%n", physioID, dataValue);
-            break;
-          default:
-            throw new IllegalStateException("Unexpected value: " + reqType);
-        }
+        physioID = switch (reqType) {
+          case "AlarmCP1" -> DataConstants.MedibusXAlarmsCP1.get(dataCodeByte);
+          //System.out.printf("%s: %s%n", physioID, dataValue);
+          case "AlarmCP2" -> DataConstants.MedibusXAlarmsCP2.get(dataCodeByte);
+          //System.out.printf("%s: %s%n", physioID, dataValue);
+          default -> throw new IllegalStateException("Unexpected value: " + reqType);
+        };
         //System.out.printf("Alarms-Message - %s: %s%n", physioID, dataValue);
         JsonObject result =  new JsonObject().put("physioID", physioID);
         result.put("value", dataValue);
-        write(deviceName, result);
+        write(deviceName, result, "Alarm");
       }
     }
   }
 
-  private void write(String deviceName, JsonObject result) {
+  private void write(String deviceName, JsonObject result, String className) {
     result.put("timestamp", Instant.now());
     result.put("realTime", false);
+    result.put("className", className);
     String physioID = result.getString("physioID");
     String address = deviceName+"."+physioID+".parsed";
     vertx.eventBus().publish(deviceName+".addresses", address);
@@ -189,4 +195,4 @@ public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
 
 
 
-  }
+}

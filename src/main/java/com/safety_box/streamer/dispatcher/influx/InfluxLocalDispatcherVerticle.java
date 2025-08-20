@@ -51,18 +51,19 @@ public class InfluxLocalDispatcherVerticle extends LocalDispatcher {
   public void push(DataPoint<?> dataPoint) {
     Point point = Point
       .measurement(dataPoint.deviceID())
-      .time(Instant.now(), WritePrecision.NS);
+      .time(dataPoint.timestamp(), WritePrecision.US);
     Object value = dataPoint.value();
     if (value instanceof String) {
-      point.addField(dataPoint.physioID(), (String) value);
+      point.addField(dataPoint.className(), (String) value);
     } else if (value instanceof Number) {
-      point.addField(dataPoint.physioID(), (Number) value);
+      point.addField(dataPoint.className(), (Number) value);
     } else if (value instanceof Boolean) {
-      point.addField(dataPoint.physioID(), (Boolean) value);
+      point.addField(dataPoint.className(), (Boolean) value);
     } else {
       System.err.printf("Invalid value for data point %s\n", dataPoint.physioID());
     }
-    System.out.println(point);
+    System.out.println(dataPoint.timestamp() + dataPoint.className());
+    point.addTag("physioID", dataPoint.physioID());
     writeApi.writePoint(bucket, org, point);
   }
 
