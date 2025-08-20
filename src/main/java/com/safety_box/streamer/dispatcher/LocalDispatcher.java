@@ -35,15 +35,17 @@ public abstract class LocalDispatcher extends Dispatcher {
     JsonArray devices =  config.getJsonArray("devices");
     for (Object deviceObj : devices) {
       String deviceID = deviceObj.toString();
-      vertx.eventBus().consumer(deviceID+".parsed", msg -> {
-        try {
-          JsonObject body = (JsonObject) msg.body();
-          body.put("deviceID", deviceID);
-          DataPoint<?> dp = Parser.parse((JsonObject) msg.body());
-          push(dp);
-        } catch (Exception e) {
-          throw new RuntimeException(e);
-        }
+      vertx.eventBus().consumer(deviceID+".addresses", msg -> {
+        vertx.eventBus().consumer((String)msg.body(), msg_ ->{
+          try {
+            JsonObject body = (JsonObject) msg_.body();
+            body.put("deviceID", deviceID);
+            DataPoint<?> dp = Parser.parse((JsonObject) msg_.body());
+            push(dp);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        });
       });
     }
     return super.start();

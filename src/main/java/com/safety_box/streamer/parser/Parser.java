@@ -11,6 +11,7 @@ public class Parser {
     Instant timestamp = jsonObject.getInstant("timestamp");
     String physioID = jsonObject.getString("physioID");
     String deviceID = jsonObject.getString("deviceID");
-    return new DataPoint<>(timestamp, value, physioID, deviceID);
+    String className = jsonObject.getString("className");
+    return new DataPoint<>(timestamp, value, physioID, deviceID,  className);
   }
 }

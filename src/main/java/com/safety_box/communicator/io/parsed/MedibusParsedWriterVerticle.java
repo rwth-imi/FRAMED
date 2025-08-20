@@ -41,8 +41,12 @@ public class MedibusParsedWriterVerticle extends WriterVerticle<JsonObject> {
     JsonArray devices = config.getJsonArray("devices");
     for  (Object device : devices) {
       String deviceName = (String) device;
-      vertx.eventBus().consumer(deviceName+".parsed", msg -> {
-        handleEventBus(msg, deviceName);
+      vertx.eventBus().consumer(deviceName+".addresses", msg -> {
+        vertx.eventBus().consumer(
+          (String) msg.body(), msg_ ->{
+            handleEventBus(msg_, deviceName);
+          }
+        );
       });
     }
     return super.start();
