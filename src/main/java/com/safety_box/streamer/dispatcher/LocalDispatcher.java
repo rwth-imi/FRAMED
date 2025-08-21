@@ -15,9 +15,13 @@ import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetSocket;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public abstract class LocalDispatcher extends Dispatcher {
   private JsonObject config;
+  private List<String> addresses = new ArrayList<>();
 
   @Override
   public void init(Vertx vertx, Context context) {
@@ -36,16 +40,19 @@ public abstract class LocalDispatcher extends Dispatcher {
     for (Object deviceObj : devices) {
       String deviceID = deviceObj.toString();
       vertx.eventBus().consumer(deviceID+".addresses", msg -> {
-        vertx.eventBus().consumer((String)msg.body(), msg_ ->{
-          try {
-            JsonObject body = (JsonObject) msg_.body();
-            body.put("deviceID", deviceID);
-            DataPoint<?> dp = Parser.parse((JsonObject) msg_.body());
-            push(dp);
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
-        });
+        if (!addresses.contains(msg.body().toString())){
+          addresses.add(msg.body().toString());
+          vertx.eventBus().consumer((String)msg.body(), msg_ ->{
+            try {
+              JsonObject body = (JsonObject) msg_.body();
+              body.put("deviceID", deviceID);
+              DataPoint<?> dp = Parser.parse((JsonObject) msg_.body());
+              push(dp);
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+          });
+        }
       });
     }
     return super.start();
