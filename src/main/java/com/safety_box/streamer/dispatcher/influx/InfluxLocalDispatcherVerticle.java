@@ -50,8 +50,7 @@ public class InfluxLocalDispatcherVerticle extends LocalDispatcher {
   @Override
   public void push(DataPoint<?> dataPoint) {
     Point point = Point
-      .measurement(dataPoint.deviceID())
-      .time(dataPoint.timestamp(), WritePrecision.US);
+      .measurement(dataPoint.deviceID());
     Object value = dataPoint.value();
     if (value instanceof String) {
       point.addField(dataPoint.className(), (String) value);

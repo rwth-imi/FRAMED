@@ -13,8 +13,8 @@
       "stopBits": 1,
       "bufferSize": 4096,
       "waveFormType": 4,
-      "multiplier": "100",
-      "realTime": false,
+      "multiplier": "55",
+      "realTime": true,
       "slowData": true
     }
   ],

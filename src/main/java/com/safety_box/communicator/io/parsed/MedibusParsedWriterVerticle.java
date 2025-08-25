@@ -13,9 +13,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MedibusParsedWriterVerticle extends WriterVerticle<JsonObject> {
   private long timeOnStart;
+  private List<String> addresses = new ArrayList<>();
   @Override
   public void init(Vertx vertx, Context context) {
     this.timeOnStart =  System.currentTimeMillis();
@@ -42,11 +45,14 @@ public class MedibusParsedWriterVerticle extends WriterVerticle<JsonObject> {
     for  (Object device : devices) {
       String deviceName = (String) device;
       vertx.eventBus().consumer(deviceName+".addresses", msg -> {
-        vertx.eventBus().consumer(
-          (String) msg.body(), msg_ ->{
-            handleEventBus(msg_, deviceName);
-          }
-        );
+        if (!addresses.contains(msg.body().toString())) {
+          addresses.add(msg.body().toString());
+          vertx.eventBus().consumer(
+            msg.body().toString(), msg_ ->{
+              handleEventBus(msg_, deviceName);
+            }
+          );
+        }
       });
     }
     return super.start();

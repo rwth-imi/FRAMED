@@ -168,7 +168,7 @@ public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
     for (Map<String, Object> map : waveValResultList) {
       String physioID = (String) map.get("physioID");
       double value = (double) map.get("value");
-      System.out.printf("RT_Message - %s: %s%n", physioID, value);
+      //System.out.printf("RT_Message - %s: %s%n", physioID, value);
       JsonObject waveValResult = new JsonObject();
       waveValResult.put("timestamp", Instant.now());
       waveValResult.put("realTime", true);
