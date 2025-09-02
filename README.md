@@ -6,20 +6,13 @@ These sources can be medical-devices, sensors, etc.
 The architecture is designed highly modular to be deployed either on a single edge device, or on a distributed setup.
 Asynchronous computation is supported by an EventBus component.
 
-### Architecture
-#### 3LGM² Design
-![3LGM²](images/model_diagram_no_vertx_3lgm2.drawio.png)
-#### Model Diagram (WIP)
-![3LGM²](images/model_diagram_no_vertx_model.drawio.png)
-#### EventBus Schema
-![EventBus](images/model_diagram_no_vertx.drawio.png)
-
-
 ## Getting started
+
 ### Compatibility
 The following devices / protocols are supported by default:
 - Medibus.X (Draeger devices)
 - PC60FW Pulse-Oximeter (BLE device)
+
 ### Safety-Box Configuration
 Adapt the config.json to run the Safety-Box services you need.
 The config consists of 4 sections:
@@ -64,6 +57,13 @@ To run the safety-box:
 ## Usage
 Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
 
+## Architecture
+### 3LGM² Design
+![3LGM²](images/model_diagram_no_vertx_3lgm2.drawio.png)
+### Model Diagram (WIP)
+![3LGM²](images/model_diagram_no_vertx_model.drawio.png)
+### EventBus Schema
+![EventBus](images/model_diagram_no_vertx.drawio.png)
 ## Support
 Ask me.
 
