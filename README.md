@@ -7,6 +7,13 @@ The architecture is designed highly modular to be deployed either on a single ed
 Asynchronous computation is supported by an EventBus component.
 
 ### Architecture
+#### 3LGM² Design
+![3LGM²](images/model_diagram_no_vertx_3lgm2.drawio.png)
+#### Model Diagram (WIP)
+![3LGM²](images/model_diagram_no_vertx_model.drawio.png)
+#### EventBus Schema
+![EventBus](images/model_diagram_no_vertx.drawio.png)
+
 
 ## Getting started
 ### Compatibility
@@ -24,10 +31,12 @@ The config consists of 4 sections:
 Each section defines the classes of that type that shall be initialized by the factory.
 Define a class for the factory as follows:
 ```json
-"class": "com.safety_box.package.your.class.here",
-"id": "Some Unique Class Identifier",
-"someArgument": value
-...
+{
+  "class": "com.safety_box.package.your.class.here",
+  "id": "Some Unique Class Identifier",
+  "someArgument": "value",
+  ...
+}
 ```
 Including all arguments of the classes' constructor. See the default config.json for examples.
 
