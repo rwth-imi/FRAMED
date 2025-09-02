@@ -12,12 +12,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class MedibusRealTimeParser extends Parser<Byte> {
   private final ArrayList<Byte> realTimeByteList = new ArrayList<>();
 
   private ArrayList<Byte> waveFormTypeList = new ArrayList<>();
-  private final ArrayList<Map<String, Object>> waveValResultList = new ArrayList<>();
+  private final List<Map<String, Object>> waveValResultList = new CopyOnWriteArrayList<>();;
 
   private final ArrayList<JSONObject> realTimeConfigResponsesList = new ArrayList<>();
 

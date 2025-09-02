@@ -27,7 +27,7 @@ public class RawByteWriter extends Writer<byte[]> {
   }
 
   @Override
-  public void write(byte[] data, String deviceName) throws IOException {
+  public synchronized void write(byte[] data, String deviceName) throws IOException {
     if (data.length <= 2) return;
     Path filePath = path.resolve(deviceName + "_" + timeOnStart + "_raw.txt");
     Files.write(filePath, data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);

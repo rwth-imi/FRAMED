@@ -11,7 +11,7 @@
       "waveFormType": 4,
       "multiplier": "55",
       "realTime": true,
-      "slowData": false
+      "slowData": true
     }
   ],
   "writers": [

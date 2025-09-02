@@ -36,7 +36,7 @@ public class MedibusParsedWriter extends Writer<JSONObject> {
 
 
   @Override
-  public void write(JSONObject data, String deviceName) throws IOException {
+  public synchronized void write(JSONObject data, String deviceName) throws IOException {
     Path filePath;
     if (data.getBoolean("realTime")) {
       filePath = path.resolve(deviceName + "_" + timeOnStart + "_parsed_RT.jsonl");
