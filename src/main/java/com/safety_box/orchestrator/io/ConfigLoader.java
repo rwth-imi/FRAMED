@@ -1,15 +1,16 @@
 package com.safety_box.orchestrator.io;
 
 
-import io.vertx.core.json.JsonObject;
+import org.json.JSONObject;
+
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
 public class ConfigLoader {
 
-  public static JsonObject loadConfig(String path) throws Exception {
+  public static JSONObject loadConfig(String path) throws Exception {
     String content = new String(Files.readAllBytes(Paths.get(path)));
-    return new JsonObject(content);
+    return new JSONObject(content);
   }
 }
 

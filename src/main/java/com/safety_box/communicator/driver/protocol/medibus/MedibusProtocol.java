@@ -2,12 +2,13 @@ package com.safety_box.communicator.driver.protocol.medibus;
 
 import com.fazecast.jSerialComm.SerialPortDataListener;
 import com.fazecast.jSerialComm.SerialPortEvent;
-import com.safety_box.communicator.driver.protocol.ProtocolVerticle;
+import com.safety_box.communicator.driver.protocol.Protocol;
 import com.fazecast.jSerialComm.SerialPort;
 import com.safety_box.communicator.driver.utils.DataUtils;
 import com.safety_box.communicator.driver.utils.DataConstants;
-import io.vertx.core.*;
-import io.vertx.core.json.JsonObject;
+import com.safety_box.core.EventBus;
+import com.safety_box.core.Timer;
+import org.json.JSONObject;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -15,7 +16,7 @@ import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class MedibusProtocolVerticle extends ProtocolVerticle {
+public class MedibusProtocol extends Protocol {
 
   private Boolean slowData;
 
@@ -36,51 +37,55 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
   private SerialPort serialPort;
   private MedibusFramer framer;
 
-  private static final Logger logger = Logger.getLogger(MedibusProtocolVerticle.class.getName());
+  private static final Logger logger = Logger.getLogger(MedibusProtocol.class.getName());
 
+  public MedibusProtocol(
+    String id,
+    String portName,
+    int baudRate,
+    int dataBits,
+    int stopBits,
+    int bufferSize,
+    int waveFormType,
+    boolean realTime,
+    boolean slowData,
+    String multiplier,
+    EventBus eventBus) {
+    super(id, eventBus);
+    // initialize globals from config
+    this.portName = portName;
+    this.baudRate = baudRate;
+    this.dataBits = dataBits;
+    this.bufferSize = bufferSize;
+    this.realTime = realTime;
+    this.waveFormType = waveFormType;
+    this.slowData = slowData;
+    this.multiplier = multiplier;
 
-  @Override
-  public void init(Vertx vertx, Context context) {
-    super.init(vertx, context);
-    this.deviceID = config.getString("id");
-    this.portName = config.getString("portName");
-    this.baudRate = config.getInteger("baudRate");
-    this.dataBits = config.getInteger("dataBits");
-    this.bufferSize = config.getInteger("bufferSize");
-    this.realTime = config.getBoolean("realTime");
-    this.waveFormType = config.getInteger("waveFormType");
-    this.slowData = config.getBoolean("slowData");
-    this.multiplier = config.getString("multiplier");
-  }
+    // initialize serial port
+    try {
+      this.serialPort = SerialPort.getCommPort(portName);
+      serialPort.setBaudRate(baudRate);
+      serialPort.setParity(SerialPort.EVEN_PARITY);
+      serialPort.setNumDataBits(dataBits);
+      serialPort.setNumStopBits(stopBits);
+      serialPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 1000, 1000);
+      serialPort.setFlowControl(SerialPort.FLOW_CONTROL_DISABLED);
+      serialPort.setRTS();
+      serialPort.setDTR();
+    } catch (Exception e) {
+      logger.log(Level.WARNING, "Failed to open serial port " + portName, e);
+    }
 
-  @Override
-  public Future<?> start() throws Exception {
-    this.serialPort = SerialPort.getCommPort(portName);
-    serialPort.setBaudRate(baudRate);
-    serialPort.setParity(SerialPort.EVEN_PARITY);
-    serialPort.setNumDataBits(dataBits);
-    serialPort.setNumStopBits(stopBits);
-    serialPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 1000, 1000);
-    serialPort.setFlowControl(SerialPort.FLOW_CONTROL_DISABLED);
-    serialPort.setRTS();
-    serialPort.setDTR();
-
-    this.framer = new MedibusFramer(this::handleResponse, vertx, deviceID);
+    this.framer = new MedibusFramer(this::handleResponse, eventBus, this.id);
     logger.fine("Trying to initialize communication...");
 
+    // connect to Medibus.X device
     if (serialPort.openPort()) {
       connect();
 
     }
-    return super.start();
   }
-
-  @Override
-  public Future<?> stop() throws Exception {
-    disconnect();
-    return super.stop();
-  }
-
 
   @Override
   public void connect() {
@@ -89,9 +94,10 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
   }
 
   @Override
-  public void disconnect() {
+  public void stop() {
     currentState = State.TERMINATING;
     logger.fine("Sending command: poll_request_stop_com");
+    Timer.shutdown();
     sendCommand(DataConstants.poll_request_stop_com);
   }
 
@@ -107,7 +113,7 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
   }
 
   private void writeData(byte[] data) {
-    vertx.eventBus().publish("Oxylog-3000-Plus-00", new JsonObject().put("data", data));
+    eventBus.publish("Oxylog-3000-Plus-00", new JSONObject().put("data", data));
   }
 
   private void listenToSerial() {
@@ -171,7 +177,7 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
             if (realTime) {
               logger.fine("Realtime enabled. Transitioning to CONFIGURING.");
               currentState = State.CONFIGURING;
-              vertx.setTimer(200, id -> {
+              Timer.setTimer(200, () -> {
                 sendCommand(DataConstants.poll_request_real_time_data_config);
               });
             } else {
@@ -249,31 +255,31 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
             commandEchoResponse(DataConstants.poll_request_icc_msg);
           }
           case "\u0001$" -> { // Data response cp1
-            logger.log(Level.FINE, "Received: Data CP1 response");
+            logger.log(Level.INFO, "Received: Data CP1 response");
             logger.fine("Sending command: poll_request_config_measured_data_codepage2");
             sendCommand(DataConstants.poll_request_config_measured_data_codepage2);}
           case "\u0001+" -> { // Data response cp2
-            logger.log(Level.FINE, "Received: Data CP2 response");
+            logger.log(Level.INFO, "Received: Data CP2 response");
             logger.fine("Sending command: poll_request_device_settings");
             sendCommand(DataConstants.poll_request_device_settings);
           }
           case "\u0001)" -> { // Data response device settings
-            logger.log(Level.FINE, "Received: Data device settings response");
+            logger.log(Level.INFO, "Received: Data device settings response");
             logger.fine("Sending command: poll_request_text_messages");
             sendCommand(DataConstants.poll_request_text_messages);
           }
           case "\u0001*" -> { // Data response text messages
-            logger.log(Level.FINE, "Received: Data text messages response");
+            logger.log(Level.INFO, "Received: Data text messages response");
             logger.fine("Sending command: poll_request_config_alarms_codepage1");
             sendCommand(DataConstants.poll_request_config_alarms_codepage1);
           }
           case "\u0001'" -> { // Alarm response cp1
-            logger.log(Level.FINE, "Received: Alarm CP1 response");
+            logger.log(Level.INFO, "Received: Alarm CP1 response");
             logger.fine("Sending command: poll_request_config_alarms_codepage2");
             sendCommand(DataConstants.poll_request_config_alarms_codepage2);
           }
           case "\u0001." -> { // Alarm response cp2
-            logger.log(Level.FINE, "Received: Alarm CP2 response");
+            logger.log(Level.INFO, "Received: Alarm CP2 response");
             logger.fine("Sending command: poll_request_config_measured_data_codepage1");
             sendCommand(DataConstants.poll_request_config_measured_data_codepage1);
           }
@@ -313,7 +319,7 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
     } else {
       logger.fine("Slow Data transmission not configured.");
       logger.fine("Keeping connection alive by NOP");
-      vertx.setPeriodic(2000, id -> sendCommand(DataConstants.poll_request_no_operation));
+      Timer.setPeriodic(2000, () -> sendCommand(DataConstants.poll_request_no_operation));
     }
   }
 
@@ -340,14 +346,14 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
       bb.get(maxBinValue);
       String maxBinValueString = new String(maxBinValue).trim().replaceAll("\\s+", "");
 
-      JsonObject rtConfig = new JsonObject();
+      JSONObject rtConfig = new JSONObject();
       rtConfig.put("dataCode", dataCodeString);
       rtConfig.put("Interval", Integer.parseInt(intervalString));
       rtConfig.put("minValue", Integer.parseInt(minValueString));
       rtConfig.put("maxValue", Integer.parseInt(maxValueString));
       rtConfig.put("maxBinValue", Integer.parseInt(maxBinValueString, 16));
 
-      vertx.eventBus().publish(deviceID+"_rt", rtConfig);
+      eventBus.publish(id +"_rt", rtConfig);
     }
   }
 
@@ -389,7 +395,7 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
       finalBuffer[i] = tempTxBuffList.get(i);
     }
 
-    logger.log(Level.FINE, "Send: Configure realtime transmission (command)");
+    logger.log(Level.INFO, "Send: Configure realtime transmission (command)");
     sendCommand(finalBuffer);
   }
 
@@ -398,7 +404,7 @@ public class MedibusProtocolVerticle extends ProtocolVerticle {
       return;
     }
 
-    byte[] inputBuffer = new byte[commandBytes.length + 1]; //
+    byte[] inputBuffer = new byte[commandBytes.length + 1];
     inputBuffer[0] = DataConstants.BOFCOMCHAR;
     System.arraycopy(commandBytes, 0, inputBuffer, 1, commandBytes.length);
 

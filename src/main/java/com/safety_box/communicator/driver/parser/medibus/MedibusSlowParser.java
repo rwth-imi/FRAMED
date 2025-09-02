@@ -1,36 +1,30 @@
 package com.safety_box.communicator.driver.parser.medibus;
 
-import com.safety_box.communicator.driver.parser.ParserVerticle;
+import com.safety_box.communicator.driver.parser.Parser;
 import com.safety_box.communicator.driver.utils.DataConstants;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
+import com.safety_box.core.EventBus;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Arrays;
 
-public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
-  @Override
-  public void init(Vertx vertx, Context context) {
-    super.init(vertx, context);
-  }
+public class MedibusSlowParser extends Parser<byte[]> {
 
-  @Override
-  public Future<?> start() throws Exception {
-    JsonArray devices = config.getJsonArray("devices");
+  public MedibusSlowParser(EventBus eventBus, JSONArray devices) {
+    super(eventBus);
     for  (Object device : devices) {
       String deviceName = (String) device;
-      vertx.eventBus().consumer(deviceName, msg -> {
-        JsonObject jsonMsg = (JsonObject) msg.body();
-        byte[] data = jsonMsg.getBinary("data");
+      eventBus.register(deviceName, msg -> {
+        JSONObject jsonMsg = (JSONObject) msg;
+        byte[] data = (byte[]) jsonMsg.get("data");
         parse(data, deviceName);
       });
     }
-    return super.start();
+
+
   }
+
   @Override
   public void parse(byte[] message, String deviceName) {
     String data = new String(message, StandardCharsets.US_ASCII);
@@ -84,7 +78,7 @@ public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
         // physioID = DataConstants.MedibusXTextMessages.get(dataCodeByte);
         // System.out.printf("TextMessage: %s%n", dataValue);
-        JsonObject result =  new JsonObject().put("physioID", "TextMessage");
+        JSONObject result =  new JSONObject().put("physioID", "TextMessage");
         result.put("value", dataValue);
         write(deviceName, result, "TextMessage");
       }
@@ -140,7 +134,7 @@ public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
       };
 
       //System.out.printf("DataMessage - %s: %s%n", physioID, dataValue);
-      JsonObject result =  new JsonObject().put("physioID", physioID);
+      JSONObject result =  new JSONObject().put("physioID", physioID);
       result.put("value", dataValue);
       write(deviceName, result, className);
     }
@@ -176,23 +170,26 @@ public class MedibusSlowParserVerticle extends ParserVerticle<byte[]> {
           default -> throw new IllegalStateException("Unexpected value: " + reqType);
         };
         //System.out.printf("Alarms-Message - %s: %s%n", physioID, dataValue);
-        JsonObject result =  new JsonObject().put("physioID", physioID);
+        JSONObject result =  new JSONObject().put("physioID", physioID);
         result.put("value", dataValue);
         write(deviceName, result, "Alarm");
       }
     }
   }
 
-  private void write(String deviceName, JsonObject result, String className) {
+  private void write(String deviceName, JSONObject result, String className) {
     result.put("timestamp", Instant.now());
     result.put("realTime", false);
     result.put("className", className);
     String physioID = result.getString("physioID");
     String address = deviceName+"."+physioID+".parsed";
-    vertx.eventBus().publish(deviceName+".addresses", address);
-    vertx.eventBus().publish(address, result);
+    eventBus.publish(deviceName+".addresses", address);
+    eventBus.publish(address, result);
   }
 
 
+  @Override
+  public void stop() {
 
+  }
 }
