@@ -16,13 +16,17 @@ public class MedibusSlowParser extends Parser<byte[]> {
     for  (Object device : devices) {
       String deviceName = (String) device;
       eventBus.register(deviceName, msg -> {
-        JSONObject jsonMsg = (JSONObject) msg;
-        byte[] data = (byte[]) jsonMsg.get("data");
-        parse(data, deviceName);
+        handleEventBus((JSONObject) msg, deviceName);
       });
     }
 
 
+  }
+
+  private synchronized void handleEventBus(JSONObject msg, String deviceName) {
+    JSONObject jsonMsg = msg;
+    byte[] data = (byte[]) jsonMsg.get("data");
+    parse(data, deviceName);
   }
 
   @Override

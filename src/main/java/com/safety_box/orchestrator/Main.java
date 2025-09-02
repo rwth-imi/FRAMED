@@ -18,7 +18,7 @@ public class Main {
       throw new RuntimeException(e);
     }
 
-    EventBus eventBus = new EventBus(Executors.newCachedThreadPool());
+    EventBus eventBus = new EventBus();
     Manager manager = new Manager(config, eventBus);
     for (String key : config.keySet()) {
       manager.instantiate(key);

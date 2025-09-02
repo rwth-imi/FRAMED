@@ -53,7 +53,7 @@ public class MedibusParsedWriter extends Writer<JSONObject> {
 
 
 
-  public void handleEventBus(Object msg, String deviceName) {
+  public synchronized void handleEventBus(Object msg, String deviceName) {
     JSONObject jsonMsg = (JSONObject) msg;
     try {
       write(jsonMsg, deviceName);

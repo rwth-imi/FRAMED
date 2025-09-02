@@ -15,12 +15,12 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class MedibusRealTimeParser extends Parser<Byte> {
-  private final ArrayList<Byte> realTimeByteList = new ArrayList<>();
+  private final List<Byte> realTimeByteList = new CopyOnWriteArrayList<>();
 
-  private ArrayList<Byte> waveFormTypeList = new ArrayList<>();
+  private List<Byte> waveFormTypeList = new CopyOnWriteArrayList<>();
   private final List<Map<String, Object>> waveValResultList = new CopyOnWriteArrayList<>();;
 
-  private final ArrayList<JSONObject> realTimeConfigResponsesList = new ArrayList<>();
+  private final List<JSONObject> realTimeConfigResponsesList = new CopyOnWriteArrayList<>();
 
   public MedibusRealTimeParser(EventBus eventBus, int waveFormType, JSONArray devices) {
     super(eventBus);
@@ -28,12 +28,16 @@ public class MedibusRealTimeParser extends Parser<Byte> {
     for  (Object device : devices) {
       String deviceName = (String) device;
       eventBus.register(deviceName+"_rt", msg -> {
-        if (msg instanceof JSONObject) {
-          realTimeConfigResponsesList.add((JSONObject) msg);
-        } else if (msg instanceof Byte) {
-          parse((Byte) msg, deviceName);
-        }
+        handleEventBus(msg, deviceName);
       });
+    }
+  }
+
+  private synchronized void handleEventBus(Object msg, String deviceName) {
+    if (msg instanceof JSONObject) {
+      realTimeConfigResponsesList.add((JSONObject) msg);
+    } else if (msg instanceof Byte) {
+      parse((Byte) msg, deviceName);
     }
   }
 
@@ -167,6 +171,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
       waveValResult.put("value", value);
       waveValResult.put("className", "RealTime");
       String address = deviceName+"."+physioID+".parsed";
+
       eventBus.publish(deviceName+".addresses", address);
       eventBus.publish(address, waveValResult);
     }

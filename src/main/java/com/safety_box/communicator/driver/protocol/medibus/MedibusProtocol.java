@@ -113,7 +113,7 @@ public class MedibusProtocol extends Protocol {
   }
 
   private void writeData(byte[] data) {
-    eventBus.publish("Oxylog-3000-Plus-00", new JSONObject().put("data", data));
+    eventBus.publish(id, new JSONObject().put("data", data));
   }
 
   private void listenToSerial() {
