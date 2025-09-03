@@ -3,48 +3,30 @@ package com.safety_box.streamer.dispatcher.influx;
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.InfluxDBClientFactory;
 import com.influxdb.client.WriteApiBlocking;
-import com.influxdb.client.domain.WritePrecision;
 import com.influxdb.client.write.Point;
+import com.safety_box.core.EventBus;
 import com.safety_box.streamer.dispatcher.LocalDispatcher;
-import com.safety_box.streamer.dispatcher.RemoteDispatcher;
 import com.safety_box.streamer.model.DataPoint;
 import com.safety_box.streamer.model.TimeSeries;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
+import org.json.JSONArray;
 
-public class InfluxLocalDispatcherVerticle extends LocalDispatcher {
-  private String port;
-  private String token;
-  private String org;
-  private InfluxDBClient client;
-  private ZoneOffset zoneOffset;
-  private String bucket;
+
+public class InfluxLocalDispatcher extends LocalDispatcher {
+  private final String org;
+  private final String bucket;
   WriteApiBlocking writeApi;
 
-
-  @Override
-  public void init(Vertx vertx, Context context) {
-    super.init(vertx, context);
-    port = config().getString("port");
-    token = config().getString("token");
-    org = config().getString("org");
-    client = InfluxDBClientFactory.create("http://localhost:"+port, token.toCharArray());
-    bucket = config().getString("bucket");
-    LocalDateTime now = LocalDateTime.now();
-    ZoneId zone = ZoneId.of("Europe/Berlin");
-    zoneOffset = zone.getRules().getOffset(now);
-  }
-
-  @Override
-  public Future<?> start() throws Exception {
-    writeApi = this.client.getWriteApiBlocking();
-    return super.start();
+  public InfluxLocalDispatcher(EventBus eventBus, JSONArray devices, String url, String token, String org, String bucket) {
+    super(eventBus, devices);
+    this.org = org;
+    this.bucket = bucket;
+    try {
+      InfluxDBClient client = InfluxDBClientFactory.create(url, token.toCharArray());
+      writeApi = client.getWriteApiBlocking();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -71,5 +53,10 @@ public class InfluxLocalDispatcherVerticle extends LocalDispatcher {
     for (DataPoint<?> dp: timeSeries.dataPoints()) {
       push(dp);
     }
+  }
+
+  @Override
+  public void stop() {
+
   }
 }

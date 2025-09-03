@@ -1,49 +1,44 @@
 package com.safety_box.communicator.driver.parser.medibus;
 
-import com.safety_box.communicator.driver.parser.ParserVerticle;
+import com.safety_box.communicator.driver.parser.Parser;
 import com.safety_box.communicator.driver.utils.DataConstants;
 import com.safety_box.communicator.driver.utils.DataUtils;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
+import com.safety_box.core.EventBus;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
-public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
-  private final ArrayList<Byte> realTimeByteList = new ArrayList<>();
+public class MedibusRealTimeParser extends Parser<Byte> {
+  private final List<Byte> realTimeByteList = new CopyOnWriteArrayList<>();
 
-  private ArrayList<Byte> waveFormTypeList = new ArrayList<>();
-  private final ArrayList<Map<String, Object>> waveValResultList = new ArrayList<>();
+  private List<Byte> waveFormTypeList = new CopyOnWriteArrayList<>();
+  private final List<Map<String, Object>> waveValResultList = new CopyOnWriteArrayList<>();;
 
-  private final ArrayList<JsonObject> realTimeConfigResponsesList = new ArrayList<>();
+  private final List<JSONObject> realTimeConfigResponsesList = new CopyOnWriteArrayList<>();
 
-
-  @Override
-  public void init(Vertx vertx, Context context) {
-    super.init(vertx, context);
-    int waveFormType = config.getInteger("waveFormType");
+  public MedibusRealTimeParser(EventBus eventBus, int waveFormType, JSONArray devices) {
+    super(eventBus);
     waveFormTypeList = DataUtils.createWaveFormTypeList(waveFormType);
-  }
-
-  public Future<?> start() throws Exception {
-    JsonArray devices = config.getJsonArray("devices");
     for  (Object device : devices) {
       String deviceName = (String) device;
-      vertx.eventBus().consumer(deviceName+"_rt", msg -> {
-        if (msg.body() instanceof JsonObject) {
-          realTimeConfigResponsesList.add((JsonObject) msg.body());
-        } else if (msg.body() instanceof Byte) {
-          parse((Byte) msg.body(), deviceName);
-        }
+      eventBus.register(deviceName+"_rt", msg -> {
+        handleEventBus(msg, deviceName);
       });
     }
-    return super.start();
+  }
+
+  private synchronized void handleEventBus(Object msg, String deviceName) {
+    if (msg instanceof JSONObject) {
+      realTimeConfigResponsesList.add((JSONObject) msg);
+    } else if (msg instanceof Byte) {
+      parse((Byte) msg, deviceName);
+    }
   }
 
   @Override
@@ -120,15 +115,15 @@ public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
             if (streamIndex < waveFormTypeList.size()) {
               byte waveCode = waveFormTypeList.get(streamIndex);
               String waveDataCode = String.format("%02x", waveCode);
-              JsonObject config = realTimeConfigResponsesList.stream()
+              JSONObject config = realTimeConfigResponsesList.stream()
                 .filter(x -> x.getString("dataCode").equals(waveDataCode))
                 .findFirst()
                 .orElse(null);
 
               if (config != null) {
-                int minValue = config.getInteger("minValue");
-                int maxValue = config.getInteger("maxValue");
-                int maxBinValue = config.getInteger("maxBinValue");
+                int minValue = config.getInt("minValue");
+                int maxValue = config.getInt("maxValue");
+                int maxBinValue = config.getInt("maxBinValue");
 
                 byte[] rtBytes = rtDataValues.get(k);
                 int binVal = (rtBytes[0] & 0x3F) | ((rtBytes[1] & 0x3F) << 6);
@@ -169,16 +164,21 @@ public class MedibusRealTimeParserVerticle extends ParserVerticle<Byte> {
       String physioID = (String) map.get("physioID");
       double value = (double) map.get("value");
       //System.out.printf("RT_Message - %s: %s%n", physioID, value);
-      JsonObject waveValResult = new JsonObject();
+      JSONObject waveValResult = new JSONObject();
       waveValResult.put("timestamp", Instant.now());
       waveValResult.put("realTime", true);
       waveValResult.put("physioID", physioID);
       waveValResult.put("value", value);
       waveValResult.put("className", "RealTime");
       String address = deviceName+"."+physioID+".parsed";
-      vertx.eventBus().publish(deviceName+".addresses", address);
-      vertx.eventBus().publish(address, waveValResult);
+
+      eventBus.publish(deviceName+".addresses", address);
+      eventBus.publish(address, waveValResult);
     }
   }
 
+  @Override
+  public void stop() {
+
+  }
 }

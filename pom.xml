@@ -16,45 +16,22 @@
     <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
     <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
 
-    <vertx.version>5.0.2</vertx.version>
     <junit-jupiter.version>5.9.1</junit-jupiter.version>
 
-    <main.verticle>com.safety_box.orchestrator.MainVerticle</main.verticle>
-    <launcher.class>io.vertx.launcher.application.VertxApplication</launcher.class>
+    <launcher.class>com.safety_box.orchestrator.Main</launcher.class>
   </properties>
-
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>io.vertx</groupId>
-        <artifactId>vertx-stack-depchain</artifactId>
-        <version>${vertx.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
 
   <dependencies>
     <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-launcher-application</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-tcp-eventbus-bridge</artifactId>
+      <groupId>org.json</groupId>
+      <artifactId>json</artifactId>
+      <version>20250517</version>
     </dependency>
     <dependency>
       <groupId>com.influxdb</groupId>
       <artifactId>influxdb-client-java</artifactId>
       <version>6.6.0</version>
     </dependency>
-    <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-junit5</artifactId>
-      <scope>test</scope>
-    </dependency>
-
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-api</artifactId>
@@ -101,7 +78,6 @@
                   implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <manifestEntries>
                     <Main-Class>${launcher.class}</Main-Class>
-                    <Main-Verticle>${main.verticle}</Main-Verticle>
                   </manifestEntries>
                 </transformer>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
@@ -122,9 +98,6 @@
         <version>${exec-maven-plugin.version}</version>
         <configuration>
           <mainClass>${launcher.class}</mainClass>
-          <arguments>
-            <argument>${main.verticle}</argument>
-          </arguments>
         </configuration>
       </plugin>
     </plugins>

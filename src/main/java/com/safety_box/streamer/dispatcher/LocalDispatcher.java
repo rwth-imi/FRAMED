@@ -1,52 +1,31 @@
 package com.safety_box.streamer.dispatcher;
 
+import com.safety_box.core.EventBus;
 import com.safety_box.streamer.model.DataPoint;
 import com.safety_box.streamer.model.TimeSeries;
 import com.safety_box.streamer.parser.Parser;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.VerticleBase;
-import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.net.NetClient;
-import io.vertx.core.net.NetSocket;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
-import java.nio.charset.StandardCharsets;
+
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public abstract class LocalDispatcher extends Dispatcher {
-  private JsonObject config;
   private List<String> addresses = new ArrayList<>();
 
-  @Override
-  public void init(Vertx vertx, Context context) {
-    super.init(vertx, context);
-    this.vertx = vertx;
-    this.config = context.config();
-
-
-  }
-
-  @Override
-  public Future<?> start() throws Exception {
-    NetClient client = vertx.createNetClient();
-    Future<NetSocket> clientFuture = client.connect(1111, "localhost");
-    JsonArray devices =  config.getJsonArray("devices");
+  public LocalDispatcher(EventBus eventBus, JSONArray devices) {
+    super(eventBus);
     for (Object deviceObj : devices) {
       String deviceID = deviceObj.toString();
-      vertx.eventBus().consumer(deviceID+".addresses", msg -> {
-        if (!addresses.contains(msg.body().toString())){
-          addresses.add(msg.body().toString());
-          vertx.eventBus().consumer((String)msg.body(), msg_ ->{
+      eventBus.register(deviceID+".addresses", msg -> {
+        if (!addresses.contains(msg.toString())){
+          addresses.add(msg.toString());
+          eventBus.register((String) msg, msg_ ->{
             try {
-              JsonObject body = (JsonObject) msg_.body();
+              JSONObject body = (JSONObject) msg_;
               body.put("deviceID", deviceID);
-              DataPoint<?> dp = Parser.parse((JsonObject) msg_.body());
+              DataPoint<?> dp = Parser.parse((JSONObject) body);
               push(dp);
             } catch (Exception e) {
               throw new RuntimeException(e);
@@ -55,7 +34,6 @@ public abstract class LocalDispatcher extends Dispatcher {
         }
       });
     }
-    return super.start();
   }
 
   public abstract void push(DataPoint<?> dataPoint);

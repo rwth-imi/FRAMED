@@ -1,14 +1,14 @@
 package com.safety_box.streamer.parser;
 
 import com.safety_box.streamer.model.DataPoint;
-import io.vertx.core.json.JsonObject;
+import org.json.JSONObject;
 
 import java.time.Instant;
 
 public class Parser {
-  public static DataPoint<?> parse(JsonObject jsonObject) throws Exception {
-    Object value = jsonObject.getValue("value");
-    Instant timestamp = jsonObject.getInstant("timestamp");
+  public static DataPoint<?> parse(JSONObject jsonObject) throws Exception {
+    Object value = jsonObject.get("value");
+    Instant timestamp = (Instant) jsonObject.get("timestamp");
     String physioID = jsonObject.getString("physioID");
     String deviceID = jsonObject.getString("deviceID");
     String className = jsonObject.getString("className");
