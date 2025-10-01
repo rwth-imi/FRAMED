@@ -1,4 +1,5 @@
 package com.safety_box.orchestrator.manager;
+import com.safety_box.core.EventBusInterface;
 import com.safety_box.core.Service;
 import com.safety_box.core.EventBus;
 import org.json.JSONObject;
@@ -8,7 +9,7 @@ import java.lang.reflect.Parameter;
 
 public class Factory {
 
-  public static Service instantiate(JSONObject config, EventBus eventBus) throws Exception {
+  public static Service instantiate(JSONObject config, EventBusInterface eventBus) throws Exception {
     String className = config.getString("class");
     Class<?> clazz = Class.forName(className);
 

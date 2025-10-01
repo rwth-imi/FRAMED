@@ -4,6 +4,7 @@ import com.safety_box.communicator.driver.parser.Parser;
 import com.safety_box.communicator.driver.utils.DataConstants;
 import com.safety_box.communicator.driver.utils.DataUtils;
 import com.safety_box.core.EventBus;
+import com.safety_box.core.EventBusInterface;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -22,7 +23,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
 
   private final List<JSONObject> realTimeConfigResponsesList = new CopyOnWriteArrayList<>();
 
-  public MedibusRealTimeParser(EventBus eventBus, int waveFormType, JSONArray devices) {
+  public MedibusRealTimeParser(EventBusInterface eventBus, int waveFormType, JSONArray devices) {
     super(eventBus);
     waveFormTypeList = DataUtils.createWaveFormTypeList(waveFormType);
     for  (Object device : devices) {

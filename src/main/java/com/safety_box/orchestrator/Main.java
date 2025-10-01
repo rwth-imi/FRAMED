@@ -1,6 +1,7 @@
 package com.safety_box.orchestrator;
 
 import com.safety_box.core.EventBus;
+import com.safety_box.core.SocketEventBus;
 import com.safety_box.orchestrator.io.ConfigLoader;
 import com.safety_box.orchestrator.manager.Manager;
 import org.json.JSONObject;
@@ -18,7 +19,7 @@ public class Main {
       throw new RuntimeException(e);
     }
 
-    EventBus eventBus = new EventBus();
+    SocketEventBus eventBus = new SocketEventBus(5000);
     Manager manager = new Manager(config, eventBus);
     for (String key : config.keySet()) {
       manager.instantiate(key);

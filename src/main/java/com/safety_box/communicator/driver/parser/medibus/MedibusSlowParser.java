@@ -3,6 +3,7 @@ package com.safety_box.communicator.driver.parser.medibus;
 import com.safety_box.communicator.driver.parser.Parser;
 import com.safety_box.communicator.driver.utils.DataConstants;
 import com.safety_box.core.EventBus;
+import com.safety_box.core.EventBusInterface;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -11,7 +12,7 @@ import java.time.Instant;
 
 public class MedibusSlowParser extends Parser<byte[]> {
 
-  public MedibusSlowParser(EventBus eventBus, JSONArray devices) {
+  public MedibusSlowParser(EventBusInterface eventBus, JSONArray devices) {
     super(eventBus);
     for  (Object device : devices) {
       String deviceName = (String) device;

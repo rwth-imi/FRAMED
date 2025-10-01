@@ -40,19 +40,57 @@ Handle the dataflow via the EventBus Architecture (cf. Architecture).
 ### Building
 To launch the tests:
 
-`./mvnw clean test`
+```bash
+./mvnw clean test
+```
 
 To package the safety-box:
 
-`./mvnw clean package
-`
+```bash
+./mvnw clean package
+```
+
 To run the safety-box:
 
-`./mvnw clean compile exec:java
-`
+```bash
+./mvnw clean compile exec:java
+```
 
 ### Optional BLE Dependency
+#### BlueZ
+Install bluez and dbus (refer to [ubuntuusers e.V.](https://wiki.ubuntuusers.de/Bluetooth/Einrichtung/)):
 
+```bash
+sudo apt-get install bluez bluez-cups bluez-obexd
+```
+
+Verify Bluetooth service is running:
+
+```bash
+systemctl status bluetooth.service
+```
+
+#### Doxygen
+```bash
+sudo apt-add-repository universe
+sudo apt-get update
+sudo apt-get install doxygen
+```
+
+#### TinyB
+
+Clone TinyB from the official GitHub Repository:
+
+`git clone https://github.com/intel-iot-devkit/tinyb.git`
+
+Navigate to the repository and install TinyB:
+```
+mkdir build
+cd build
+cmake ..
+make
+make install
+```
 
 ## Usage
 Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.

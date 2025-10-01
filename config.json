@@ -1,17 +1,9 @@
 {
   "devices": [
     {
-      "class": "com.safety_box.communicator.driver.protocol.medibus.MedibusProtocol",
-      "id": "Oxylog-3000-Plus-00",
-      "portName": "/dev/ttyUSB0",
-      "baudRate": 19200,
-      "dataBits": 8,
-      "stopBits": 1,
-      "bufferSize": 4096,
-      "waveFormType": 4,
-      "multiplier": "55",
-      "realTime": true,
-      "slowData": true
+      "class": "com.safety_box.communicator.driver.protocol.socket.SocketProtocol",
+      "id": "Pulseoximeter",
+      "port": 5555
     }
   ],
   "writers": [

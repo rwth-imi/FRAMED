@@ -1,6 +1,7 @@
 package com.safety_box.streamer.dispatcher;
 
 import com.safety_box.core.EventBus;
+import com.safety_box.core.EventBusInterface;
 import com.safety_box.streamer.model.DataPoint;
 import com.safety_box.streamer.model.TimeSeries;
 import com.safety_box.streamer.parser.Parser;
@@ -14,7 +15,7 @@ import java.util.List;
 public abstract class LocalDispatcher extends Dispatcher {
   private List<String> addresses = new ArrayList<>();
 
-  public LocalDispatcher(EventBus eventBus, JSONArray devices) {
+  public LocalDispatcher(EventBusInterface eventBus, JSONArray devices) {
     super(eventBus);
     for (Object deviceObj : devices) {
       String deviceID = deviceObj.toString();

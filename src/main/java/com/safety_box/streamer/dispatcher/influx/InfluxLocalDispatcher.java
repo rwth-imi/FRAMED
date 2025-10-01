@@ -5,6 +5,7 @@ import com.influxdb.client.InfluxDBClientFactory;
 import com.influxdb.client.WriteApiBlocking;
 import com.influxdb.client.write.Point;
 import com.safety_box.core.EventBus;
+import com.safety_box.core.EventBusInterface;
 import com.safety_box.streamer.dispatcher.LocalDispatcher;
 import com.safety_box.streamer.model.DataPoint;
 import com.safety_box.streamer.model.TimeSeries;
@@ -17,7 +18,7 @@ public class InfluxLocalDispatcher extends LocalDispatcher {
   private final String bucket;
   WriteApiBlocking writeApi;
 
-  public InfluxLocalDispatcher(EventBus eventBus, JSONArray devices, String url, String token, String org, String bucket) {
+  public InfluxLocalDispatcher(EventBusInterface eventBus, JSONArray devices, String url, String token, String org, String bucket) {
     super(eventBus, devices);
     this.org = org;
     this.bucket = bucket;

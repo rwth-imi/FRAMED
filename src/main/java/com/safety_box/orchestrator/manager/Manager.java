@@ -1,5 +1,6 @@
 package com.safety_box.orchestrator.manager;
 
+import com.safety_box.core.EventBusInterface;
 import com.safety_box.core.Service;
 import com.safety_box.core.EventBus;
 
@@ -11,11 +12,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Manager {
-  private final EventBus eventBus;
+  private final EventBusInterface eventBus;
   Map<String, Service> instances = new HashMap<>();
   JSONObject config;
 
-  public Manager(JSONObject config, EventBus eventBus) {
+  public Manager(JSONObject config, EventBusInterface eventBus) {
     this.config = config;
     this.eventBus = eventBus;
   }
