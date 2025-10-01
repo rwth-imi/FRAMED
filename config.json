@@ -1,17 +1,18 @@
 {
-  "devices": [
-    {
-      "class": "com.safety_box.communicator.driver.protocol.socket.SocketProtocol",
-      "id": "Pulseoximeter",
-      "port": 5555
-    }
-  ],
   "writers": [
     {
       "class": "com.safety_box.communicator.io.raw.RawByteWriter",
       "id": "Raw-Byte-Writer",
       "devices": [
         "Oxylog-3000-Plus-00"
+      ],
+      "path": "output/raw/"
+    },
+    {
+      "class": "com.safety_box.communicator.io.raw.RawByteWriter",
+      "id": "Raw-Byte-Writer",
+      "devices": [
+        "PC60FW"
       ],
       "path": "output/raw/"
     },

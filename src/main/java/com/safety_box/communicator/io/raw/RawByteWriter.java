@@ -36,8 +36,9 @@ public class RawByteWriter extends Writer<byte[]> {
   }
 
   public void handleEventBus(Object msg, String deviceName) {
-    JSONObject jsonMsg = (JSONObject) msg;
-    byte[] data = (byte[]) jsonMsg.get("data");
+    //JSONObject jsonMsg = (JSONObject) msg;
+    //byte[] data = (byte[]) jsonMsg.get("data");
+    byte[] data  = msg.toString().getBytes();
     try {
       write(data, deviceName);
     } catch (IOException e) {

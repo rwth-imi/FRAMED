@@ -24,7 +24,7 @@ public class Factory {
         if (config.keySet().contains(paramName)) {
           Object value = config.get(paramName);
           args[i] = value;
-        } else if (paramType.equals(EventBus.class)) {
+        } else if (paramType.equals(EventBusInterface.class)) {
             args[i] = eventBus;
         } else {
             match = false;

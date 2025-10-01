@@ -24,26 +24,26 @@ public class Manager {
   public void instantiate(String classType) {
     JSONArray classes = config.getJSONArray(classType);
     for (Object clazz : classes) {
-      JSONObject stoppableConfig = (JSONObject) clazz;
+      JSONObject serviceConfig = (JSONObject) clazz;
       try {
-        Service service = Factory.instantiate(stoppableConfig, eventBus);
-        this.instances.put(stoppableConfig.getString("id"), service);
+        Service service = Factory.instantiate(serviceConfig, eventBus);
+        this.instances.put(serviceConfig.getString("id"), service);
       } catch (Exception e) {
         throw new RuntimeException("Failed to instantiate protocol for device: " +
-          stoppableConfig.getString("id"), e);
+          serviceConfig.getString("id"), e);
       }
       System.out.println("Successfully instantiated " + clazz);
     }
   }
 
   public void stop(String id) {
-    Service stoppable = this.instances.get(id);
-    stoppable.stop();
+    Service service = this.instances.get(id);
+    service.stop();
   }
 
   public void stopAll() {
-    for (Service stoppable : instances.values()) {
-      stoppable.stop();
+    for (Service service : instances.values()) {
+      service.stop();
     }
   }
 }
