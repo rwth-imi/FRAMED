@@ -3,14 +3,16 @@ package com.safety_box.streamer.dispatcher.influx;
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.InfluxDBClientFactory;
 import com.influxdb.client.WriteApiBlocking;
+import com.influxdb.client.domain.WritePrecision;
 import com.influxdb.client.write.Point;
-import com.safety_box.core.EventBus;
 import com.safety_box.core.EventBusInterface;
 import com.safety_box.streamer.dispatcher.LocalDispatcher;
 import com.safety_box.streamer.model.DataPoint;
 import com.safety_box.streamer.model.TimeSeries;
 
 import org.json.JSONArray;
+
+import java.util.concurrent.TimeUnit;
 
 
 public class InfluxLocalDispatcher extends LocalDispatcher {
@@ -33,8 +35,11 @@ public class InfluxLocalDispatcher extends LocalDispatcher {
   @Override
   public void push(DataPoint<?> dataPoint) {
     Point point = Point
-      .measurement(dataPoint.deviceID());
+      .measurement(dataPoint.deviceID())
+      .time(dataPoint.timestamp(), WritePrecision.NS);
+
     Object value = dataPoint.value();
+
     if (value instanceof String) {
       point.addField(dataPoint.className(), (String) value);
     } else if (value instanceof Number) {

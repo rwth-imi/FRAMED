@@ -19,8 +19,12 @@ import java.util.function.Consumer;
 public class SocketEventBus implements EventBusInterface {
   private final Map<String, List<Consumer<Object>>> handlers = new ConcurrentHashMap<>();
   private final ExecutorService executor = Executors.newCachedThreadPool();
+  private final String url;
+  private int port;
 
-  public SocketEventBus(int port) {
+  public SocketEventBus(int port, String url) {
+    this.url = url;
+    this.port = port;
     startServer(port);
   }
 
@@ -81,8 +85,7 @@ public class SocketEventBus implements EventBusInterface {
   }
 
   private void sendMessageOverSocket(String address, Object message, String type) {
-    // You can maintain a list of known service sockets or use a discovery mechanism
-    try (Socket socket = new Socket("localhost", 9000)) {
+    try (Socket socket = new Socket("localhost", port)) {
       JSONObject json = new JSONObject();
       json.put("address", address);
       json.put("payload", message);

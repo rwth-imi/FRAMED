@@ -19,7 +19,7 @@ public class Main {
       throw new RuntimeException(e);
     }
 
-    SocketEventBus eventBus = new SocketEventBus(5000);
+    SocketEventBus eventBus = new SocketEventBus(5000, "localhost");
     Manager manager = new Manager(config, eventBus);
     for (String key : config.keySet()) {
       manager.instantiate(key);

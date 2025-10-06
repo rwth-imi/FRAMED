@@ -114,7 +114,7 @@ public class MedibusProtocol extends Protocol {
   }
 
   private void writeData(byte[] data) {
-    eventBus.publish(id, new JSONObject().put("data", data));
+    eventBus.publish(id, data);
   }
 
   private void listenToSerial() {

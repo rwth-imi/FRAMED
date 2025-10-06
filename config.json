@@ -35,6 +35,14 @@
         ]
     },
     {
+      "class": "com.safety_box.communicator.driver.parser.viatom.ViatomParser",
+      "id": "Viatom-Parser",
+      "devices":
+      [
+        "PC60FW"
+      ]
+    },
+    {
       "class": "com.safety_box.communicator.driver.parser.medibus.MedibusRealTimeParser",
       "id": "Medibus-RT-Parser",
       "devices":
@@ -54,7 +62,8 @@
       "org": "IMI-MSE",
       "devices":
       [
-        "Oxylog-3000-Plus-00"
+        "Oxylog-3000-Plus-00",
+        "PC60FW"
       ]
     }
   ]
