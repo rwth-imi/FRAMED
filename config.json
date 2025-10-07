@@ -9,9 +9,9 @@
       "stopBits": 1,
       "bufferSize": 4096,
       "waveFormType": 4,
-      "multiplier": "FF",
+      "multiplier": "55",
       "realTime": true,
-      "slowData": true
+      "slowData": false
     }
   ],
   "writers": [
