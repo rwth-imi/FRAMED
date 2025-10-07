@@ -333,19 +333,19 @@ public class MedibusProtocol extends Protocol {
     while (bb.remaining() >= 23) {
       byte[] dataCode = new byte[2];
       bb.get(dataCode);
-      String dataCodeString = new String(dataCode).trim().replaceAll("\\s+", "");
+      String dataCodeString = new String(dataCode, StandardCharsets.US_ASCII).trim().replaceAll("\\s+", "");
       byte[] interval = new byte[8];
       bb.get(interval);
-      String intervalString = new String(interval).trim().replaceAll("\\s+", "");
+      String intervalString = new String(interval, StandardCharsets.US_ASCII).trim().replaceAll("\\s+", "");
       byte[] minValue = new byte[5];
       bb.get(minValue);
-      String minValueString = new String(minValue).trim().replaceAll("\\s+", "");
+      String minValueString = new String(minValue, StandardCharsets.US_ASCII).trim().replaceAll("\\s+", "");
       byte[] maxValue = new byte[5];
       bb.get(maxValue);
-      String maxValueString = new String(maxValue).trim().replaceAll("\\s+", "");
+      String maxValueString = new String(maxValue, StandardCharsets.US_ASCII).trim().replaceAll("\\s+", "");
       byte[] maxBinValue = new byte[3];
       bb.get(maxBinValue);
-      String maxBinValueString = new String(maxBinValue).trim().replaceAll("\\s+", "");
+      String maxBinValueString = new String(maxBinValue, StandardCharsets.US_ASCII).trim().replaceAll("\\s+", "");
 
       JSONObject rtConfig = new JSONObject();
       rtConfig.put("dataCode", dataCodeString);
