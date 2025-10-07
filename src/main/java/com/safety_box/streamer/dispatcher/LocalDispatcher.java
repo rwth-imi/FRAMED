@@ -1,7 +1,7 @@
 package com.safety_box.streamer.dispatcher;
 
-import com.safety_box.core.EventBus;
 import com.safety_box.core.EventBusInterface;
+import com.safety_box.core.Service;
 import com.safety_box.streamer.model.DataPoint;
 import com.safety_box.streamer.model.TimeSeries;
 import com.safety_box.streamer.parser.Parser;
@@ -9,11 +9,13 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class LocalDispatcher extends Dispatcher {
-  private List<String> addresses = new ArrayList<>();
+public abstract class LocalDispatcher extends Service {
+  private final List<String> addresses = new ArrayList<>();
+
 
   public LocalDispatcher(EventBusInterface eventBus, JSONArray devices) {
     super(eventBus);
@@ -37,7 +39,7 @@ public abstract class LocalDispatcher extends Dispatcher {
     }
   }
 
-  public abstract void push(DataPoint<?> dataPoint);
+  public abstract void push(DataPoint<?> dataPoint) throws IOException;
 
   public abstract void pushBatch(TimeSeries timeSeries);
 }

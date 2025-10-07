@@ -43,7 +43,7 @@ public class InfluxLocalDispatcher extends LocalDispatcher {
     if (value instanceof String) {
       point.addField(dataPoint.className(), (String) value);
     } else if (value instanceof Number) {
-      point.addField(dataPoint.className(), (Number) value);
+      point.addField(dataPoint.className(), ((Number) value).floatValue());
     } else if (value instanceof Boolean) {
       point.addField(dataPoint.className(), (Boolean) value);
     } else {
