@@ -48,26 +48,36 @@ public class MedibusRealTimeParser extends Parser<Byte> {
 
   @Override
   public void parse(Byte message, String deviceName) {
-
     realTimeByteList.add(message);
 
-
     int bytesSuccessfullyRead = 0;
+
     byte[] realTimeByteArray = new byte[realTimeByteList.size()];
     for (int i = 0; i < realTimeByteList.size(); i++) {
       realTimeByteArray[i] = realTimeByteList.get(i);
     }
 
+    // Collect results locally for this parse pass
+    List<Map<String, Object>> batch = new ArrayList<>();
+    // Capture one record time per realtime record
+    long recordWallMs = 0L; // set per record when we detect sync byte
+    long recordMonoNs = 0L; // optional relative time
+
     for (int i = 0; i < realTimeByteArray.length; i++) {
       byte bValue = realTimeByteArray[i];
 
       if ((bValue & DataConstants.SYNC_BYTE) == DataConstants.SYNC_BYTE) {
+        // Start of a new realtime data record -> capture timestamps NOW
+        recordWallMs = System.currentTimeMillis();
+        recordMonoNs = System.nanoTime();
+
         byte syncByte = bValue;
         List<byte[]> syncCommands = new ArrayList<>();
         List<byte[]> rtDataValues = new ArrayList<>();
         List<Integer> dataStreamList = new ArrayList<>();
         String respSyncState = null;
 
+        // Parse the record following the sync byte
         for (int j = i + 1; j < realTimeByteArray.length - 1; j++) {
           byte bValueNext = realTimeByteArray[j];
           if ((bValueNext & DataConstants.SYNC_BYTE) == DataConstants.SYNC_BYTE) break;
@@ -84,12 +94,13 @@ public class MedibusRealTimeParser extends Parser<Byte> {
           i = j;
         }
 
-        // Build dataStreamList from syncByte
+        // Streams 1..4 from syncByte bits
         if ((syncByte & 0x01) != 0) dataStreamList.add(0);
         if ((syncByte & 0x02) != 0) dataStreamList.add(1);
         if ((syncByte & 0x04) != 0) dataStreamList.add(2);
         if ((syncByte & 0x08) != 0) dataStreamList.add(3);
 
+        // Sync-commands
         for (byte[] cmd : syncCommands) {
           byte cmdType = cmd[0];
           byte arg = cmd[1];
@@ -114,38 +125,44 @@ public class MedibusRealTimeParser extends Parser<Byte> {
         }
 
         if (rtDataValues.size() == dataStreamList.size()) {
-          long unixTimestamp = System.currentTimeMillis();
           for (int k = 0; k < dataStreamList.size(); k++) {
             int streamIndex = dataStreamList.get(k);
             if (streamIndex < waveFormTypeList.size()) {
               byte waveCode = waveFormTypeList.get(streamIndex);
               String waveDataCode = String.format("%02x", waveCode);
+
+              // Be lenient on case to avoid config mismatches
               JSONObject config = realTimeConfigResponsesList.stream()
                 .filter(x -> x.getString("dataCode").equals(waveDataCode))
                 .findFirst()
                 .orElse(null);
 
               if (config != null) {
-                int minValue = config.getInt("minValue");
-                int maxValue = config.getInt("maxValue");
-                int maxBinValue = config.getInt("maxBinValue");
+                // Prefer doubles for MIN/MAX (they can be negative / decimal per spec)
+                double minValue = config.optDouble("minValue", 0.0);
+                double maxValue = config.optDouble("maxValue", 0.0);
+                int maxBinValue = config.optInt("maxBinValue", 1);
 
                 byte[] rtBytes = rtDataValues.get(k);
-                int binVal = (rtBytes[0] & 0x3F) | ((rtBytes[1] & 0x3F) << 6);
-                double rtValue = (((double) binVal / maxBinValue) * (maxValue - minValue)) + minValue;
-                double finalValue = Math.round(rtValue * 10000.0) / 10000.0;
 
-                // Store or process the result
+                // FIX: 12-bit assembly per spec: first byte = bits 6..11 (high)
+                //int binVal = ((rtBytes[0] & 0x3F) << 6) | (rtBytes[1] & 0x3F);  // <-- corrected
+                int binVal =  (rtBytes[0] & 0x3F) | ((rtBytes[1] & 0x3F) << 6);  // <-- old
+
+                double rtValue = ( (double)binVal / maxBinValue ) * (maxValue - minValue) + minValue;
+                double finalValue = Math.round(rtValue);
+
                 Map<String, Object> result = new HashMap<>();
                 result.put("dataStreamIndex", streamIndex);
-                result.put("timestamp", System.currentTimeMillis());
+                // Use the captured record time — not "now" later
+                result.put("timestampMs", recordWallMs);
+                result.put("relativeTimeNs", recordMonoNs);
                 result.put("physioID", DataConstants.MedibusXRealTimeData.get(waveCode));
                 result.put("respiratoryCycleState", respSyncState);
                 result.put("value", finalValue);
-                result.put("relativeTimeCounter", unixTimestamp);
                 result.put("config", config);
 
-                waveValResultList.add(result); // Assuming this is now a List<Map<String, Object>>
+                batch.add(result);
               }
             }
           }
@@ -158,26 +175,31 @@ public class MedibusRealTimeParser extends Parser<Byte> {
       realTimeByteList.subList(0, bytesSuccessfullyRead).clear();
     }
 
-    if (!waveValResultList.isEmpty()) {
-      write(deviceName);
+    if (!batch.isEmpty()) {
+      write(deviceName, batch); // <-- pass local batch
     }
   }
 
-
-  public void write(String deviceName) {
-    for (Map<String, Object> map : waveValResultList) {
+  public void write(String deviceName, List<Map<String, Object>> batch) {
+    for (Map<String, Object> map : batch) {
       String physioID = (String) map.get("physioID");
       double value = (double) map.get("value");
-      //System.out.printf("RT_Message - %s: %s%n", physioID, value);
+
+      long tsMs = (long) map.get("timestampMs");
+      // Render ISO-8601 with microseconds from the captured ms
+      String tsIso = LocalDateTime.ofInstant(Instant.ofEpochMilli(tsMs), java.time.ZoneId.systemDefault())
+        .format(formatter);
+
       JSONObject waveValResult = new JSONObject();
-      waveValResult.put("timestamp", LocalDateTime.now().format(formatter));
+      waveValResult.put("timestamp", tsIso);            // <-- use captured time
+      waveValResult.put("timestampMs", tsMs);           // optional raw ms
       waveValResult.put("realTime", true);
       waveValResult.put("physioID", physioID);
       waveValResult.put("value", value);
       waveValResult.put("className", "RealTime");
-      String address = deviceName+"."+physioID+".parsed";
 
-      eventBus.publish(deviceName+".addresses", address);
+      String address = deviceName + "." + physioID + ".parsed";
+      eventBus.publish(deviceName + ".addresses", address);
       eventBus.publish(address, waveValResult);
     }
   }

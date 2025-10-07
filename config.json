@@ -8,10 +8,10 @@
       "dataBits": 8,
       "stopBits": 1,
       "bufferSize": 4096,
-      "waveFormType": 4,
-      "multiplier": "55",
+      "waveFormType": 1,
+      "multiplier": "10",
       "realTime": true,
-      "slowData": false
+      "slowData": true
     }
   ],
   "writers": [
@@ -57,7 +57,7 @@
       [
         "Oxylog-3000-Plus-00"
       ],
-      "waveFormType": 4
+      "waveFormType": 1
     }
   ],
   "Dispatchers": [
