@@ -9,23 +9,30 @@ import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class MedibusSlowParser extends Parser<byte[]> {
+  final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS");
 
   public MedibusSlowParser(EventBusInterface eventBus, JSONArray devices) {
     super(eventBus);
     for  (Object device : devices) {
       String deviceName = (String) device;
       eventBus.register(deviceName, msg -> {
-        handleEventBus((byte[]) msg, deviceName);
+        handleEventBus((JSONArray) msg, deviceName);
       });
     }
 
 
   }
 
-  private synchronized void handleEventBus(byte[] msg, String deviceName) {
-    parse(msg, deviceName);
+  private synchronized void handleEventBus(JSONArray msg, String deviceName) {
+    byte[] message = new byte[msg.length()];
+    for  (int i = 0; i < msg.length(); i++) {
+      message[i] = (byte) msg.getInt(i);
+    }
+    parse(message, deviceName);
   }
 
   @Override
@@ -181,7 +188,7 @@ public class MedibusSlowParser extends Parser<byte[]> {
   }
 
   private void write(String deviceName, JSONObject result, String className) {
-    result.put("timestamp", Instant.now());
+    result.put("timestamp", LocalDateTime.now().format(formatter));
     result.put("realTime", false);
     result.put("className", className);
     String physioID = result.getString("physioID");

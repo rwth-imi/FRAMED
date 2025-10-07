@@ -354,7 +354,7 @@ public class MedibusProtocol extends Protocol {
       rtConfig.put("maxValue", Integer.parseInt(maxValueString));
       rtConfig.put("maxBinValue", Integer.parseInt(maxBinValueString, 16));
 
-      eventBus.publish(id +"_rt", rtConfig);
+      eventBus.publish(id +".real-time", rtConfig);
     }
   }
 

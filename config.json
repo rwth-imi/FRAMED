@@ -1,17 +1,25 @@
 {
+  "devices": [
+    {
+      "class": "com.safety_box.communicator.driver.protocol.medibus.MedibusProtocol",
+      "id": "Oxylog-3000-Plus-00",
+      "portName": "/dev/ttyUSB0",
+      "baudRate": 19200,
+      "dataBits": 8,
+      "stopBits": 1,
+      "bufferSize": 4096,
+      "waveFormType": 4,
+      "multiplier": "FF",
+      "realTime": true,
+      "slowData": true
+    }
+  ],
   "writers": [
     {
       "class": "com.safety_box.communicator.io.raw.RawByteWriter",
       "id": "Raw-Byte-Writer",
       "devices": [
-        "Oxylog-3000-Plus-00"
-      ],
-      "path": "output/raw/"
-    },
-    {
-      "class": "com.safety_box.communicator.io.raw.RawByteWriter",
-      "id": "Raw-Byte-Writer",
-      "devices": [
+        "Oxylog-3000-Plus-00",
         "PC60FW"
       ],
       "path": "output/raw/"
@@ -65,6 +73,18 @@
         "Oxylog-3000-Plus-00",
         "PC60FW"
       ]
+    },
+    {
+      "class": "com.safety_box.streamer.dispatcher.json.JsonlDispatcher",
+      "id": "Json-Lines",
+      "devices":
+      [
+        "Oxylog-3000-Plus-00",
+        "PC60FW"
+      ],
+      "path": "output/streamer/",
+      "fileName": "data.jsonl"
+
     }
   ]
 }

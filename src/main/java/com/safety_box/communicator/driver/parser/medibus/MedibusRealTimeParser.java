@@ -9,6 +9,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,6 +19,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class MedibusRealTimeParser extends Parser<Byte> {
   private final List<Byte> realTimeByteList = new CopyOnWriteArrayList<>();
+  private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS");
 
   private List<Byte> waveFormTypeList = new CopyOnWriteArrayList<>();
   private final List<Map<String, Object>> waveValResultList = new CopyOnWriteArrayList<>();;
@@ -28,7 +31,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
     waveFormTypeList = DataUtils.createWaveFormTypeList(waveFormType);
     for  (Object device : devices) {
       String deviceName = (String) device;
-      eventBus.register(deviceName+"_rt", msg -> {
+      eventBus.register(deviceName+".real-time", msg -> {
         handleEventBus(msg, deviceName);
       });
     }
@@ -37,8 +40,9 @@ public class MedibusRealTimeParser extends Parser<Byte> {
   private synchronized void handleEventBus(Object msg, String deviceName) {
     if (msg instanceof JSONObject) {
       realTimeConfigResponsesList.add((JSONObject) msg);
-    } else if (msg instanceof Byte) {
-      parse((Byte) msg, deviceName);
+    } else if (msg instanceof Integer) {
+      int value = (int) msg;
+      parse((byte) value, deviceName);
     }
   }
 
@@ -166,7 +170,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
       double value = (double) map.get("value");
       //System.out.printf("RT_Message - %s: %s%n", physioID, value);
       JSONObject waveValResult = new JSONObject();
-      waveValResult.put("timestamp", Instant.now());
+      waveValResult.put("timestamp", LocalDateTime.now().format(formatter));
       waveValResult.put("realTime", true);
       waveValResult.put("physioID", physioID);
       waveValResult.put("value", value);

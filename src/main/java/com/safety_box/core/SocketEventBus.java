@@ -74,7 +74,11 @@ public class SocketEventBus implements EventBusInterface {
         List<Consumer<Object>> consumers = handlers.get(address);
         if (consumers != null) {
           for (Consumer<Object> handler : consumers) {
-            handler.accept(payload);
+            try {
+              handler.accept(payload);
+            } catch (Exception e) {
+              System.out.println(e.getMessage());
+            }
             if ("send".equals(type)) break; // point-to-point
           }
         }
