@@ -28,7 +28,7 @@ public abstract class Dispatcher extends Service {
             try {
               JSONObject body = (JSONObject) msg_;
               body.put("deviceID", deviceID);
-              DataPoint<?> dp = Parser.parse((JSONObject) body);
+              DataPoint<?> dp = Parser.parse(body);
               push(dp);
             } catch (Exception e) {
               throw new RuntimeException(e);
