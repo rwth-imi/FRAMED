@@ -2,9 +2,7 @@ package com.safety_box.communicator.io.raw;
 
 import com.safety_box.communicator.io.Writer;
 import com.safety_box.core.EventBus;
-import com.safety_box.core.EventBusInterface;
 import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,7 +11,7 @@ import java.nio.file.StandardOpenOption;
 
 public class RawByteWriter extends Writer<byte[]> {
 
-  public RawByteWriter(String path, EventBusInterface eventBus, JSONArray devices) {
+  public RawByteWriter(String path, EventBus eventBus, JSONArray devices) {
     super(path, eventBus);
     for  (Object device : devices) {
       String deviceName = (String) device;

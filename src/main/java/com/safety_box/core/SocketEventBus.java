@@ -9,27 +9,16 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-public class SocketEventBus implements EventBusInterface {
+public class SocketEventBus implements EventBus {
 
-  // One Registration per handler, with its own single-thread executor
-  private static final class Registration {
-    final Consumer<Object> handler;
-    final ExecutorService executor;
+  private record Registration(Consumer<Object> handler, ExecutorService executor) {}
 
-    Registration(Consumer<Object> handler, ExecutorService executor) {
-      this.handler = handler;
-      this.executor = executor;
-    }
-  }
-
-  // Address -> list of (handler + executor)
   private final Map<String, CopyOnWriteArrayList<Registration>> handlers = new ConcurrentHashMap<>();
 
   // I/O executors: accept loop + client readers
@@ -175,7 +164,7 @@ public class SocketEventBus implements EventBusInterface {
       json.put("type", type);
 
       PrintWriter writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8);
-      writer.println(json.toString());
+      writer.println(json);
     } catch (IOException e) {
       e.printStackTrace();
     }

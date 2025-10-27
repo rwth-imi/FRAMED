@@ -1,7 +1,7 @@
 package com.safety_box.streamer.dispatcher.json;
 
-import com.safety_box.core.EventBusInterface;
-import com.safety_box.streamer.dispatcher.LocalDispatcher;
+import com.safety_box.core.EventBus;
+import com.safety_box.streamer.dispatcher.Dispatcher;
 import com.safety_box.streamer.model.DataPoint;
 import com.safety_box.streamer.model.TimeSeries;
 import org.json.JSONArray;
@@ -12,11 +12,11 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 
-public class JsonlDispatcher extends LocalDispatcher {
+public class JsonlDispatcher extends Dispatcher {
 
   private final Path path;
 
-  public JsonlDispatcher(EventBusInterface eventBus, JSONArray devices, String path, String fileName) {
+  public JsonlDispatcher(EventBus eventBus, JSONArray devices, String path, String fileName) {
     super(eventBus, devices);
     long timeOnStart = Instant.now().toEpochMilli();
     String file = timeOnStart + "_" + fileName;

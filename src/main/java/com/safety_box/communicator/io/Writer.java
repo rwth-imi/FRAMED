@@ -1,8 +1,7 @@
 package com.safety_box.communicator.io;
 
-import com.safety_box.core.EventBusInterface;
-import com.safety_box.core.Service;
 import com.safety_box.core.EventBus;
+import com.safety_box.core.Service;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -12,7 +11,7 @@ public abstract class Writer<T> extends Service {
   protected Path path;
   protected long timeOnStart;
 
-  public Writer(String path, EventBusInterface eventBus) {
+  public Writer(String path, EventBus eventBus) {
     super(eventBus);
     this.timeOnStart = Instant.now().toEpochMilli();
     this.path = Path.of(path);

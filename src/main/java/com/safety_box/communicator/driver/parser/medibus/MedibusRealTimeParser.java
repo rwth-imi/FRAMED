@@ -1,10 +1,9 @@
 package com.safety_box.communicator.driver.parser.medibus;
 
 import com.safety_box.communicator.driver.parser.Parser;
-import com.safety_box.communicator.driver.utils.DataConstants;
-import com.safety_box.communicator.driver.utils.DataUtils;
+import com.safety_box.communicator.driver.protocol.medibus.utils.DataUtils;
+import com.safety_box.communicator.driver.protocol.medibus.utils.DataConstants;
 import com.safety_box.core.EventBus;
-import com.safety_box.core.EventBusInterface;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -26,7 +25,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
 
   private final List<JSONObject> realTimeConfigResponsesList = new CopyOnWriteArrayList<>();
 
-  public MedibusRealTimeParser(EventBusInterface eventBus, int waveFormType, JSONArray devices) {
+  public MedibusRealTimeParser(EventBus eventBus, int waveFormType, JSONArray devices) {
     super(eventBus);
     waveFormTypeList = DataUtils.createWaveFormTypeList(waveFormType);
     for  (Object device : devices) {
@@ -63,10 +62,22 @@ public class MedibusRealTimeParser extends Parser<Byte> {
     long recordWallMs = 0L; // set per record when we detect sync byte
     long recordMonoNs = 0L; // optional relative time
 
+    // NEW: local masks/patterns (minimal addition; use your DataConstants if present)
+    final int SYNC_MASK        = DataConstants.SYNC_MASK;        // e.g., 0xF0
+    final int SYNC_PATTERN     = DataConstants.SYNC_BYTE;        // e.g., 0xD0 (1101xxxx)
+    final int SYNC_CMD_MASK    = DataConstants.SYNC_MASK;    // e.g., 0xF0
+    final int SYNC_CMD_PATTERN = DataConstants.SYNC_CMD_BYTE;    // e.g., 0xC0 (1100xxxx)
+    final int DATA_MASK        = 0xC0;                           // 1100_0000
+    final int DATA_PATTERN     = 0x80;                           // 1000_0000 (value byte)
+
     for (int i = 0; i < realTimeByteArray.length; i++) {
       byte bValue = realTimeByteArray[i];
 
-      if ((bValue & DataConstants.SYNC_BYTE) == DataConstants.SYNC_BYTE) {
+      // NEW: ignore slow bytes in realtime parser
+      if ((bValue & 0x80) == 0) continue;
+
+      // NEW: strict Sync detection (mask + pattern)
+      if ( (bValue & SYNC_MASK) == SYNC_PATTERN ) {
         // Start of a new realtime data record -> capture timestamps NOW
         recordWallMs = System.currentTimeMillis();
         recordMonoNs = System.nanoTime();
@@ -77,21 +88,45 @@ public class MedibusRealTimeParser extends Parser<Byte> {
         List<Integer> dataStreamList = new ArrayList<>();
         String respSyncState = null;
 
+        boolean malformed = false; // NEW
+
         // Parse the record following the sync byte
         for (int j = i + 1; j < realTimeByteArray.length - 1; j++) {
           byte bValueNext = realTimeByteArray[j];
-          if ((bValueNext & DataConstants.SYNC_BYTE) == DataConstants.SYNC_BYTE) break;
+
+          // NEW: next record starts? (mask + pattern)
+          if ( (bValueNext & SYNC_MASK) == SYNC_PATTERN ) break;
 
           byte[] buffer = new byte[2];
           System.arraycopy(realTimeByteArray, j, buffer, 0, 2);
 
-          if ((bValueNext & DataConstants.SYNC_CMD_BYTE) == DataConstants.SYNC_CMD_BYTE) {
+          // NEW: classify pair strictly
+          boolean isCmdPair =
+            ((buffer[0] & SYNC_CMD_MASK) == SYNC_CMD_PATTERN) &&
+              ((buffer[1] & SYNC_CMD_MASK) == SYNC_CMD_PATTERN);
+
+          boolean isValPair =
+            ((buffer[0] & DATA_MASK) == DATA_PATTERN) &&
+              ((buffer[1] & DATA_MASK) == DATA_PATTERN);
+
+          if (isCmdPair) {
             syncCommands.add(buffer);
-          } else {
+          } else if (isValPair) {
             rtDataValues.add(buffer);
+          } else {
+            // NEW: malformed pair -> stop this record; drop only this sync-frame later
+            malformed = true;
+            break;
           }
+
           j++;
-          i = j;
+          i = j; // keep your original outer index sync
+        }
+
+        // NEW: if malformed, drop only the sync byte we consumed and continue scanning
+        if (malformed) {
+          bytesSuccessfullyRead = Math.max(bytesSuccessfullyRead, i + 1);
+          continue;
         }
 
         // Streams 1..4 from syncByte bits
@@ -104,6 +139,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
         for (byte[] cmd : syncCommands) {
           byte cmdType = cmd[0];
           byte arg = cmd[1];
+
           switch (cmdType) {
             case DataConstants.SC_TX_DATASTREAM_5_8:
               if ((arg & 0x01) != 0) dataStreamList.add(4);
@@ -121,6 +157,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
               if (arg == (byte) 0xC0) respSyncState = "InspStart";
               if (arg == (byte) 0xC1) respSyncState = "ExpStart";
               break;
+            // (Optional) If you have a constant for "corrupt record" (CF C0), you can skip emitting this record.
           }
         }
 
@@ -129,11 +166,10 @@ public class MedibusRealTimeParser extends Parser<Byte> {
             int streamIndex = dataStreamList.get(k);
             if (streamIndex < waveFormTypeList.size()) {
               byte waveCode = waveFormTypeList.get(streamIndex);
-              String waveDataCode = String.format("%02x", waveCode);
 
-              // Be lenient on case to avoid config mismatches
+              String waveDataCode = String.format("%02x", Byte.toUnsignedInt(waveCode));
               JSONObject config = realTimeConfigResponsesList.stream()
-                .filter(x -> x.getString("dataCode").equals(waveDataCode))
+                .filter(x -> waveDataCode.equalsIgnoreCase(x.optString("dataCode", "")))
                 .findFirst()
                 .orElse(null);
 
@@ -145,11 +181,10 @@ public class MedibusRealTimeParser extends Parser<Byte> {
 
                 byte[] rtBytes = rtDataValues.get(k);
 
-                // FIX: 12-bit assembly per spec: first byte = bits 6..11 (high)
-                //int binVal = ((rtBytes[0] & 0x3F) << 6) | (rtBytes[1] & 0x3F);  // <-- corrected
-                int binVal =  (rtBytes[0] & 0x3F) | ((rtBytes[1] & 0x3F) << 6);  // <-- old
+                // NOTE: your corrected 12-bit assembly (first=low6, second=high6)
+                int binVal = ((rtBytes[1] & 0x3F) << 6) | (rtBytes[0] & 0x3F);
 
-                double rtValue = ( (double)binVal / maxBinValue ) * (maxValue - minValue) + minValue;
+                double rtValue = ((double) binVal / maxBinValue) * (maxValue - minValue) + minValue;
                 double finalValue = Math.round(rtValue);
 
                 Map<String, Object> result = new HashMap<>();
@@ -166,7 +201,8 @@ public class MedibusRealTimeParser extends Parser<Byte> {
               }
             }
           }
-          bytesSuccessfullyRead = i + 1;
+          // NEW: move bytesSuccessfullyRead forward to last consumed index (i was updated inside)
+          bytesSuccessfullyRead = Math.max(bytesSuccessfullyRead, i + 1);
         }
       }
     }
@@ -179,7 +215,6 @@ public class MedibusRealTimeParser extends Parser<Byte> {
       write(deviceName, batch); // <-- pass local batch
     }
   }
-
   public void write(String deviceName, List<Map<String, Object>> batch) {
     for (Map<String, Object> map : batch) {
       String physioID = (String) map.get("physioID");

@@ -1,10 +1,10 @@
 package com.safety_box.streamer.dispatcher;
 
-import com.safety_box.core.EventBusInterface;
+import com.safety_box.core.EventBus;
 import com.safety_box.core.Service;
 import com.safety_box.streamer.model.DataPoint;
 import com.safety_box.streamer.model.TimeSeries;
-import com.safety_box.streamer.parser.Parser;
+import com.safety_box.streamer.Parser;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -13,11 +13,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class LocalDispatcher extends Service {
+public abstract class Dispatcher extends Service {
   private final List<String> addresses = new ArrayList<>();
 
 
-  public LocalDispatcher(EventBusInterface eventBus, JSONArray devices) {
+  public Dispatcher(EventBus eventBus, JSONArray devices) {
     super(eventBus);
     for (Object deviceObj : devices) {
       String deviceID = deviceObj.toString();

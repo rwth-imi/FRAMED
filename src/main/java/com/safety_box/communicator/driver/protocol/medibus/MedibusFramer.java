@@ -1,9 +1,8 @@
 package com.safety_box.communicator.driver.protocol.medibus;
 
-import com.safety_box.communicator.driver.utils.DataUtils;
-import com.safety_box.communicator.driver.utils.DataConstants;
+import com.safety_box.communicator.driver.protocol.medibus.utils.DataUtils;
+import com.safety_box.communicator.driver.protocol.medibus.utils.DataConstants;
 import com.safety_box.core.EventBus;
-import com.safety_box.core.EventBusInterface;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -13,7 +12,7 @@ import java.util.function.Consumer;
 
 public class MedibusFramer {
 
-  private final EventBusInterface eventBus;
+  private final EventBus eventBus;
   private final String deviceID;
   private boolean storeStartResp = false;
   private boolean storeStartCom = false;
@@ -26,7 +25,7 @@ public class MedibusFramer {
 
   private final Consumer<byte[]> frameHandler;
 
-  public MedibusFramer(Consumer<byte[]> frameHandler, EventBusInterface eventBus, String deviceID) {
+  public MedibusFramer(Consumer<byte[]> frameHandler, EventBus eventBus, String deviceID) {
     this.deviceID = deviceID;
     this.eventBus = eventBus;
     this.frameHandler = frameHandler;

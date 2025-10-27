@@ -1,19 +1,4 @@
 {
-  "devices": [
-    {
-      "class": "com.safety_box.communicator.driver.protocol.medibus.MedibusProtocol",
-      "id": "Oxylog-3000-Plus-00",
-      "portName": "/dev/ttyUSB0",
-      "baudRate": 19200,
-      "dataBits": 8,
-      "stopBits": 1,
-      "bufferSize": 4096,
-      "waveFormType": 1,
-      "multiplier": "10",
-      "realTime": true,
-      "slowData": false
-    }
-  ],
   "writers": [
     {
       "class": "com.safety_box.communicator.io.raw.RawByteWriter",
@@ -62,7 +47,7 @@
   ],
   "Dispatchers": [
     {
-      "class": "com.safety_box.streamer.dispatcher.influx.InfluxLocalDispatcher",
+      "class": "com.safety_box.streamer.dispatcher.influx.InfluxDispatcher",
       "bucket": "safety-box",
       "id": "InfluxDB",
       "url": "http://localhost:8086",

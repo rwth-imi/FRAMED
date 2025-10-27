@@ -1,14 +1,12 @@
 package com.safety_box.communicator.driver.parser.viatom;
 
-import com.safety_box.core.EventBusInterface;
+import com.safety_box.core.EventBus;
 import com.safety_box.communicator.driver.parser.Parser;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.time.Instant;
-
 public class ViatomParser extends Parser {
-  public ViatomParser(EventBusInterface eventBus, JSONArray devices) {
+  public ViatomParser(EventBus eventBus, JSONArray devices) {
     super(eventBus);
     for (Object device : devices) {
       String deviceName = (String) device;

@@ -1,21 +1,19 @@
 package com.safety_box.communicator.driver.parser.medibus;
 
 import com.safety_box.communicator.driver.parser.Parser;
-import com.safety_box.communicator.driver.utils.DataConstants;
+import com.safety_box.communicator.driver.protocol.medibus.utils.DataConstants;
 import com.safety_box.core.EventBus;
-import com.safety_box.core.EventBusInterface;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class MedibusSlowParser extends Parser<byte[]> {
   final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS");
 
-  public MedibusSlowParser(EventBusInterface eventBus, JSONArray devices) {
+  public MedibusSlowParser(EventBus eventBus, JSONArray devices) {
     super(eventBus);
     for  (Object device : devices) {
       String deviceName = (String) device;

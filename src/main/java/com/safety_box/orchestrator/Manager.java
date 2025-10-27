@@ -1,8 +1,7 @@
-package com.safety_box.orchestrator.manager;
+package com.safety_box.orchestrator;
 
-import com.safety_box.core.EventBusInterface;
-import com.safety_box.core.Service;
 import com.safety_box.core.EventBus;
+import com.safety_box.core.Service;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -12,11 +11,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Manager {
-  private final EventBusInterface eventBus;
+  private final EventBus eventBus;
   Map<String, Service> instances = new HashMap<>();
   JSONObject config;
 
-  public Manager(JSONObject config, EventBusInterface eventBus) {
+  public Manager(JSONObject config, EventBus eventBus) {
     this.config = config;
     this.eventBus = eventBus;
   }

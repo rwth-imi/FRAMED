@@ -1,4 +1,4 @@
-package com.safety_box.orchestrator.io;
+package com.safety_box.orchestrator;
 
 
 import org.json.JSONObject;

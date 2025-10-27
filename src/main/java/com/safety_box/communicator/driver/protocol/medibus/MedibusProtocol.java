@@ -4,10 +4,9 @@ import com.fazecast.jSerialComm.SerialPortDataListener;
 import com.fazecast.jSerialComm.SerialPortEvent;
 import com.safety_box.communicator.driver.protocol.Protocol;
 import com.fazecast.jSerialComm.SerialPort;
-import com.safety_box.communicator.driver.utils.DataUtils;
-import com.safety_box.communicator.driver.utils.DataConstants;
+import com.safety_box.communicator.driver.protocol.medibus.utils.DataUtils;
+import com.safety_box.communicator.driver.protocol.medibus.utils.DataConstants;
 import com.safety_box.core.EventBus;
-import com.safety_box.core.EventBusInterface;
 import com.safety_box.core.Timer;
 import org.json.JSONObject;
 
@@ -51,7 +50,7 @@ public class MedibusProtocol extends Protocol {
     boolean realTime,
     boolean slowData,
     String multiplier,
-    EventBusInterface eventBus) {
+    EventBus eventBus) {
     super(id, eventBus);
     // initialize globals from config
     this.portName = portName;

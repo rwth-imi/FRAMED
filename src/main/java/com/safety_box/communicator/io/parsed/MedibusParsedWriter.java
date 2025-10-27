@@ -3,8 +3,6 @@ package com.safety_box.communicator.io.parsed;
 import com.safety_box.communicator.io.Writer;
 
 import com.safety_box.core.EventBus;
-
-import com.safety_box.core.EventBusInterface;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -18,7 +16,7 @@ import java.util.List;
 public class MedibusParsedWriter extends Writer<JSONObject> {
   private List<String> addresses = new ArrayList<>();
 
-  public MedibusParsedWriter(String path, EventBusInterface eventBus, JSONArray devices) {
+  public MedibusParsedWriter(String path, EventBus eventBus, JSONArray devices) {
     super(path, eventBus);
     for  (Object device : devices) {
       String deviceName = (String) device;

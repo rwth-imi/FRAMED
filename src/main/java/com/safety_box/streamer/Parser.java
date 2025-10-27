@@ -1,4 +1,4 @@
-package com.safety_box.streamer.parser;
+package com.safety_box.streamer;
 
 import com.safety_box.streamer.model.DataPoint;
 import org.json.JSONObject;
@@ -6,7 +6,6 @@ import org.json.JSONObject;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
 public class Parser {
