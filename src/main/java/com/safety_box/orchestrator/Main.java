@@ -3,13 +3,20 @@ package com.safety_box.orchestrator;
 import com.safety_box.core.*;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
+
 
 public class Main {
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws IOException {
     // start all configured device protocol handlers
     JSONObject servicesConfigs;
     JSONObject communicationConfig;
+
+
+
+
     try {
       servicesConfigs = ConfigLoader.loadConfig("services.json");
       ConfigLoader.validateServiceConfigs(servicesConfigs);
@@ -25,11 +32,12 @@ public class Main {
     }
 
     Transport transport;
+    int port = communicationConfig.getInt("port");
 
     if (communicationConfig.getString("type").equals("TCP")){
-      transport = new TCPTransport(4999);
+      transport = new NioTcpTransport(port);
     } else if (communicationConfig.getString("type").equals("UDP")){
-      transport = new UDPTransport(4999);
+      transport = new NioUdpTransport(port);
     } else {
       throw new RuntimeException("Invalid communication type config");
     }
@@ -46,6 +54,14 @@ public class Main {
     for (String key : servicesConfigs.keySet()) {
       manager.instantiate(key);
     }
+
+    // Keep the main thread alive
+    try {
+      new CountDownLatch(1).await(); // Blocks forever
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+
   }
 }
 

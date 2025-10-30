@@ -34,7 +34,7 @@ public class SocketEventBus implements EventBus {
   public void send(String address, Object message) {
     dispatchLocally(address, message);
     for (Peer peer : peers) {
-      transport.send(peer.getHost(), peer.getPort(), address, message);
+      transport.send(peer.host(), peer.port(), address, message);
     }
   }
 
@@ -42,7 +42,7 @@ public class SocketEventBus implements EventBus {
   public void publish(String address, Object message) {
     dispatchLocally(address, message);
     for (Peer peer : peers) {
-      transport.publish(peer.getHost(), peer.getPort(), address, message);
+      transport.publish(peer.host(), peer.port(), address, message);
     }
   }
 
