@@ -46,7 +46,7 @@ public class UDPTransport implements Transport {
           }
         }
       } catch (IOException e) {
-        if (running) e.printStackTrace();
+        if (running) throw new RuntimeException(e);
       }
     }, "UdpTransport-Listener").start();
   }
@@ -71,7 +71,7 @@ public class UDPTransport implements Transport {
       DatagramPacket packet = new DatagramPacket(data, data.length, InetAddress.getByName(host), port);
       socket.send(packet);
     } catch (IOException e) {
-      e.printStackTrace();
+      throw new RuntimeException(e);
     }
   }
 

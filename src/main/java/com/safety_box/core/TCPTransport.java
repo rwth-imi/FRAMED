@@ -22,7 +22,7 @@ public class TCPTransport implements Transport {
   private final Map<String, List<Consumer<Object>>> handlers = new ConcurrentHashMap<>();
   private volatile boolean running = true;
   private final ExecutorService executor = Executors.newCachedThreadPool();
-
+  private ServerSocket serverSocket;
 
   public TCPTransport(int port) {
     this.port = port;
@@ -31,13 +31,14 @@ public class TCPTransport implements Transport {
   @Override
   public void start() {
     executor.submit(() -> {
-      try (ServerSocket serverSocket = new ServerSocket(port)) {
+      try {
+        serverSocket = new ServerSocket(port);
         while (running) {
           Socket client = serverSocket.accept();
           executor.submit(() -> handleClient(client));
         }
       } catch (IOException e) {
-        if (running) e.printStackTrace();
+        if (running) throw new RuntimeException(e);
       }
     });
   }
@@ -60,7 +61,7 @@ public class TCPTransport implements Transport {
         }
       }
     } catch (IOException e) {
-      if (running) e.printStackTrace();
+      if (running) throw new RuntimeException(e);
     }
   }
 
@@ -84,7 +85,7 @@ public class TCPTransport implements Transport {
       PrintWriter writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8);
       writer.println(json.toString());
     } catch (IOException e) {
-      e.printStackTrace();
+      throw new RuntimeException(e);
     }
   }
 
@@ -92,6 +93,14 @@ public class TCPTransport implements Transport {
   public void shutdown() {
     running = false;
     executor.shutdownNow();
+    try {
+      if (serverSocket != null && !serverSocket.isClosed()) {
+        serverSocket.close();
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
   }
 
   @Override
