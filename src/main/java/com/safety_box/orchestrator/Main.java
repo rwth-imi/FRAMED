@@ -1,7 +1,12 @@
 package com.safety_box.orchestrator;
 
+import com.safety_box.core.Peer;
 import com.safety_box.core.SocketEventBus;
+import com.safety_box.core.TCPTransport;
 import org.json.JSONObject;
+
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Main {
 
@@ -14,7 +19,11 @@ public class Main {
       throw new RuntimeException(e);
     }
 
-    SocketEventBus eventBus = new SocketEventBus(5000, "localhost");
+
+    TCPTransport tcp = new TCPTransport(4999);
+
+    SocketEventBus eventBus = new SocketEventBus(tcp);
+
     Manager manager = new Manager(config, eventBus);
     for (String key : config.keySet()) {
       manager.instantiate(key);
