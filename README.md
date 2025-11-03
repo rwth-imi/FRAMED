@@ -249,7 +249,11 @@ python annotation_service.py
 
 ## Architecture 📐
 ### 3LGM² Design
-![3LGM²](images/model_diagram_no_vertx_3lgm2.drawio.png)
+The domain layer describes potential
+![3LGM²](images/domain_layer_3lgm2.drawio.png)
+![3LGM²](images/logical_layer_3lgm2.drawio.png)
+![3LGM²](images/physical_tool_layer_3lgm2.drawio.png)
+
 ### Model Diagram (TODO: adapt eventbus for new transport abstraction)
 ![3LGM²](images/package_diagram.drawio.png)
 ### EventBus Schema (WIP: not device.parsed but physio.parsed now)
