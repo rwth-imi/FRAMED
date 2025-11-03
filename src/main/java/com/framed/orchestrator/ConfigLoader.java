@@ -38,7 +38,7 @@ public class ConfigLoader {
     }
   }
 
-  public static void validateCommunicationConfigs(JSONObject communicationConfig)  throws Exception {
+  public static void validateCommunicationConfigs(JSONObject communicationConfig) throws Exception {
     boolean valid = true;
     if (!communicationConfig.has("port")) {
       valid = false;

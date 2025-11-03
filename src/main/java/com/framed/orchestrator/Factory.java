@@ -1,4 +1,5 @@
 package com.framed.orchestrator;
+
 import com.framed.core.EventBus;
 import com.framed.core.Service;
 import org.json.JSONObject;
@@ -24,10 +25,10 @@ public class Factory {
           Object value = config.get(paramName);
           args[i] = value;
         } else if (paramType.equals(EventBus.class)) {
-            args[i] = eventBus;
+          args[i] = eventBus;
         } else {
-            match = false;
-            break;
+          match = false;
+          break;
         }
       }
 

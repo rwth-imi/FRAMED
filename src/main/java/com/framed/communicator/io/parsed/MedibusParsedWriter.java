@@ -18,13 +18,13 @@ public class MedibusParsedWriter extends Writer<JSONObject> {
 
   public MedibusParsedWriter(String path, EventBus eventBus, JSONArray devices) {
     super(path, eventBus);
-    for  (Object device : devices) {
+    for (Object device : devices) {
       String deviceName = (String) device;
-      eventBus.register(deviceName+".addresses", msg -> {
+      eventBus.register(deviceName + ".addresses", msg -> {
         if (!addresses.contains(msg.toString())) {
           addresses.add(msg.toString());
           eventBus.register(
-            msg.toString(), msg_ ->{
+            msg.toString(), msg_ -> {
               handleEventBus(msg_, deviceName);
             }
           );
@@ -48,8 +48,6 @@ public class MedibusParsedWriter extends Writer<JSONObject> {
       Files.write(filePath, "\n".getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
   }
-
-
 
 
   public synchronized void handleEventBus(Object msg, String deviceName) {

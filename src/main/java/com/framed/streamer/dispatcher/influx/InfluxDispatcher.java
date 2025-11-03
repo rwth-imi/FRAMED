@@ -54,7 +54,7 @@ public class InfluxDispatcher extends Dispatcher {
 
   @Override
   public void pushBatch(TimeSeries timeSeries) {
-    for (DataPoint<?> dp: timeSeries.dataPoints()) {
+    for (DataPoint<?> dp : timeSeries.dataPoints()) {
       push(dp);
     }
   }

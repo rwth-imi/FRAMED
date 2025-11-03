@@ -15,8 +15,6 @@ public class Main {
     JSONObject communicationConfig;
 
 
-
-
     try {
       servicesConfigs = ConfigLoader.loadConfig("services.json");
       ConfigLoader.validateServiceConfigs(servicesConfigs);
@@ -24,7 +22,7 @@ public class Main {
       throw new RuntimeException(e);
     }
 
-    try{
+    try {
       communicationConfig = ConfigLoader.loadConfig("communication.json");
       ConfigLoader.validateCommunicationConfigs(communicationConfig);
     } catch (Exception e) {
@@ -34,15 +32,15 @@ public class Main {
     Transport transport;
     int port = communicationConfig.getInt("port");
 
-    if (communicationConfig.getString("type").equals("TCP")){
+    if (communicationConfig.getString("type").equals("TCP")) {
       transport = new NioTcpTransport(port);
-    } else if (communicationConfig.getString("type").equals("UDP")){
+    } else if (communicationConfig.getString("type").equals("UDP")) {
       transport = new NioUdpTransport(port);
     } else {
       throw new RuntimeException("Invalid communication type config");
     }
     SocketEventBus eventBus = new SocketEventBus(transport);
-    if (communicationConfig.has("peers")){
+    if (communicationConfig.has("peers")) {
       for (Object peer : communicationConfig.getJSONArray("peers")) {
         JSONObject peerConfig = (JSONObject) peer;
         eventBus.addPeer(new Peer(peerConfig.getString("host"), peerConfig.getInt("port")));

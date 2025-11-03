@@ -33,6 +33,7 @@ public class SocketEventBusTest {
     assertEquals("Hello", received.get());
     assertTrue(mockTransport.getSentMessages().contains("SEND:test.address:Hello"));
   }
+
   @Test
   public void testPublishMessageToPeer() {
     AtomicReference<Object> received1 = new AtomicReference<>();

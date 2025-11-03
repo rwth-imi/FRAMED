@@ -21,10 +21,10 @@ public abstract class Dispatcher extends Service {
     super(eventBus);
     for (Object deviceObj : devices) {
       String deviceID = deviceObj.toString();
-      eventBus.register(deviceID+".addresses", msg -> {
-        if (!addresses.contains(msg.toString())){
+      eventBus.register(deviceID + ".addresses", msg -> {
+        if (!addresses.contains(msg.toString())) {
           addresses.add(msg.toString());
-          eventBus.register((String) msg, msg_ ->{
+          eventBus.register((String) msg, msg_ -> {
             try {
               JSONObject body = (JSONObject) msg_;
               body.put("deviceID", deviceID);

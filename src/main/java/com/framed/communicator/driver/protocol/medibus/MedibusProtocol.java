@@ -24,6 +24,7 @@ public class MedibusProtocol extends Protocol {
     IDLE, INITIALIZING, IDENTIFYING, CONFIGURING, ACTIVE, REALTIME, TERMINATING
 
   }
+
   private State currentState = State.IDLE;
 
   private String portName;
@@ -102,7 +103,7 @@ public class MedibusProtocol extends Protocol {
   }
 
 
-  private void readData(){
+  private void readData() {
     byte[] buffer = new byte[serialPort.bytesAvailable()];
     int numRead = serialPort.readBytes(buffer, buffer.length);
     if (numRead > 0) {
@@ -127,7 +128,7 @@ public class MedibusProtocol extends Protocol {
       public void serialEvent(SerialPortEvent event) {
         if (event.getEventType() != SerialPort.LISTENING_EVENT_DATA_AVAILABLE) return;
 
-       readData();
+        readData();
       }
     });
   }
@@ -257,7 +258,8 @@ public class MedibusProtocol extends Protocol {
           case "\u0001$" -> { // Data response cp1
             logger.log(Level.INFO, "Received: Data CP1 response");
             logger.fine("Sending command: poll_request_config_measured_data_codepage2");
-            sendCommand(DataConstants.poll_request_config_measured_data_codepage2);}
+            sendCommand(DataConstants.poll_request_config_measured_data_codepage2);
+          }
           case "\u0001+" -> { // Data response cp2
             logger.log(Level.INFO, "Received: Data CP2 response");
             logger.fine("Sending command: poll_request_device_settings");
@@ -353,7 +355,7 @@ public class MedibusProtocol extends Protocol {
       rtConfig.put("maxValue", Integer.parseInt(maxValueString));
       rtConfig.put("maxBinValue", Integer.parseInt(maxBinValueString, 16));
 
-      eventBus.publish(id +".real-time", rtConfig);
+      eventBus.publish(id + ".real-time", rtConfig);
     }
   }
 
@@ -432,14 +434,14 @@ public class MedibusProtocol extends Protocol {
     byte[] finalTxBuff = DataUtils.concatBuffer(inputBuffer, checksumAsciiHexBytes);
 
     try {
-      this.serialPort.writeBytes(finalTxBuff, finalTxBuff.length,0);
+      this.serialPort.writeBytes(finalTxBuff, finalTxBuff.length, 0);
     } catch (Exception ex) {
       System.err.println("Error opening/writing to serial port :: " + ex.getMessage());
     }
   }
 
   public void sendDeviceID() {
-    byte[] deviceIDCommandResponse = { 0x52 };
+    byte[] deviceIDCommandResponse = {0x52};
     byte[] devID = "0161".getBytes(StandardCharsets.US_ASCII);
     byte[] devName = "'SafetyBox'".getBytes(StandardCharsets.US_ASCII);
     byte[] devRevision = "01.03".getBytes(StandardCharsets.US_ASCII);
@@ -462,7 +464,7 @@ public class MedibusProtocol extends Protocol {
     commandEchoResponse(txBuffer);
   }
 
-  public void setConfiguredDataStreams(boolean disable){
+  public void setConfiguredDataStreams(boolean disable) {
     if (this.waveFormType == 0) return;
     setDataStreams(DataConstants.SC_DATASTREAM_1_4, disable);
     if (this.waveFormType == 4) {

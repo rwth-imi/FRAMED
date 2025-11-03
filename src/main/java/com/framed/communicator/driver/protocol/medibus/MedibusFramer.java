@@ -67,7 +67,7 @@ public class MedibusFramer {
 
       default:
         if ((bValue & DataConstants.RT_BYTE) == DataConstants.RT_BYTE) {
-          eventBus.publish(deviceID+".real-time", bValue);
+          eventBus.publish(deviceID + ".real-time", bValue);
           bRTList.add(bValue);
         } else if (storeStartCom && !storeEnd) {
           bComList.add(bValue);
@@ -79,37 +79,37 @@ public class MedibusFramer {
   }
 
 
-private void finalizeFrame() {
-  int frameLen = bList.size();
-  if (frameLen < 3) {
+  private void finalizeFrame() {
+    int frameLen = bList.size();
+    if (frameLen < 3) {
+      bList.clear();
+      storeEnd = false;
+      return;
+    }
+
+    byte[] bArray = new byte[frameLen];
+    for (int i = 0; i < frameLen; i++) {
+      bArray[i] = bList.get(i);
+    }
+
+    int userDataFrameLen = frameLen - 2;
+    byte[] userDataArray = new byte[userDataFrameLen];
+    System.arraycopy(bArray, 0, userDataArray, 0, userDataFrameLen);
+
+    byte[] checksumArray = new byte[2];
+    System.arraycopy(bArray, frameLen - 2, checksumArray, 0, 2);
+    String checksumStr = new String(checksumArray, StandardCharsets.US_ASCII);
+
+    byte checksumComputed = DataUtils.computeChecksum(userDataArray);
+    String checksumComputedStr = String.format("%02X", checksumComputed & 0xFF).toUpperCase();
+
+    if (checksumComputedStr.equals(checksumStr)) {
+      frameHandler.accept(userDataArray);
+    } else {
+      System.err.println("Checksum Error");
+    }
+
     bList.clear();
     storeEnd = false;
-    return;
   }
-
-  byte[] bArray = new byte[frameLen];
-  for (int i = 0; i < frameLen; i++) {
-    bArray[i] = bList.get(i);
-  }
-
-  int userDataFrameLen = frameLen - 2;
-  byte[] userDataArray = new byte[userDataFrameLen];
-  System.arraycopy(bArray, 0, userDataArray, 0, userDataFrameLen);
-
-  byte[] checksumArray = new byte[2];
-  System.arraycopy(bArray, frameLen - 2, checksumArray, 0, 2);
-  String checksumStr = new String(checksumArray, StandardCharsets.US_ASCII);
-
-  byte checksumComputed = DataUtils.computeChecksum(userDataArray);
-  String checksumComputedStr = String.format("%02X", checksumComputed & 0xFF).toUpperCase();
-
-  if (checksumComputedStr.equals(checksumStr)) {
-    frameHandler.accept(userDataArray);
-  } else {
-    System.err.println("Checksum Error");
-  }
-
-  bList.clear();
-  storeEnd = false;
-}
 }

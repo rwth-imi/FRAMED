@@ -16,26 +16,26 @@ public class ViatomParser extends Parser {
     }
   }
 
-  private void handleEventBus (String msg, String deviceName){
+  private void handleEventBus(String msg, String deviceName) {
     parse(msg, deviceName);
   }
 
   @Override
   public void parse(Object message, String deviceName) {
     JSONObject result = new JSONObject((String) message);
-    String timestamp =  result.getString("timestamp");
+    String timestamp = result.getString("timestamp");
     JSONObject data = result.getJSONObject("data");
     for (String key : data.keySet()) {
       Object value = data.getJSONObject(key).get("value");
       Object field = data.getJSONObject(key).get("field");
-      String address = deviceName+"."+key+".parsed";
+      String address = deviceName + "." + key + ".parsed";
       JSONObject parsedResult = new JSONObject();
       parsedResult.put("timestamp", timestamp);
       parsedResult.put("realTime", false);
       parsedResult.put("channelID", key);
       parsedResult.put("value", value);
       parsedResult.put("className", field.toString());
-      eventBus.publish(deviceName+".addresses", address);
+      eventBus.publish(deviceName + ".addresses", address);
       eventBus.publish(address, parsedResult);
     }
   }

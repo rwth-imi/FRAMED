@@ -20,17 +20,17 @@ public class MedibusRealTimeParser extends Parser<Byte> {
   private final List<Byte> realTimeByteList = new CopyOnWriteArrayList<>();
   private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS");
 
-  private List<Byte> waveFormTypeList = new CopyOnWriteArrayList<>();
-  private final List<Map<String, Object>> waveValResultList = new CopyOnWriteArrayList<>();;
+  private List<Byte> waveFormTypeList;
+  private final List<Map<String, Object>> waveValResultList = new CopyOnWriteArrayList<>();
 
   private final List<JSONObject> realTimeConfigResponsesList = new CopyOnWriteArrayList<>();
 
   public MedibusRealTimeParser(EventBus eventBus, int waveFormType, JSONArray devices) {
     super(eventBus);
     waveFormTypeList = DataUtils.createWaveFormTypeList(waveFormType);
-    for  (Object device : devices) {
+    for (Object device : devices) {
       String deviceName = (String) device;
-      eventBus.register(deviceName+".real-time", msg -> {
+      eventBus.register(deviceName + ".real-time", msg -> {
         handleEventBus(msg, deviceName);
       });
     }
@@ -63,12 +63,12 @@ public class MedibusRealTimeParser extends Parser<Byte> {
     long recordMonoNs = 0L; // optional relative time
 
     // NEW: local masks/patterns (minimal addition; use your DataConstants if present)
-    final int SYNC_MASK        = DataConstants.SYNC_MASK;        // e.g., 0xF0
-    final int SYNC_PATTERN     = DataConstants.SYNC_BYTE;        // e.g., 0xD0 (1101xxxx)
-    final int SYNC_CMD_MASK    = DataConstants.SYNC_MASK;    // e.g., 0xF0
+    final int SYNC_MASK = DataConstants.SYNC_MASK;        // e.g., 0xF0
+    final int SYNC_PATTERN = DataConstants.SYNC_BYTE;        // e.g., 0xD0 (1101xxxx)
+    final int SYNC_CMD_MASK = DataConstants.SYNC_MASK;    // e.g., 0xF0
     final int SYNC_CMD_PATTERN = DataConstants.SYNC_CMD_BYTE;    // e.g., 0xC0 (1100xxxx)
-    final int DATA_MASK        = 0xC0;                           // 1100_0000
-    final int DATA_PATTERN     = 0x80;                           // 1000_0000 (value byte)
+    final int DATA_MASK = 0xC0;                           // 1100_0000
+    final int DATA_PATTERN = 0x80;                           // 1000_0000 (value byte)
 
     for (int i = 0; i < realTimeByteArray.length; i++) {
       byte bValue = realTimeByteArray[i];
@@ -77,7 +77,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
       if ((bValue & 0x80) == 0) continue;
 
       // NEW: strict Sync detection (mask + pattern)
-      if ( (bValue & SYNC_MASK) == SYNC_PATTERN ) {
+      if ((bValue & SYNC_MASK) == SYNC_PATTERN) {
         // Start of a new realtime data record -> capture timestamps NOW
         recordWallMs = System.currentTimeMillis();
         recordMonoNs = System.nanoTime();
@@ -95,7 +95,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
           byte bValueNext = realTimeByteArray[j];
 
           // NEW: next record starts? (mask + pattern)
-          if ( (bValueNext & SYNC_MASK) == SYNC_PATTERN ) break;
+          if ((bValueNext & SYNC_MASK) == SYNC_PATTERN) break;
 
           byte[] buffer = new byte[2];
           System.arraycopy(realTimeByteArray, j, buffer, 0, 2);
@@ -215,6 +215,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
       write(deviceName, batch); // <-- pass local batch
     }
   }
+
   public void write(String deviceName, List<Map<String, Object>> batch) {
     for (Map<String, Object> map : batch) {
       String channelID = (String) map.get("channelID");

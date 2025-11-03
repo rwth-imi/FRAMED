@@ -113,7 +113,8 @@ public class NioTcpTransport implements Transport {
     } catch (IOException e) {
       try {
         client.close();
-      } catch (IOException ignored) {}
+      } catch (IOException ignored) {
+      }
       buffers.remove(client);
     }
   }

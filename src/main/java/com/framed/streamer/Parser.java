@@ -19,6 +19,6 @@ public class Parser {
     String channelID = jsonObject.getString("channelID");
     String deviceID = jsonObject.getString("deviceID");
     String className = jsonObject.getString("className");
-    return new DataPoint<>(timestamp, value, channelID, deviceID,  className);
+    return new DataPoint<>(timestamp, value, channelID, deviceID, className);
   }
 }
