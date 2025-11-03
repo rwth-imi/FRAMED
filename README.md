@@ -120,7 +120,7 @@ The services.jons file is configured:
 {
   "devices": [
     {
-      "class": "com.safety_box.communicator.driver.protocol.medibus.MedibusProtocol",
+      "class": "com.framed.communicator.driver.protocol.medibus.MedibusProtocol",
       "id": "Oxylog-3000-Plus-00",
       "portName": "/dev/ttyUSB0",
       "baudRate": 19200,

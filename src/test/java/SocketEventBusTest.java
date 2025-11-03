@@ -1,6 +1,6 @@
-import com.safety_box.core.Peer;
-import com.safety_box.core.SocketEventBus;
-import com.safety_box.core.MockTransport;
+import com.framed.core.Peer;
+import com.framed.core.SocketEventBus;
+import com.framed.core.MockTransport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
