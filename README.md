@@ -249,9 +249,11 @@ python annotation_service.py
 
 ## Architecture 📐
 ### 3LGM² Design
-The domain layer describes potential
+The domain layer categorizes user groups, software functions, and data types to identify reuse scenarios:
 ![3LGM²](images/domain_layer_3lgm2.drawio.png)
+The logical tool layer services, components, and interfaces
 ![3LGM²](images/logical_layer_3lgm2.drawio.png)
+The physical tool layer specifies an exemplary hardware setup.
 ![3LGM²](images/physical_tool_layer_3lgm2.drawio.png)
 
 ### Model Diagram (TODO: adapt eventbus for new transport abstraction)
