@@ -2,15 +2,18 @@
 
 A **F**ramework for **R**ealtime **A**bstraction of **M**edical **E**vent **D**ata
 
-## What is FRAMED `:framed_picture:` ?
+## What is FRAMED 🖼️?
 FRAMED is a service oriented software framework to acquire and integrate data from multiple sources.
 These sources can be medical-devices, sensors, etc.
 The architecture is designed highly modular to be deployed either on a single edge device, or on a distributed setup.
 Asynchronous computation and communication between services is supported by a SocketEventBus.
 
-## Getting started
+## Getting started 🎬
 
-### Compatibility
+### Compatibility 🔌
+FRAMED is written in Java and tested on Ubuntu 24.04. It should work cross-platform.
+If platform specific bugs occur, please refer to (TODO contributing.md)
+
 The following devices / protocols are supported by default:
 - Medibus (Draeger devices, tested with Oxylog 3000 Plus)
 - PC60FW Pulse-Oximeter (BLE device, external python service (TODO: Reference link))
@@ -18,7 +21,7 @@ The following devices / protocols are supported by default:
 Further, the default setup includes an InfluxDB and a JSONLines dispatcher to store the acquired data.
 An external python service may be used to annotate data streams online (TODO: Reference link)
 
-### FRAMED Configuration `:wrench:`
+### FRAMED Configuration 👩‍🔧
 Adapt the services.json config file to run the FRAMED services you need.
 The config consists of 4 default sections:
 1. devices
@@ -54,11 +57,12 @@ Adapt the communication.json config file to configure the socket type, the port,
 }
 ```
 See the default communication.json for example
-### Adding your own device
+
+### Adding your own device 📟
 To add a device, you will need to implement the Protocol class and the Parser class for that device.
 Handle the dataflow via the EventBus Architecture (cf. Architecture).
 
-### Building
+### Building 👷‍♀️
 To launch the tests:
 
 ```bash
@@ -102,7 +106,7 @@ sudo apt-get install doxygen
 
 Refer to [influx](https://docs.influxdata.com/influxdb/v2/install/use-docker-compose/) for InfluxDBv2 Docker deployment.
 
-## Usage
+## Usage ℹ️
 Let's consider an example from the FRAMED Case-Study (see future paper...).
 We want to receive data from:
 1. The Draeger Oxylog 3000 Plus Transport Ventilator
@@ -238,33 +242,33 @@ python viatom.py
 python annotation_service.py
 ```
 
-4. Watch your data coming in (configure an Influx dashboard):
+4. 🔥 Watch your data coming in (configure an Influx dashboard) 🔥:
 
 ![InfluxDB2](images/influx_example.png)
 
 
-## Architecture
+## Architecture 📐
 ### 3LGM² Design
 ![3LGM²](images/model_diagram_no_vertx_3lgm2.drawio.png)
 ### Model Diagram (TODO: adapt eventbus for new transport abstraction)
 ![3LGM²](images/package_diagram.drawio.png)
 ### EventBus Schema (WIP: not device.parsed but physio.parsed now)
 ![EventBus](images/model_diagram_no_vertx.drawio.png)
-## Support
+## Support ⛑️
 For support, please refer to nfreyer@ukaachen.de or simlab@ukaachen.de
 
-## Roadmap
+## Roadmap 🛣️
 There are more default protocols to come, including IEEE SDC!
 Also, we are at the state of developing an Alarm-CDSS on top of the data gathering layer (cf. Architecture).
-## Contributing
+## Contributing 🫶
 Thank you for considering! Please refer to (TODO: contributing.md -> https://contributing.md/generator/) for further information.
 ## Authors and acknowledgment
 todo
-## License
+## License ⚖️
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
-## Project status
-Running. `:white_check_mark:`
+## Project status 🚧
+Running. ✅
