@@ -1,4 +1,5 @@
 {
+
   "writers": [
     {
       "class": "com.safety_box.communicator.io.raw.RawByteWriter",
