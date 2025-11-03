@@ -1,7 +1,7 @@
-<h1 style="display:flex; justify-content:space-between; align-items:center;">
-FRAMED
-<img src="images/logo.drawio.png" alt="Logo" width="80">
-</h1>
+<div style="display:flex; align-items:center; justify-content:space-between;">
+  <h1>FRAMED</h1>
+  <img src="images/logo.drawio.png" alt="Logo" width="80">
+</div>
 
 
 A **F**ramework for **R**ealtime **A**bstraction of **M**edical **E**vent **D**ata
