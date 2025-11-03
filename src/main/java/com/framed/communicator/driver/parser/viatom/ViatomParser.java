@@ -32,7 +32,7 @@ public class ViatomParser extends Parser {
       JSONObject parsedResult = new JSONObject();
       parsedResult.put("timestamp", timestamp);
       parsedResult.put("realTime", false);
-      parsedResult.put("physioID", key);
+      parsedResult.put("channelID", key);
       parsedResult.put("value", value);
       parsedResult.put("className", field.toString());
       eventBus.publish(deviceName+".addresses", address);

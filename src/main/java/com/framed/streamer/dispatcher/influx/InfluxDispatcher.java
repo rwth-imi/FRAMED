@@ -45,10 +45,10 @@ public class InfluxDispatcher extends Dispatcher {
     } else if (value instanceof Boolean) {
       point.addField(dataPoint.className(), (Boolean) value);
     } else {
-      System.err.printf("Invalid value for data point %s\n", dataPoint.physioID());
+      System.err.printf("Invalid value for data point %s\n", dataPoint.channelID());
     }
     System.out.println(dataPoint.timestamp() + dataPoint.className());
-    point.addTag("physioID", dataPoint.physioID());
+    point.addTag("channelID", dataPoint.channelID());
     writeApi.writePoint(bucket, org, point);
   }
 

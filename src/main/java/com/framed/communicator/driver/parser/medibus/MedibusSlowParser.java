@@ -71,7 +71,7 @@ public class MedibusSlowParser extends Parser<byte[]> {
 
     String dataCode;
     String dataValue;
-    String physioID;
+    String channelID;
 
     int lastItemLength = 0;
     for (int i = 0; i < responseLength; i += offset + lastItemLength) {
@@ -84,9 +84,9 @@ public class MedibusSlowParser extends Parser<byte[]> {
         dataValue = response.substring(i+3, i+3 + lastItemLength);
         dataValue = dataValue.trim();
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
-        // physioID = DataConstants.MedibusXTextMessages.get(dataCodeByte);
+        // channelID = DataConstants.MedibusXTextMessages.get(dataCodeByte);
         // System.out.printf("TextMessage: %s%n", dataValue);
-        JSONObject result =  new JSONObject().put("physioID", "TextMessage");
+        JSONObject result =  new JSONObject().put("channelID", "TextMessage");
         result.put("value", dataValue);
         write(deviceName, result, "TextMessage");
       }
@@ -97,7 +97,7 @@ public class MedibusSlowParser extends Parser<byte[]> {
     // init local parser variables
     String dataCode;
     double dataValue;
-    String physioID;
+    String channelID;
 
     int dataLength = 4;
     int dataArrayLength = message.length - 2;
@@ -128,21 +128,21 @@ public class MedibusSlowParser extends Parser<byte[]> {
        switch (reqType) {
         case "MeasurementCP1" -> {
           className = "Measurement";
-          physioID = DataConstants.MedibusXMeasurementCP1.get(dataCodeByte);
+          channelID = DataConstants.MedibusXMeasurementCP1.get(dataCodeByte);
         }
         case "MeasurementCP2" -> {
           className = "Measurement";
-          physioID = DataConstants.MedibusXMeasurementCP2.get(dataCodeByte);
+          channelID = DataConstants.MedibusXMeasurementCP2.get(dataCodeByte);
         }
         case "DeviceSettings" -> {
           className = "Settings";
-          physioID = DataConstants.MedibusXDeviceSettings.get(dataCodeByte);
+          channelID = DataConstants.MedibusXDeviceSettings.get(dataCodeByte);
         }
         default -> throw new IllegalStateException("Unexpected value: " + reqType);
       };
 
-      //System.out.printf("DataMessage - %s: %s%n", physioID, dataValue);
-      JSONObject result =  new JSONObject().put("physioID", physioID);
+      //System.out.printf("DataMessage - %s: %s%n", channelID, dataValue);
+      JSONObject result =  new JSONObject().put("channelID", channelID);
       result.put("value", dataValue);
       write(deviceName, result, className);
     }
@@ -157,7 +157,7 @@ public class MedibusSlowParser extends Parser<byte[]> {
     int responseLength = response.length();
     String dataCode = "";
     String dataValue = "";
-    String physioID = "";
+    String channelID = "";
 
     if (responseLength > 0) {
       for (int i = 0; i < responseLength; i += offset) {
@@ -170,15 +170,15 @@ public class MedibusSlowParser extends Parser<byte[]> {
         dataValue = response.substring(i + 3, j);
         dataValue = dataValue.trim();
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
-        physioID = switch (reqType) {
+        channelID = switch (reqType) {
           case "AlarmCP1" -> DataConstants.MedibusXAlarmsCP1.get(dataCodeByte);
-          //System.out.printf("%s: %s%n", physioID, dataValue);
+          //System.out.printf("%s: %s%n", channelID, dataValue);
           case "AlarmCP2" -> DataConstants.MedibusXAlarmsCP2.get(dataCodeByte);
-          //System.out.printf("%s: %s%n", physioID, dataValue);
+          //System.out.printf("%s: %s%n", channelID, dataValue);
           default -> throw new IllegalStateException("Unexpected value: " + reqType);
         };
-        //System.out.printf("Alarms-Message - %s: %s%n", physioID, dataValue);
-        JSONObject result =  new JSONObject().put("physioID", physioID);
+        //System.out.printf("Alarms-Message - %s: %s%n", channelID, dataValue);
+        JSONObject result =  new JSONObject().put("channelID", channelID);
         result.put("value", dataValue);
         write(deviceName, result, "Alarm");
       }
@@ -189,8 +189,8 @@ public class MedibusSlowParser extends Parser<byte[]> {
     result.put("timestamp", LocalDateTime.now().format(formatter));
     result.put("realTime", false);
     result.put("className", className);
-    String physioID = result.getString("physioID");
-    String address = deviceName+"."+physioID+".parsed";
+    String channelID = result.getString("channelID");
+    String address = deviceName+"."+channelID+".parsed";
     eventBus.publish(deviceName+".addresses", address);
     eventBus.publish(address, result);
   }

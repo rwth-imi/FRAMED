@@ -2,7 +2,7 @@
 
   "writers": [
     {
-      "class": "com.safety_box.communicator.io.raw.RawByteWriter",
+      "class": "com.framed.communicator.io.raw.RawByteWriter",
       "id": "Raw-Byte-Writer",
       "devices": [
         "Oxylog-3000-Plus-00",
@@ -11,7 +11,7 @@
       "path": "output/raw/"
     },
     {
-      "class": "com.safety_box.communicator.io.parsed.MedibusParsedWriter",
+      "class": "com.framed.communicator.io.parsed.MedibusParsedWriter",
       "id": "'Medibus-Parsed-Writer",
       "devices": [
         "Oxylog-3000-Plus-00"
@@ -21,7 +21,7 @@
   ],
   "parsers": [
     {
-      "class": "com.safety_box.communicator.driver.parser.medibus.MedibusSlowParser",
+      "class": "com.framed.communicator.driver.parser.medibus.MedibusSlowParser",
       "id": "Medibus-Slow-Parser",
       "devices":
         [
@@ -29,7 +29,7 @@
         ]
     },
     {
-      "class": "com.safety_box.communicator.driver.parser.viatom.ViatomParser",
+      "class": "com.framed.communicator.driver.parser.viatom.ViatomParser",
       "id": "Viatom-Parser",
       "devices":
       [
@@ -37,7 +37,7 @@
       ]
     },
     {
-      "class": "com.safety_box.communicator.driver.parser.medibus.MedibusRealTimeParser",
+      "class": "com.framed.communicator.driver.parser.medibus.MedibusRealTimeParser",
       "id": "Medibus-RT-Parser",
       "devices":
       [
@@ -48,7 +48,7 @@
   ],
   "Dispatchers": [
     {
-      "class": "com.safety_box.streamer.dispatcher.influx.InfluxDispatcher",
+      "class": "com.framed.streamer.dispatcher.influx.InfluxDispatcher",
       "bucket": "safety-box",
       "id": "InfluxDB",
       "url": "http://localhost:8086",
@@ -61,7 +61,7 @@
       ]
     },
     {
-      "class": "com.safety_box.streamer.dispatcher.json.JsonlDispatcher",
+      "class": "com.framed.streamer.dispatcher.json.JsonlDispatcher",
       "id": "Json-Lines",
       "devices":
       [

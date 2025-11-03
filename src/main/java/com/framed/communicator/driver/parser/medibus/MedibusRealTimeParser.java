@@ -192,7 +192,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
                 // Use the captured record time — not "now" later
                 result.put("timestampMs", recordWallMs);
                 result.put("relativeTimeNs", recordMonoNs);
-                result.put("physioID", DataConstants.MedibusXRealTimeData.get(waveCode));
+                result.put("channelID", DataConstants.MedibusXRealTimeData.get(waveCode));
                 result.put("respiratoryCycleState", respSyncState);
                 result.put("value", finalValue);
                 result.put("config", config);
@@ -217,7 +217,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
   }
   public void write(String deviceName, List<Map<String, Object>> batch) {
     for (Map<String, Object> map : batch) {
-      String physioID = (String) map.get("physioID");
+      String channelID = (String) map.get("channelID");
       double value = (double) map.get("value");
 
       long tsMs = (long) map.get("timestampMs");
@@ -229,11 +229,11 @@ public class MedibusRealTimeParser extends Parser<Byte> {
       waveValResult.put("timestamp", tsIso);            // <-- use captured time
       waveValResult.put("timestampMs", tsMs);           // optional raw ms
       waveValResult.put("realTime", true);
-      waveValResult.put("physioID", physioID);
+      waveValResult.put("channelID", channelID);
       waveValResult.put("value", value);
       waveValResult.put("className", "RealTime");
 
-      String address = deviceName + "." + physioID + ".parsed";
+      String address = deviceName + "." + channelID + ".parsed";
       eventBus.publish(deviceName + ".addresses", address);
       eventBus.publish(address, waveValResult);
     }

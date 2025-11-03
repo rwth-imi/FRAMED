@@ -266,8 +266,8 @@ The physical tool layer specifies an exemplary hardware setup:
 ![3LGM²](images/physical_tool_layer_3lgm2.drawio.png)
 
 ### Model Diagram (TODO: adapt eventbus for new transport abstraction)
-![3LGM²](images/package_diagram.drawio.png)
-### EventBus Schema (WIP: not device.parsed but physio.parsed now)
+Please refer to architecture.md (TODOOOO)
+### EventBus Schema
 ![EventBus](images/model_diagram_no_vertx.drawio.png)
 ## Support ⛑️
 For support, please refer to nfreyer@ukaachen.de or simlab@ukaachen.de

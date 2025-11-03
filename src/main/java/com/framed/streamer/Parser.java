@@ -16,9 +16,9 @@ public class Parser {
     LocalDateTime ldt = LocalDateTime.parse(jsonObject.getString("timestamp"), formatter);
     ZoneId zoneId = ZoneId.systemDefault();
     Instant timestamp = ldt.atZone(zoneId).toInstant();
-    String physioID = jsonObject.getString("physioID");
+    String channelID = jsonObject.getString("channelID");
     String deviceID = jsonObject.getString("deviceID");
     String className = jsonObject.getString("className");
-    return new DataPoint<>(timestamp, value, physioID, deviceID,  className);
+    return new DataPoint<>(timestamp, value, channelID, deviceID,  className);
   }
 }
