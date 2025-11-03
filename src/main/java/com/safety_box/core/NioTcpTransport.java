@@ -35,7 +35,7 @@ public class NioTcpTransport implements Transport {
     this.selector = Selector.open();
     this.serverChannel = ServerSocketChannel.open();
     serverChannel.configureBlocking(false);
-    serverChannel.bind(new InetSocketAddress(port));
+    serverChannel.bind(new InetSocketAddress("0.0.0.0", port));
     serverChannel.register(selector, SelectionKey.OP_ACCEPT);
   }
 

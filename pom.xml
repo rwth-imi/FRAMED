@@ -98,7 +98,6 @@
         <version>${exec-maven-plugin.version}</version>
         <configuration>
           <mainClass>${launcher.class}</mainClass>
-          <killAfter>-1</killAfter> <!-- disables timeout -->
         </configuration>
       </plugin>
     </plugins>
