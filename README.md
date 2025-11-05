@@ -181,7 +181,7 @@ The services.jons file is configured:
   ],
   "Dispatchers": [
     {
-      "class": "com.framed.streamer.dispatcher.influx.InfluxDispatcher",
+      "class": "com.framed.streamer.dispatcher.InfluxDispatcher",
       "bucket": "safety-box",
       "id": "InfluxDB",
       "url": "http://localhost:8086",
@@ -194,7 +194,7 @@ The services.jons file is configured:
       ]
     },
     {
-      "class": "com.framed.streamer.dispatcher.json.JsonlDispatcher",
+      "class": "com.framed.streamer.dispatcher.JsonlDispatcher",
       "id": "Json-Lines",
       "devices":
       [

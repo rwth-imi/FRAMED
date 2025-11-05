@@ -1,7 +1,6 @@
-package com.framed.streamer.dispatcher.json;
+package com.framed.streamer.dispatcher;
 
 import com.framed.core.EventBus;
-import com.framed.streamer.dispatcher.Dispatcher;
 import com.framed.streamer.model.DataPoint;
 import com.framed.streamer.model.TimeSeries;
 import org.json.JSONArray;

@@ -1,4 +1,4 @@
-package com.framed.streamer.dispatcher.influx;
+package com.framed.streamer.dispatcher;
 
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.InfluxDBClientFactory;
@@ -6,7 +6,6 @@ import com.influxdb.client.WriteApi;
 import com.influxdb.client.domain.WritePrecision;
 import com.influxdb.client.write.Point;
 import com.framed.core.EventBus;
-import com.framed.streamer.dispatcher.Dispatcher;
 import com.framed.streamer.model.DataPoint;
 import com.framed.streamer.model.TimeSeries;
 
