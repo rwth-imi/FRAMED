@@ -1,8 +1,4 @@
-<div style="display:flex; align-items:center; justify-content:space-between;">
-  <h1>FRAMED</h1>
-  <img src="images/logo.drawio.png" alt="Logo" width="80">
-</div>
-
+# FRAMED
 
 A **F**ramework for **R**ealtime **A**bstraction of **M**edical **E**vent **D**ata
 
@@ -266,7 +262,9 @@ The physical tool layer specifies an exemplary hardware setup:
 ![3LGM²](images/physical_tool_layer_3lgm2.drawio.png)
 
 ### Model Diagram (TODO: adapt eventbus for new transport abstraction)
-Please refer to architecture.md (TODOOOO)
+
+![Model Diagram](images/package_diagram.drawio.png)
+
 ### EventBus Schema
 ![EventBus](images/model_diagram_no_vertx.drawio.png)
 ## Support ⛑️
