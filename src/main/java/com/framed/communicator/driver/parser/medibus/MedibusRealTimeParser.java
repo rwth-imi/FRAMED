@@ -227,7 +227,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
         .format(formatter);
 
       JSONObject waveValResult = new JSONObject();
-      waveValResult.put("timestamp", tsIso);            // <-- use captured time
+      waveValResult.put("timestamp", tsIso);
       waveValResult.put("timestampMs", tsMs);           // optional raw ms
       waveValResult.put("realTime", true);
       waveValResult.put("channelID", channelID);

@@ -1,4 +1,15 @@
 package com.framed.cdss;
 
-public class MealyTransductor {
+import com.framed.core.EventBus;
+import com.framed.core.Service;
+
+public abstract class MealyTransductor extends Service {
+  public MealyTransductor(EventBus eventBus) {
+    super(eventBus);
+  }
+
+  @Override
+  public void stop() {
+
+  }
 }
