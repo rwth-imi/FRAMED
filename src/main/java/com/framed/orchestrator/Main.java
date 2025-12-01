@@ -18,11 +18,6 @@ public class Main {
     try {
       servicesConfigs = ConfigLoader.loadConfig("services.json");
       ConfigLoader.validateServiceConfigs(servicesConfigs);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-
-    try {
       communicationConfig = ConfigLoader.loadConfig("communication.json");
       ConfigLoader.validateCommunicationConfigs(communicationConfig);
     } catch (Exception e) {

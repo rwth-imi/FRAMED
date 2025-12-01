@@ -22,7 +22,6 @@ public class MedibusProtocol extends Protocol {
 
   private enum State {
     IDLE, INITIALIZING, IDENTIFYING, CONFIGURING, ACTIVE, REALTIME, TERMINATING
-
   }
 
   private State currentState = State.IDLE;
