@@ -1,4 +1,4 @@
-package com.framed.cdss;
+package com.framed.cdss.pulseoxi;
 
 public class Spo2MarginsActor {
 }
