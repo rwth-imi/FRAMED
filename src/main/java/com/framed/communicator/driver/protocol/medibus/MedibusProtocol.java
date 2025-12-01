@@ -40,7 +40,7 @@ public class MedibusProtocol extends Protocol {
   private static final Logger logger = Logger.getLogger(MedibusProtocol.class.getName());
 
   public MedibusProtocol(
-    String id,
+    String deviceID,
     String portName,
     int baudRate,
     int dataBits,
@@ -51,7 +51,7 @@ public class MedibusProtocol extends Protocol {
     boolean slowData,
     String multiplier,
     EventBus eventBus) {
-    super(id, eventBus);
+    super(deviceID, eventBus);
     // initialize globals from config
     this.portName = portName;
     this.baudRate = baudRate;
