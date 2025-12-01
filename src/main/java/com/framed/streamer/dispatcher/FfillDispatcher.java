@@ -3,11 +3,11 @@ package com.framed.streamer.dispatcher;
 import com.framed.core.EventBus;
 import com.framed.core.Timer;
 import com.framed.streamer.model.DataPoint;
-import com.framed.streamer.model.TimeSeries;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -33,7 +33,7 @@ public class FfillDispatcher extends Dispatcher {
   }
 
   @Override
-  public void pushBatch(TimeSeries timeSeries) {
+  public void pushBatch(List<DataPoint<?>> timeSeries) {
     throw new UnsupportedOperationException();
   }
 

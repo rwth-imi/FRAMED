@@ -3,7 +3,6 @@ package com.framed.streamer.dispatcher;
 import com.framed.core.EventBus;
 import com.framed.core.Service;
 import com.framed.streamer.model.DataPoint;
-import com.framed.streamer.model.TimeSeries;
 import com.framed.streamer.Parser;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -41,5 +40,5 @@ public abstract class Dispatcher extends Service {
 
   public abstract void push(DataPoint<?> dataPoint) throws IOException;
 
-  public abstract void pushBatch(TimeSeries timeSeries);
+  public abstract void pushBatch(List<DataPoint<?>> batch);
 }

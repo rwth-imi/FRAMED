@@ -2,7 +2,6 @@ package com.framed.streamer.dispatcher;
 
 import com.framed.core.EventBus;
 import com.framed.streamer.model.DataPoint;
-import com.framed.streamer.model.TimeSeries;
 import org.json.JSONArray;
 
 import java.io.IOException;
@@ -10,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
+import java.util.List;
 
 public class JsonlDispatcher extends Dispatcher {
 
@@ -29,7 +29,7 @@ public class JsonlDispatcher extends Dispatcher {
   }
 
   @Override
-  public void pushBatch(TimeSeries timeSeries) {
+  public void pushBatch(List<DataPoint<?>> batch) {
 
   }
 

@@ -7,9 +7,10 @@ import com.influxdb.client.domain.WritePrecision;
 import com.influxdb.client.write.Point;
 import com.framed.core.EventBus;
 import com.framed.streamer.model.DataPoint;
-import com.framed.streamer.model.TimeSeries;
 
 import org.json.JSONArray;
+
+import java.util.List;
 
 
 public class InfluxDispatcher extends Dispatcher {
@@ -52,8 +53,8 @@ public class InfluxDispatcher extends Dispatcher {
   }
 
   @Override
-  public void pushBatch(TimeSeries timeSeries) {
-    for (DataPoint<?> dp : timeSeries.dataPoints()) {
+  public void pushBatch(List<DataPoint<?>> batch) {
+    for (DataPoint<?> dp : batch) {
       push(dp);
     }
   }
