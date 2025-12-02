@@ -5,15 +5,19 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 public class SocketEventBus implements EventBus {
   private final Transport transport;
   private final Set<Peer> peers = ConcurrentHashMap.newKeySet();
   private final Map<String, List<Consumer<Object>>> localHandlers = new ConcurrentHashMap<>();
+  private final Logger logger;
 
   public SocketEventBus(Transport transport) {
     this.transport = transport;
     this.transport.start();
+    this.logger = Logger.getLogger(getClass().getName());
+
   }
 
   public void addPeer(Peer peer) {
@@ -59,5 +63,6 @@ public class SocketEventBus implements EventBus {
     transport.shutdown();
     localHandlers.clear();
     peers.clear();
+    logger.info("SocketEventBus shutdown successfully.");
   }
 }

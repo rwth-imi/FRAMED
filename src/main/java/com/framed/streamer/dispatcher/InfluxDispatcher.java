@@ -58,9 +58,4 @@ public class InfluxDispatcher extends Dispatcher {
       push(dp);
     }
   }
-
-  @Override
-  public void stop() {
-
-  }
 }

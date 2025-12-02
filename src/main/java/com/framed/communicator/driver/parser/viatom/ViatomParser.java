@@ -31,17 +31,11 @@ public class ViatomParser extends Parser {
       String address = deviceName + "." + key + ".parsed";
       JSONObject parsedResult = new JSONObject();
       parsedResult.put("timestamp", timestamp);
-      parsedResult.put("realTime", false);
       parsedResult.put("channelID", key);
       parsedResult.put("value", value);
       parsedResult.put("className", field.toString());
       eventBus.publish(deviceName + ".addresses", address);
       eventBus.publish(address, parsedResult);
     }
-  }
-
-  @Override
-  public void stop() {
-
   }
 }

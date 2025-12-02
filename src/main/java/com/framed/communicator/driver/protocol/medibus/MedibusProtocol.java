@@ -37,7 +37,6 @@ public class MedibusProtocol extends Protocol {
   private SerialPort serialPort;
   private MedibusFramer framer;
 
-  private static final Logger logger = Logger.getLogger(MedibusProtocol.class.getName());
 
   public MedibusProtocol(
     String deviceID,

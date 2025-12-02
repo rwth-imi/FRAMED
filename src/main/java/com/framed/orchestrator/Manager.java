@@ -9,15 +9,18 @@ import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 public class Manager {
   private final EventBus eventBus;
+  private final Logger logger;
   Map<String, Service> instances = new HashMap<>();
   JSONObject config;
 
   public Manager(JSONObject config, EventBus eventBus) {
     this.config = config;
     this.eventBus = eventBus;
+    this.logger = Logger.getLogger(getClass().getName());
   }
 
   public void instantiate(String classType) {
@@ -28,7 +31,7 @@ public class Manager {
         Service service = Factory.instantiate(serviceConfig, eventBus);
         this.instances.put(serviceConfig.getString("id"), service);
       } catch (Exception e) {
-        throw new RuntimeException("Failed to instantiate protocol for device: " +
+        throw new RuntimeException("Failed to instantiate Service for device: " +
           serviceConfig.getString("id"), e);
       }
       System.out.println("Successfully instantiated " + clazz);

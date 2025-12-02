@@ -1,13 +1,16 @@
 package com.framed.orchestrator;
 
+import com.framed.communicator.driver.protocol.medibus.MedibusProtocol;
 import com.framed.core.*;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
+import java.util.logging.Logger;
 
 
 public class Main {
+  private static final Logger logger = Logger.getLogger(Main.class.getName());
 
   public static void main(String[] args) throws IOException {
     // start all configured device protocol handlers
@@ -47,6 +50,17 @@ public class Main {
     for (String key : servicesConfigs.keySet()) {
       manager.instantiate(key);
     }
+
+    // Add shutdown hook to stop all services cleanly
+    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+      try {
+        manager.stopAll();
+        eventBus.shutdown();
+      } catch (Exception e) {
+        // log or print error during shutdown — avoid throwing from shutdown hook
+        logger.severe("Error stopping manager: " + e.getMessage());
+      }
+    }));
 
     // Keep the main thread alive
     try {

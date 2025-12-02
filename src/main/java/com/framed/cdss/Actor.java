@@ -1,28 +1,59 @@
+
 package com.framed.cdss;
 
 import com.framed.core.EventBus;
 import com.framed.core.Service;
+import org.json.JSONObject;
 
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class Actor extends Service {
+  // assumption: one eventbus address per observed attribute.
+  // May be suboptimal: some data may be synced with the same rate.
+  // However, this way, we would trigger one call of the msg handler for each attribute.
+  // Make sure to handle this via FiringRules
+  // improvement idea: one address per device, multiple channels possible per message.
   private final List<List<String>> firingRules;
   private final List<String> inputChannels;
   private final List<String> outputChannels;
+
+  // this is a consumed at most once logic. Other settings would be possible.
+  private final Map<String, Object> inputBuffer = new ConcurrentHashMap<>();
+  private final Map<String, Boolean> updatedFlags = new ConcurrentHashMap<>();
 
   protected Actor(EventBus eventBus, List<List<String>> firingRules, List<String> inputChannels, List<String> outputChannels) {
     super(eventBus);
     this.firingRules = firingRules;
     this.inputChannels = inputChannels;
     this.outputChannels = outputChannels;
+
+    for (String inChannel : this.inputChannels) {
+      this.eventBus.register(inChannel, msg -> {
+        JSONObject msgJson = (JSONObject) msg;
+        Object value = msgJson.get("value");
+        //save the most current value of the input channel
+        inputBuffer.put(inChannel, value);
+        //set the updated flag to true for the firing rule
+        updatedFlags.put(inChannel, true);
+        checkFiringRules();
+      });
+    }
   }
 
-  @Override
-  public void stop() {
-
+  private void checkFiringRules() {
+    for (List<String> rule : firingRules) {
+      // if all channels listed in a particular firing rule were updated, call the fireFunction with the latest observations
+      boolean allUpdated = rule.stream().allMatch(ch -> updatedFlags.getOrDefault(ch, false));
+      if (allUpdated) {
+        List<Object> values = rule.stream().map(inputBuffer::get).toList();
+        fireFunction(values);
+        rule.forEach(ch -> updatedFlags.put(ch, false));
+      }
+    }
   }
 
-  public abstract void process();
+  public abstract void fireFunction(List<Object> latestValues);
 
   public List<String> getInputChannels() {
     return inputChannels;

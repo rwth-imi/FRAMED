@@ -1,11 +1,17 @@
 package com.framed.core;
 
+import java.util.logging.Logger;
+
 public abstract class Service {
   protected EventBus eventBus;
+  protected final Logger logger;
 
-  public Service(EventBus eventBus) {
+  protected Service(EventBus eventBus) {
     this.eventBus = eventBus;
+    this.logger = Logger.getLogger(getClass().getName());
   }
 
-  public abstract void stop();
+  public void stop(){
+    logger.info("No stop logic implemented for Service: " + this.getClass().getName());
+  }
 }

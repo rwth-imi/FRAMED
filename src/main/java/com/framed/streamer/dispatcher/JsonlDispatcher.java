@@ -32,9 +32,4 @@ public class JsonlDispatcher extends Dispatcher {
   public void pushBatch(List<DataPoint<?>> batch) {
 
   }
-
-  @Override
-  public void stop() {
-
-  }
 }

@@ -229,7 +229,6 @@ public class MedibusRealTimeParser extends Parser<Byte> {
       JSONObject waveValResult = new JSONObject();
       waveValResult.put("timestamp", tsIso);
       waveValResult.put("timestampMs", tsMs);           // optional raw ms
-      waveValResult.put("realTime", true);
       waveValResult.put("channelID", channelID);
       waveValResult.put("value", value);
       waveValResult.put("className", "RealTime");
@@ -238,10 +237,5 @@ public class MedibusRealTimeParser extends Parser<Byte> {
       eventBus.publish(deviceName + ".addresses", address);
       eventBus.publish(address, waveValResult);
     }
-  }
-
-  @Override
-  public void stop() {
-
   }
 }

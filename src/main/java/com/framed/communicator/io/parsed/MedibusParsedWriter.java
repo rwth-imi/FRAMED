@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class MedibusParsedWriter extends Writer<JSONObject> {
   private List<String> addresses = new ArrayList<>();
@@ -37,7 +38,7 @@ public class MedibusParsedWriter extends Writer<JSONObject> {
   @Override
   public synchronized void write(JSONObject data, String deviceName) throws IOException {
     Path filePath;
-    if (data.getBoolean("realTime")) {
+    if (Objects.equals(data.getString("className"), "RealTime")) {
       filePath = path.resolve(deviceName + "_" + timeOnStart + "_parsed_RT.jsonl");
     } else {
       filePath = path.resolve(deviceName + "_" + timeOnStart + "_parsed_SD.jsonl");

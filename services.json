@@ -48,7 +48,7 @@
   ],
   "Dispatchers": [
     {
-      "class": "com.framed.streamer.dispatcher.influx.InfluxDispatcher",
+      "class": "com.framed.streamer.dispatcher.InfluxDispatcher",
       "bucket": "safety-box",
       "id": "InfluxDB",
       "url": "http://localhost:8086",
@@ -61,7 +61,7 @@
       ]
     },
     {
-      "class": "com.framed.streamer.dispatcher.json.JsonlDispatcher",
+      "class": "com.framed.streamer.dispatcher.JsonlDispatcher",
       "id": "Json-Lines",
       "devices":
       [

@@ -17,12 +17,5 @@ public abstract class Writer<T> extends Service {
     this.path = Path.of(path);
   }
 
-  @Override
-  public void stop() {
-    System.out.println(
-      "Stop not implemented for class Writer."
-    );
-  }
-
   public abstract void write(T data, String deviceName) throws IOException;
 }

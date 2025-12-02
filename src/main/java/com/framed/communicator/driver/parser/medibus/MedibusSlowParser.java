@@ -39,24 +39,18 @@ public class MedibusSlowParser extends Parser<byte[]> {
 
     String echo = data.substring(0, 2);
     switch (echo) {
-      case "\u0001$" -> { // Data cp1
+      case "\u0001$" -> // Data cp1
         parseNumMessage(message, 6, "MeasurementCP1", deviceName);
-      }
-      case "\u0001+" -> { // Data cp2
+      case "\u0001+" -> // Data cp2
         parseNumMessage(message, 6, "MeasurementCP2", deviceName);
-      }
-      case "\u0001)" -> { // Data device settings
+      case "\u0001)" -> // Data device settings
         parseNumMessage(message, 7, "DeviceSettings", deviceName);
-      }
-      case "\u0001*" -> { // Data text messages
+      case "\u0001*" -> // Data text messages
         parseTextMessage(message, deviceName);
-      }
-      case "\u0001'" -> { // Alarm cp1
+      case "\u0001'" -> // Alarm cp1
         parseAlarmMessage(message, "AlarmCP1", deviceName);
-      }
-      case "\u0001." -> { // Alarm cp2
+      case "\u0001." -> // Alarm cp2
         parseAlarmMessage(message, "AlarmCP2", deviceName);
-      }
     }
   }
 
@@ -140,9 +134,6 @@ public class MedibusSlowParser extends Parser<byte[]> {
         }
         default -> throw new IllegalStateException("Unexpected value: " + reqType);
       }
-      ;
-
-      //System.out.printf("DataMessage - %s: %s%n", channelID, dataValue);
       JSONObject result = new JSONObject().put("channelID", channelID);
       result.put("value", dataValue);
       write(deviceName, result, className);
@@ -173,12 +164,9 @@ public class MedibusSlowParser extends Parser<byte[]> {
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
         channelID = switch (reqType) {
           case "AlarmCP1" -> DataConstants.MedibusXAlarmsCP1.get(dataCodeByte);
-          //System.out.printf("%s: %s%n", channelID, dataValue);
           case "AlarmCP2" -> DataConstants.MedibusXAlarmsCP2.get(dataCodeByte);
-          //System.out.printf("%s: %s%n", channelID, dataValue);
           default -> throw new IllegalStateException("Unexpected value: " + reqType);
         };
-        //System.out.printf("Alarms-Message - %s: %s%n", channelID, dataValue);
         JSONObject result = new JSONObject().put("channelID", channelID);
         result.put("value", dataValue);
         write(deviceName, result, "Alarm");
@@ -188,17 +176,10 @@ public class MedibusSlowParser extends Parser<byte[]> {
 
   private void write(String deviceName, JSONObject result, String className) {
     result.put("timestamp", LocalDateTime.now().format(formatter));
-    result.put("realTime", false);
     result.put("className", className);
     String channelID = result.getString("channelID");
     String address = deviceName + "." + channelID + ".parsed";
     eventBus.publish(deviceName + ".addresses", address);
     eventBus.publish(address, result);
-  }
-
-
-  @Override
-  public void stop() {
-
   }
 }
