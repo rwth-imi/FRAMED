@@ -1,6 +1,6 @@
-import com.framed.core.Peer;
-import com.framed.core.SocketEventBus;
-import com.framed.core.TCPTransport;
+import com.framed.core.remote.Peer;
+import com.framed.core.remote.SocketEventBus;
+import com.framed.core.remote.TCPTransport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

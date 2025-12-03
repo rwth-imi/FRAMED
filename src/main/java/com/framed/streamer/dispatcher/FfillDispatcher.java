@@ -1,7 +1,7 @@
 package com.framed.streamer.dispatcher;
 
 import com.framed.core.EventBus;
-import com.framed.core.Timer;
+import com.framed.core.utils.Timer;
 import com.framed.streamer.model.DataPoint;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -13,10 +13,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class FfillDispatcher extends Dispatcher {
   private final Map<String, DataPoint<?>> latestDataPoints = new ConcurrentHashMap<>();
-
+  private final Timer timer = new Timer();
   public FfillDispatcher(EventBus eventBus, JSONArray devices, Long frequencyMillis) {
     super(eventBus, devices);
-    Timer.setPeriodic(frequencyMillis, this::publishAggregatedData);
+    timer.setPeriodic(frequencyMillis, this::publishAggregatedData);
   }
 
   private void publishAggregatedData() {
@@ -39,6 +39,6 @@ public class FfillDispatcher extends Dispatcher {
 
   @Override
   public void stop() {
-    Timer.shutdown();
+    timer.shutdown();
   }
 }

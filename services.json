@@ -1,5 +1,4 @@
 {
-
   "writers": [
     {
       "class": "com.framed.communicator.io.raw.RawByteWriter",
@@ -70,7 +69,6 @@
       ],
       "path": "output/streamer/",
       "fileName": "data.jsonl"
-
     }
   ]
 }

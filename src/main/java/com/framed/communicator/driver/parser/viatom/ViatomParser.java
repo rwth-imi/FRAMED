@@ -5,14 +5,12 @@ import com.framed.communicator.driver.parser.Parser;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-public class ViatomParser extends Parser {
+public class ViatomParser extends Parser<Object> {
   public ViatomParser(EventBus eventBus, JSONArray devices) {
     super(eventBus);
     for (Object device : devices) {
       String deviceName = (String) device;
-      eventBus.register(deviceName, msg -> {
-        handleEventBus((String) msg, deviceName);
-      });
+      eventBus.register(deviceName, msg -> handleEventBus((String) msg, deviceName));
     }
   }
 

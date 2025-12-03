@@ -7,14 +7,13 @@ import com.fazecast.jSerialComm.SerialPort;
 import com.framed.communicator.driver.protocol.medibus.utils.DataUtils;
 import com.framed.communicator.driver.protocol.medibus.utils.DataConstants;
 import com.framed.core.EventBus;
-import com.framed.core.Timer;
+import com.framed.core.utils.Timer;
 import org.json.JSONObject;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class MedibusProtocol extends Protocol {
 
@@ -36,6 +35,7 @@ public class MedibusProtocol extends Protocol {
   private String multiplier;
   private SerialPort serialPort;
   private MedibusFramer framer;
+  private Timer timer = new Timer();
 
 
   public MedibusProtocol(
@@ -96,7 +96,7 @@ public class MedibusProtocol extends Protocol {
   public void stop() {
     currentState = State.TERMINATING;
     logger.fine("Sending command: poll_request_stop_com");
-    Timer.shutdown();
+    timer.shutdown();
     sendCommand(DataConstants.poll_request_stop_com);
   }
 
@@ -176,7 +176,7 @@ public class MedibusProtocol extends Protocol {
             if (realTime) {
               logger.fine("Realtime enabled. Transitioning to CONFIGURING.");
               currentState = State.CONFIGURING;
-              Timer.setTimer(200, () -> {
+              timer.setTimer(200, () -> {
                 sendCommand(DataConstants.poll_request_real_time_data_config);
               });
             } else {
@@ -319,7 +319,7 @@ public class MedibusProtocol extends Protocol {
     } else {
       logger.fine("Slow Data transmission not configured.");
       logger.fine("Keeping connection alive by NOP");
-      Timer.setPeriodic(2000, () -> sendCommand(DataConstants.poll_request_no_operation));
+      timer.setPeriodic(2000, () -> sendCommand(DataConstants.poll_request_no_operation));
     }
   }
 

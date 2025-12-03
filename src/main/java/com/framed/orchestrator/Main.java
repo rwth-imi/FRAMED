@@ -1,7 +1,6 @@
 package com.framed.orchestrator;
 
-import com.framed.communicator.driver.protocol.medibus.MedibusProtocol;
-import com.framed.core.*;
+import com.framed.core.remote.*;
 import org.json.JSONObject;
 
 import java.io.IOException;

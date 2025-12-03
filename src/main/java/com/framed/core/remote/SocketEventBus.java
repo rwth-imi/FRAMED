@@ -1,4 +1,6 @@
-package com.framed.core;
+package com.framed.core.remote;
+
+import com.framed.core.EventBus;
 
 import java.util.List;
 import java.util.Map;
