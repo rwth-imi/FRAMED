@@ -8,9 +8,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 
 public class MedibusFramer {
+
+  Logger logger = Logger.getLogger(MedibusFramer.class.getName());
 
   private final EventBus eventBus;
   private final String deviceID;
@@ -22,6 +25,7 @@ public class MedibusFramer {
   private final List<Byte> bComList = new ArrayList<>();
   private final List<Byte> bList = new ArrayList<>();
   private final List<Byte> bRTList = new ArrayList<>();
+
 
   private final Consumer<byte[]> frameHandler;
 
@@ -106,7 +110,7 @@ public class MedibusFramer {
     if (checksumComputedStr.equals(checksumStr)) {
       frameHandler.accept(userDataArray);
     } else {
-      System.err.println("Checksum Error");
+      logger.warning("Checksum Error");
     }
 
     bList.clear();

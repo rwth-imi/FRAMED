@@ -5,6 +5,30 @@ import java.util.Map;
 import static java.util.Map.entry;
 
 public class DataConstants {
+
+  private DataConstants() {
+    throw new IllegalStateException("Utility class");
+  }
+
+  // Device Message Codes:
+  public static final String ICC_COMMAND = "\u001bQ";
+  public static final String ICC_RESPONSE = "\u0001Q";
+  public static final String NOP_REQUEST = "\u001b0";
+  public static final String NOP_RESPONSE = "\u00010";
+  public static final String DEV_ID_REQUEST = "\u001bR";
+  public static final String DEV_ID_RESPONSE = "\u0001R";
+  public static final String RT_CONFIG_RESPONSE = "\u0001S";
+  public static final String RT_TRANSMISSION_RESPONSE = "\u0001T";
+  public static final String RT_CONFIG_CHANGED = "\u001bV";
+  public static final String DATA_RESPONSE_CP1 = "\u0001$";
+  public static final String DATA_RESPONSE_CP2 = "\u0001+";
+  public static final String SETTINGS_RESPONSE =  "\u0001)";
+  public static final String TEXT_RESPONSE = "\u0001*";
+  public static final String ALARM_RESPONSE_CP1 = "\u0001'";
+  public static final String ALARM_RESPONSE_CP2 = "\u0001.";
+
+
+
   public static final byte BOFCOMCHAR = (byte) 0x1B;
   public static final byte BOFRESPCHAR = (byte) 0x01;
   public static final byte EOFCHAR = (byte) 0x0D;

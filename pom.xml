@@ -112,6 +112,7 @@
         <configuration>
           <show>private</show>
           <nohelp>true</nohelp>
+          <stylesheetfile>./betterjdocs.css</stylesheetfile>
         </configuration>
       </plugin>
     </plugins>

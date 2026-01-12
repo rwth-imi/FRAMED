@@ -91,7 +91,7 @@ public class NioTcpTransport implements Transport {
    */
   @Override
   public void start() {
-    Thread loop = new Thread(() -> {
+    workerPool.submit(() -> {
       try {
         while (running) {
           selector.select();
@@ -112,8 +112,6 @@ public class NioTcpTransport implements Transport {
         }
       }
     }, "NioTcpTransport-Selector");
-    loop.setDaemon(true);
-    loop.start();
   }
 
   /**

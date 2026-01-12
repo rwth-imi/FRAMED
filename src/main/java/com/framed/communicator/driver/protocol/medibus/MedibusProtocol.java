@@ -1,41 +1,32 @@
 package com.framed.communicator.driver.protocol.medibus;
 
-import com.fazecast.jSerialComm.SerialPortDataListener;
-import com.fazecast.jSerialComm.SerialPortEvent;
+import com.fazecast.jSerialComm.*;
 import com.framed.communicator.driver.protocol.Protocol;
-import com.fazecast.jSerialComm.SerialPort;
-import com.framed.communicator.driver.protocol.medibus.utils.DataUtils;
 import com.framed.communicator.driver.protocol.medibus.utils.DataConstants;
+import com.framed.communicator.driver.protocol.medibus.utils.MedibusState;
 import com.framed.core.EventBus;
 import com.framed.core.utils.Timer;
-import org.json.JSONObject;
 
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
+import static com.framed.communicator.driver.protocol.medibus.utils.DataUtils.*;
+import static com.framed.communicator.driver.protocol.medibus.utils.ParsingUtils.readRealtimeConfigResponse;
+import static com.framed.communicator.driver.protocol.medibus.utils.ParsingUtils.stringToHex;
+
 public class MedibusProtocol extends Protocol {
 
-  private Boolean slowData;
+  private boolean slowData;
 
-  private enum State {
-    IDLE, INITIALIZING, IDENTIFYING, CONFIGURING, ACTIVE, REALTIME, TERMINATING
-  }
+  private MedibusState currentState = MedibusState.IDLE;
 
-  private State currentState = State.IDLE;
-
-  private String portName;
-  private int baudRate;
-  private int dataBits;
-  private int stopBits;
-  private int bufferSize;
-  private int waveFormType;
-  private boolean realTime;
-  private String multiplier;
+  int waveFormType;
+  private final boolean realTime;
+  private final String multiplier;
   private SerialPort serialPort;
-  private MedibusFramer framer;
-  private Timer timer = new Timer();
+  private final MedibusFramer framer;
+  private final Timer timer = new Timer();
 
 
   public MedibusProtocol(
@@ -44,7 +35,6 @@ public class MedibusProtocol extends Protocol {
     int baudRate,
     int dataBits,
     int stopBits,
-    int bufferSize,
     int waveFormType,
     boolean realTime,
     boolean slowData,
@@ -52,10 +42,6 @@ public class MedibusProtocol extends Protocol {
     EventBus eventBus) {
     super(deviceID, eventBus);
     // initialize globals from config
-    this.portName = portName;
-    this.baudRate = baudRate;
-    this.dataBits = dataBits;
-    this.bufferSize = bufferSize;
     this.realTime = realTime;
     this.waveFormType = waveFormType;
     this.slowData = slowData;
@@ -73,7 +59,7 @@ public class MedibusProtocol extends Protocol {
       serialPort.setRTS();
       serialPort.setDTR();
     } catch (Exception e) {
-      logger.log(Level.WARNING, "Failed to open serial port " + portName, e);
+      logger.warning("Failed to open serial port: " + portName + " with message: " +  e);
     }
 
     this.framer = new MedibusFramer(this::handleResponse, eventBus, this.id);
@@ -94,7 +80,7 @@ public class MedibusProtocol extends Protocol {
 
   @Override
   public void stop() {
-    currentState = State.TERMINATING;
+    currentState = MedibusState.TERMINATING;
     logger.fine("Sending command: poll_request_stop_com");
     timer.shutdown();
     sendCommand(DataConstants.poll_request_stop_com);
@@ -140,48 +126,50 @@ public class MedibusProtocol extends Protocol {
 
     writeData(packetBuffer);
     String echo = response.substring(0, 2);
-    logger.fine("Handling response with echo: " + DataUtils.stringToHex(echo) + " in state " + currentState);
+    logger.fine("Handling response with echo: " + stringToHex(echo) + " in state " + currentState);
 
     switch (currentState) {
       case INITIALIZING -> {
         switch (echo) {
-          case "\u001bQ" -> {
+          case DataConstants.ICC_COMMAND -> {
             logger.fine("ICC command received.");
             commandEchoResponse(DataConstants.poll_request_icc_msg);
             logger.fine("Sending command: poll_request_deviceid");
             sendCommand(DataConstants.poll_request_deviceid);
-            currentState = State.IDENTIFYING;
+            currentState = MedibusState.IDENTIFYING;
           }
-          case "\u0001Q" -> {
+          case DataConstants.ICC_RESPONSE -> {
             logger.fine("ICC response received. Transitioning to IDENTIFYING.");
             logger.fine("Sending command: poll_request_deviceid");
             sendCommand(DataConstants.poll_request_deviceid);
-            currentState = State.IDENTIFYING;
+            currentState = MedibusState.IDENTIFYING;
+          }
+          default -> {
+            String echoHex = stringToHex(echo);
+            logger.warning("Received unknown response from ICC: " + echoHex);
           }
         }
       }
       case IDENTIFYING -> {
         switch (echo) {
-          case "\u001bR" -> {
+          case DataConstants.DEV_ID_REQUEST -> {
             logger.fine("Device ID request received. Sending Device ID.");
             sendDeviceID();
           }
-          case "\u001b\u0030" -> {
+          case DataConstants.NOP_REQUEST -> {
             logger.fine("NOP request received.");
             logger.fine("Sending command: poll_request_deviceid");
             sendCommand(DataConstants.poll_request_deviceid);
           }
-          case "\u0001R" -> {
+          case DataConstants.DEV_ID_RESPONSE -> {
             logger.fine("Device ID response received.");
             if (realTime) {
               logger.fine("Realtime enabled. Transitioning to CONFIGURING.");
-              currentState = State.CONFIGURING;
-              timer.setTimer(200, () -> {
-                sendCommand(DataConstants.poll_request_real_time_data_config);
-              });
+              currentState = MedibusState.CONFIGURING;
+              timer.setTimer(200, () -> sendCommand(DataConstants.poll_request_real_time_data_config));
             } else {
               logger.fine("Transitioning to ACTIVE.");
-              currentState = State.ACTIVE;
+              currentState = MedibusState.ACTIVE;
               transitToActive();
             }
           }
@@ -196,44 +184,45 @@ public class MedibusProtocol extends Protocol {
 
       case CONFIGURING -> {
         switch (echo) {
-          case "\u001bQ" -> {
+          case DataConstants.ICC_COMMAND -> {
             logger.fine("ICC command received. Returning to INITIALIZING.");
-            currentState = State.INITIALIZING;
+            currentState = MedibusState.INITIALIZING;
             commandEchoResponse(DataConstants.poll_request_icc_msg);
           }
-          case "\u001b\u0030" -> {
+          case DataConstants.NOP_REQUEST -> {
             logger.fine("NOP request received.");
             commandEchoResponse(DataConstants.poll_request_no_operation);
           }
-          case "\u0001S" -> {
+          case DataConstants.RT_CONFIG_RESPONSE -> {
             logger.fine("Realtime config received. Sending transmission config.");
             logger.fine("Sending command: poll_configure_real_time_transmission");
-            readRealtimeConfigResponse(packetBuffer);
+            readRealtimeConfigResponse(packetBuffer, eventBus, id);
             configureRealtimeTransmission();
           }
-          case "\u0001T" -> {
+          case DataConstants.RT_TRANSMISSION_RESPONSE -> {
             logger.fine("Realtime transmission configured. Transitioning to ACTIVE.");
-            currentState = State.ACTIVE;
+            currentState = MedibusState.ACTIVE;
             logger.fine("Sending Sync-Command to enable datastreams.");
             setConfiguredDataStreams(false);
             transitToActive();
           }
           default -> {
-            logger.warning("Unknown response in CONFIGURING: " + DataUtils.stringToHex(echo));
+            String echoHex = stringToHex(echo);
+            logger.warning("Unknown response in CONFIGURING: " + echoHex);
           }
         }
       }
 
       case ACTIVE -> {
         switch (echo) {
-          case "\u0001\u0030" -> {
+          case DataConstants.NOP_RESPONSE -> {
             logger.fine("NOP response received.");
             if (this.slowData) {
               logger.fine("Sending command: poll_request_config_measured_data_codepage1");
               sendCommand(DataConstants.poll_request_config_measured_data_codepage1);
             }
           }
-          case "\u001b\u0030" -> {
+          case DataConstants.NOP_REQUEST -> {
             logger.fine("NOP request received.");
             commandEchoResponse(DataConstants.poll_request_no_operation);
             if (this.slowData) {
@@ -241,50 +230,51 @@ public class MedibusProtocol extends Protocol {
               sendCommand(DataConstants.poll_request_config_measured_data_codepage1);
             }
           }
-          case "\u001bV" -> {
+          case DataConstants.RT_CONFIG_CHANGED -> {
             logger.fine("Realtime config changed. Reconfiguring.");
             setConfiguredDataStreams(true);
-            currentState = State.CONFIGURING;
+            currentState = MedibusState.CONFIGURING;
             logger.fine("Sending command: poll_request_real_time_data_config");
             sendCommand(DataConstants.poll_request_real_time_data_config);
           }
-          case "\u001bQ" -> {
+          case DataConstants.ICC_COMMAND -> {
             logger.fine("ICC command received. Returning to INITIALIZING.");
-            currentState = State.INITIALIZING;
+            currentState = MedibusState.INITIALIZING;
             commandEchoResponse(DataConstants.poll_request_icc_msg);
           }
-          case "\u0001$" -> { // Data response cp1
+          case DataConstants.DATA_RESPONSE_CP1 -> { // Data response cp1
             logger.log(Level.INFO, "Received: Data CP1 response");
             logger.fine("Sending command: poll_request_config_measured_data_codepage2");
             sendCommand(DataConstants.poll_request_config_measured_data_codepage2);
           }
-          case "\u0001+" -> { // Data response cp2
+          case DataConstants.DATA_RESPONSE_CP2 -> { // Data response cp2
             logger.log(Level.INFO, "Received: Data CP2 response");
             logger.fine("Sending command: poll_request_device_settings");
             sendCommand(DataConstants.poll_request_device_settings);
           }
-          case "\u0001)" -> { // Data response device settings
+          case DataConstants.SETTINGS_RESPONSE -> { // Data response device settings
             logger.log(Level.INFO, "Received: Data device settings response");
             logger.fine("Sending command: poll_request_text_messages");
             sendCommand(DataConstants.poll_request_text_messages);
           }
-          case "\u0001*" -> { // Data response text messages
+          case DataConstants.TEXT_RESPONSE -> { // Data response text messages
             logger.log(Level.INFO, "Received: Data text messages response");
             logger.fine("Sending command: poll_request_config_alarms_codepage1");
             sendCommand(DataConstants.poll_request_config_alarms_codepage1);
           }
-          case "\u0001'" -> { // Alarm response cp1
+          case DataConstants.ALARM_RESPONSE_CP1 -> { // Alarm response cp1
             logger.log(Level.INFO, "Received: Alarm CP1 response");
             logger.fine("Sending command: poll_request_config_alarms_codepage2");
             sendCommand(DataConstants.poll_request_config_alarms_codepage2);
           }
-          case "\u0001." -> { // Alarm response cp2
+          case DataConstants.ALARM_RESPONSE_CP2 -> { // Alarm response cp2
             logger.log(Level.INFO, "Received: Alarm CP2 response");
             logger.fine("Sending command: poll_request_config_measured_data_codepage1");
             sendCommand(DataConstants.poll_request_config_measured_data_codepage1);
           }
           default -> {
-            logger.warning("Unknown response in ACTIVE: " + DataUtils.stringToHex(echo));
+            String echoHex = stringToHex(echo);
+            logger.warning("Unknown response in ACTIVE: " + echoHex);
             if (echo.startsWith("\u001b")) {
               byte[] echoResponse = echo.substring(1).getBytes(StandardCharsets.US_ASCII);
               commandEchoResponse(echoResponse);
@@ -295,17 +285,15 @@ public class MedibusProtocol extends Protocol {
 
       default -> {
         switch (echo) {
-          case "\u0001\u0030" -> {
+          case DataConstants.NOP_RESPONSE -> {
             logger.fine("NOP response received.");
             commandEchoResponse(DataConstants.poll_request_no_operation);
           }
-          case "\u001b\u0030" -> {
+          case DataConstants.NOP_REQUEST -> {
             logger.fine("NOP request received.");
             commandEchoResponse(DataConstants.poll_request_no_operation);
           }
-          default -> {
-            logger.warning("Unhandled state or echo: " + currentState + " / " + DataUtils.stringToHex(echo));
-          }
+          default -> logger.warning("Unhandled state or echo: " + currentState + " / " + stringToHex(echo));
         }
       }
     }
@@ -323,81 +311,24 @@ public class MedibusProtocol extends Protocol {
     }
   }
 
-  public void readRealtimeConfigResponse(byte[] packetData) {
-    // Store configuration values
-    ByteBuffer bb = ByteBuffer.wrap(packetData);
-
-    bb.position(2); // skip the packet header
-
-    while (bb.remaining() >= 23) {
-      byte[] dataCode = new byte[2];
-      bb.get(dataCode);
-      String dataCodeString = new String(dataCode, StandardCharsets.US_ASCII).trim().replaceAll("\\s+", "");
-      byte[] interval = new byte[8];
-      bb.get(interval);
-      String intervalString = new String(interval, StandardCharsets.US_ASCII).trim().replaceAll("\\s+", "");
-      byte[] minValue = new byte[5];
-      bb.get(minValue);
-      String minValueString = new String(minValue, StandardCharsets.US_ASCII).trim().replaceAll("\\s+", "");
-      byte[] maxValue = new byte[5];
-      bb.get(maxValue);
-      String maxValueString = new String(maxValue, StandardCharsets.US_ASCII).trim().replaceAll("\\s+", "");
-      byte[] maxBinValue = new byte[3];
-      bb.get(maxBinValue);
-      String maxBinValueString = new String(maxBinValue, StandardCharsets.US_ASCII).trim().replaceAll("\\s+", "");
-
-      JSONObject rtConfig = new JSONObject();
-      rtConfig.put("dataCode", dataCodeString);
-      rtConfig.put("Interval", Integer.parseInt(intervalString));
-      rtConfig.put("minValue", Integer.parseInt(minValueString));
-      rtConfig.put("maxValue", Integer.parseInt(maxValueString));
-      rtConfig.put("maxBinValue", Integer.parseInt(maxBinValueString, 16));
-
-      eventBus.publish(id + ".real-time", rtConfig);
-    }
-  }
-
   private void sendICC() {
     logger.fine("Sending command: poll_request_icc_msg");
     sendCommand(DataConstants.poll_request_icc_msg); // ICC
-    currentState = State.INITIALIZING;
+    currentState = MedibusState.INITIALIZING;
   }
 
   public void configureRealtimeTransmission() {
     if (this.waveFormType == 0) return; // config set to "No waveform data"
     ArrayList<Byte> tempTxBuffList = new ArrayList<>();
-    ArrayList<Byte> waveFormTypeList = DataUtils.createWaveFormTypeList(this.waveFormType);
+    ArrayList<Byte> waveFormTypeList = createWaveFormTypeList(this.waveFormType);
 
-    byte[] rtdListArray = new byte[waveFormTypeList.size()];
-    for (int i = 0; i < waveFormTypeList.size(); i++) {
-      rtdListArray[i] = waveFormTypeList.get(i);
-    }
-    for (byte b : DataConstants.poll_configure_real_time_transmission) {
-      tempTxBuffList.add(b);
-    }
-
-    for (byte b : rtdListArray) {
-      String rtdToAsciiHex = String.format("%02x", b).toUpperCase();
-      byte[] rtdAsciiHexBytes = rtdToAsciiHex.getBytes(StandardCharsets.US_ASCII);
-      byte[] multiplierHexBytes = multiplier.getBytes(StandardCharsets.US_ASCII);
-
-      for (byte c : rtdAsciiHexBytes) {
-        tempTxBuffList.add(c);
-      }
-      for (byte c : multiplierHexBytes) {
-        tempTxBuffList.add(c);
-      }
-
-    }
-
-    byte[] finalBuffer = new byte[tempTxBuffList.size()];
-    for (int i = 0; i < tempTxBuffList.size(); i++) {
-      finalBuffer[i] = tempTxBuffList.get(i);
-    }
+    byte[] finalBuffer = getRealtimeConfigMessage(waveFormTypeList, tempTxBuffList, multiplier);
 
     logger.log(Level.INFO, "Send: Configure realtime transmission (command)");
     sendCommand(finalBuffer);
   }
+
+
 
   private void sendCommand(byte[] commandBytes) {
     if (commandBytes.length == 0) {
@@ -408,15 +339,12 @@ public class MedibusProtocol extends Protocol {
     inputBuffer[0] = DataConstants.BOFCOMCHAR;
     System.arraycopy(commandBytes, 0, inputBuffer, 1, commandBytes.length);
 
-    byte computedChecksum = DataUtils.computeChecksum(inputBuffer);
+    byte computedChecksum = computeChecksum(inputBuffer);
     byte[] checksumBytes = String.format("%02X", computedChecksum).getBytes(StandardCharsets.US_ASCII);
-    byte[] finalMessage = DataUtils.concatBuffer(inputBuffer, checksumBytes);
+    byte[] finalMessage = concatBuffer(inputBuffer, checksumBytes);
 
-    try {
-      serialPort.writeBytes(finalMessage, finalMessage.length, 0);
-    } catch (Exception e) {
-      System.err.println("Error writing to serial port: " + e.getMessage());
-    }
+    serialPort.writeBytes(finalMessage, finalMessage.length, 0);
+
   }
 
   public void commandEchoResponse(byte[] commandBuffer) {
@@ -424,41 +352,19 @@ public class MedibusProtocol extends Protocol {
     System.arraycopy(commandBuffer, 0, inputBuffer, 1, commandBuffer.length);
     inputBuffer[0] = DataConstants.BOFRESPCHAR;
 
-    byte checksumComputed = DataUtils.computeChecksum(inputBuffer);
+    byte checksumComputed = computeChecksum(inputBuffer);
 
     String checksumToAsciiHex = String.format("%02x", checksumComputed).toUpperCase();
     byte[] checksumAsciiHexBytes = checksumToAsciiHex.getBytes(StandardCharsets.US_ASCII);
 
-    byte[] finalTxBuff = DataUtils.concatBuffer(inputBuffer, checksumAsciiHexBytes);
+    byte[] finalTxBuff = concatBuffer(inputBuffer, checksumAsciiHexBytes);
 
-    try {
-      this.serialPort.writeBytes(finalTxBuff, finalTxBuff.length, 0);
-    } catch (Exception ex) {
-      System.err.println("Error opening/writing to serial port :: " + ex.getMessage());
-    }
+    this.serialPort.writeBytes(finalTxBuff, finalTxBuff.length, 0);
+
   }
 
   public void sendDeviceID() {
-    byte[] deviceIDCommandResponse = {0x52};
-    byte[] devID = "0161".getBytes(StandardCharsets.US_ASCII);
-    byte[] devName = "'SafetyBox'".getBytes(StandardCharsets.US_ASCII);
-    byte[] devRevision = "01.03".getBytes(StandardCharsets.US_ASCII);
-    byte[] medibusVer = ":06.00".getBytes(StandardCharsets.US_ASCII);
-
-    byte[] txBuffer = new byte[
-      deviceIDCommandResponse.length +
-        devID.length +
-        devName.length +
-        devRevision.length +
-        medibusVer.length
-      ];
-
-    System.arraycopy(deviceIDCommandResponse, 0, txBuffer, 0, deviceIDCommandResponse.length);
-    System.arraycopy(devID, 0, txBuffer, deviceIDCommandResponse.length, devID.length);
-    System.arraycopy(devName, 0, txBuffer, deviceIDCommandResponse.length + devID.length, devName.length);
-    System.arraycopy(devRevision, 0, txBuffer, deviceIDCommandResponse.length + devID.length + devName.length, devRevision.length);
-    System.arraycopy(medibusVer, 0, txBuffer, deviceIDCommandResponse.length + devID.length + devName.length + devRevision.length, medibusVer.length);
-
+    byte[] txBuffer = createDevIDMessage();
     commandEchoResponse(txBuffer);
   }
 
@@ -473,27 +379,7 @@ public class MedibusProtocol extends Protocol {
 
   public void setDataStreams(byte syncCommand, boolean disable) {
     // enable or disable data streams
-    byte syncByte = (byte) 0xD0;
-    byte syncArgument = (byte) 0xCF;
-    if (disable) {
-      syncArgument = (byte) 0xC0;
-    }
-    byte endSyncByte = (byte) 0xC0;
-
-    ArrayList<Byte> tempTxBuffList = new ArrayList<>();
-
-    tempTxBuffList.add(syncByte);
-    tempTxBuffList.add(syncCommand);
-    tempTxBuffList.add(syncArgument);
-    tempTxBuffList.add(endSyncByte);
-    tempTxBuffList.add(endSyncByte);
-
-    byte[] finalBuffer = new byte[tempTxBuffList.size()];
-    for (int i = 0; i < tempTxBuffList.size(); i++) {
-      finalBuffer[i] = tempTxBuffList.get(i);
-    }
-
+    byte[] finalBuffer = getDataStreamConfigBuffer(syncCommand, disable);
     this.serialPort.writeBytes(finalBuffer, finalBuffer.length, 0);
   }
-
 }

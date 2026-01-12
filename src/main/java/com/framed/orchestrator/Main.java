@@ -1,6 +1,7 @@
 package com.framed.orchestrator;
 
 import com.framed.core.remote.*;
+import com.framed.core.utils.DispatchMode;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -18,12 +19,12 @@ public class Main {
 
 
     try {
-      servicesConfigs = ConfigLoader.loadConfig("services.json");
+      servicesConfigs = ConfigLoader.loadConfig("config/services.json");
       ConfigLoader.validateServiceConfigs(servicesConfigs);
-      communicationConfig = ConfigLoader.loadConfig("communication.json");
+      communicationConfig = ConfigLoader.loadConfig("config/communication.json");
       ConfigLoader.validateCommunicationConfigs(communicationConfig);
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      throw new IllegalArgumentException(e);
     }
 
     Transport transport;
@@ -34,9 +35,10 @@ public class Main {
     } else if (communicationConfig.getString("type").equals("UDP")) {
       transport = new NioUdpTransport(port);
     } else {
-      throw new RuntimeException("Invalid communication type config");
+      logger.warning("Invalid communication type config, using blocking TCP instead...");
+      transport = new TCPTransport(port);
     }
-    SocketEventBus eventBus = new SocketEventBus(transport);
+    SocketEventBus eventBus = new SocketEventBus(transport, DispatchMode.PARALLEL);
     if (communicationConfig.has("peers")) {
       for (Object peer : communicationConfig.getJSONArray("peers")) {
         JSONObject peerConfig = (JSONObject) peer;
@@ -53,8 +55,10 @@ public class Main {
     // Add shutdown hook to stop all services cleanly
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
       try {
-        manager.stopAll();
+        logger.info("Shutting down EventBus...");
         eventBus.shutdown();
+        logger.info("Shutting down managed services...");
+        manager.stopAll();
       } catch (Exception e) {
         // log or print error during shutdown — avoid throwing from shutdown hook
         logger.severe("Error stopping manager: " + e.getMessage());

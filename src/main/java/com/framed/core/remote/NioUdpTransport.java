@@ -97,7 +97,7 @@ public class NioUdpTransport implements Transport {
    */
   @Override
   public void start() {
-    Thread loop = new Thread(() -> {
+    workerPool.submit(() -> {
       ByteBuffer buffer = ByteBuffer.allocate(4096);
       while (running) {
         try {
@@ -118,8 +118,6 @@ public class NioUdpTransport implements Transport {
         }
       }
     }, "NioUdpTransport-Selector");
-    loop.setDaemon(true);
-    loop.start();
   }
 
   /**

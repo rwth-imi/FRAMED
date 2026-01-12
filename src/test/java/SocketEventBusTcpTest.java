@@ -1,6 +1,7 @@
 import com.framed.core.remote.Peer;
 import com.framed.core.remote.SocketEventBus;
 import com.framed.core.remote.TCPTransport;
+import com.framed.core.utils.DispatchMode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,11 +21,11 @@ public class SocketEventBusTcpTest {
   public void setup() {
     // Bus A on port 6000
     TCPTransport transportA = new TCPTransport(5000);
-    busA = new SocketEventBus(transportA);
+    busA = new SocketEventBus(transportA, DispatchMode.SEQUENTIAL);
 
     // Bus B on port 6001
     TCPTransport transportB = new TCPTransport(5001);
-    busB = new SocketEventBus(transportB);
+    busB = new SocketEventBus(transportB, DispatchMode.SEQUENTIAL);
 
     // Add each other as peers
     busA.addPeer(new Peer("localhost", 5001));

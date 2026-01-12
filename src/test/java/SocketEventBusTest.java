@@ -1,6 +1,7 @@
 import com.framed.core.remote.Peer;
 import com.framed.core.remote.SocketEventBus;
 import com.framed.core.remote.MockTransport;
+import com.framed.core.utils.DispatchMode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +18,7 @@ public class SocketEventBusTest {
   @BeforeEach
   public void setup() {
     mockTransport = new MockTransport();
-    eventBus = new SocketEventBus(mockTransport);
+    eventBus = new SocketEventBus(mockTransport, DispatchMode.SEQUENTIAL);
     eventBus.addPeer(new Peer("localhost", 1234)); // Dummy peer
   }
 
