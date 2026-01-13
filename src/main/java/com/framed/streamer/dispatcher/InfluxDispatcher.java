@@ -16,14 +16,15 @@ import java.util.List;
 public class InfluxDispatcher extends Dispatcher {
   private final String org;
   private final String bucket;
-  WriteApi writeApi;
+  private final WriteApi writeApi;
+  private final InfluxDBClient client;
 
   public InfluxDispatcher(EventBus eventBus, JSONArray devices, String url, String token, String org, String bucket) {
     super(eventBus, devices);
     this.org = org;
     this.bucket = bucket;
     try {
-      InfluxDBClient client = InfluxDBClientFactory.create(url, token.toCharArray());
+      client = InfluxDBClientFactory.create(url, token.toCharArray());
       writeApi = client.makeWriteApi();
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -57,5 +58,11 @@ public class InfluxDispatcher extends Dispatcher {
     for (DataPoint<?> dp : batch) {
       push(dp);
     }
+  }
+
+  @Override
+  public void stop() {
+    super.stop();
+    client.close();
   }
 }
