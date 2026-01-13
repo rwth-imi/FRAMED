@@ -4,7 +4,7 @@
      xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.safety-box</groupId>
+  <groupId>com.framed</groupId>
   <artifactId>service</artifactId>
   <version>1.0.0-SNAPSHOT</version>
 
@@ -27,10 +27,12 @@
       <artifactId>json</artifactId>
       <version>20250517</version>
     </dependency>
+    <!-- Source: https://mvnrepository.com/artifact/com.influxdb/influxdb-client-java -->
     <dependency>
       <groupId>com.influxdb</groupId>
       <artifactId>influxdb-client-java</artifactId>
-      <version>6.6.0</version>
+      <version>7.4.0</version>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -53,16 +55,6 @@
 
   <build>
     <plugins>
-      <plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>${maven-compiler-plugin.version}</version>
-        <configuration>
-          <compilerArgs>
-            <arg>-parameters</arg>
-          </compilerArgs>
-          <release>17</release>
-        </configuration>
-      </plugin>
       <plugin>
         <artifactId>maven-shade-plugin</artifactId>
         <version>${maven-shade-plugin.version}</version>
@@ -98,6 +90,18 @@
         <version>${exec-maven-plugin.version}</version>
         <configuration>
           <mainClass>${launcher.class}</mainClass>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.11.0</version>
+        <configuration>
+          <release>21</release>
+          <compilerArgs>
+            <arg>--enable-preview</arg>
+            <arg>-parameters</arg>
+          </compilerArgs>
         </configuration>
       </plugin>
     </plugins>

@@ -39,9 +39,8 @@ public class MedibusRealTimeParser extends Parser<Byte> {
   private synchronized void handleEventBus(Object msg, String deviceName) {
     if (msg instanceof JSONObject) {
       realTimeConfigResponsesList.add((JSONObject) msg);
-    } else if (msg instanceof Integer) {
-      int value = (int) msg;
-      parse((byte) value, deviceName);
+    } else if (msg instanceof Byte) {
+      parse((byte) msg, deviceName);
     }
   }
 

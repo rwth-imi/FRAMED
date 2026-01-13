@@ -18,19 +18,15 @@ public class MedibusSlowParser extends Parser<byte[]> {
     for (Object device : devices) {
       String deviceName = (String) device;
       eventBus.register(deviceName, msg -> {
-        handleEventBus((JSONArray) msg, deviceName);
+        handleEventBus((byte[]) msg, deviceName);
       });
     }
 
 
   }
 
-  private synchronized void handleEventBus(JSONArray msg, String deviceName) {
-    byte[] message = new byte[msg.length()];
-    for (int i = 0; i < msg.length(); i++) {
-      message[i] = (byte) msg.getInt(i);
-    }
-    parse(message, deviceName);
+  private synchronized void handleEventBus(byte[] msg, String deviceName) {
+    parse(msg, deviceName);
   }
 
   @Override
@@ -78,9 +74,9 @@ public class MedibusSlowParser extends Parser<byte[]> {
         dataValue = response.substring(i + 3, i + 3 + lastItemLength);
         dataValue = dataValue.trim();
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
-        // channelID = DataConstants.MedibusXTextMessages.get(dataCodeByte);
+        channelID = DataConstants.MedibusXTextMessages.get(dataCodeByte);
         // System.out.printf("TextMessage: %s%n", dataValue);
-        JSONObject result = new JSONObject().put("channelID", "TextMessage");
+        JSONObject result = new JSONObject().put(channelID, "TextMessage");
         result.put("value", dataValue);
         write(deviceName, result, "TextMessage");
       }

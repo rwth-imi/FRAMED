@@ -30,7 +30,7 @@ public class MedibusProtocol extends Protocol {
 
 
   public MedibusProtocol(
-    String deviceID,
+    String id,
     String portName,
     int baudRate,
     int dataBits,
@@ -40,7 +40,7 @@ public class MedibusProtocol extends Protocol {
     boolean slowData,
     String multiplier,
     EventBus eventBus) {
-    super(deviceID, eventBus);
+    super(id, eventBus);
     // initialize globals from config
     this.realTime = realTime;
     this.waveFormType = waveFormType;
@@ -243,32 +243,32 @@ public class MedibusProtocol extends Protocol {
             commandEchoResponse(DataConstants.poll_request_icc_msg);
           }
           case DataConstants.DATA_RESPONSE_CP1 -> { // Data response cp1
-            logger.log(Level.INFO, "Received: Data CP1 response");
+            logger.fine("Received: Data CP1 response");
             logger.fine("Sending command: poll_request_config_measured_data_codepage2");
             sendCommand(DataConstants.poll_request_config_measured_data_codepage2);
           }
           case DataConstants.DATA_RESPONSE_CP2 -> { // Data response cp2
-            logger.log(Level.INFO, "Received: Data CP2 response");
+            logger.fine("Received: Data CP2 response");
             logger.fine("Sending command: poll_request_device_settings");
             sendCommand(DataConstants.poll_request_device_settings);
           }
           case DataConstants.SETTINGS_RESPONSE -> { // Data response device settings
-            logger.log(Level.INFO, "Received: Data device settings response");
+            logger.fine("Received: Data device settings response");
             logger.fine("Sending command: poll_request_text_messages");
             sendCommand(DataConstants.poll_request_text_messages);
           }
           case DataConstants.TEXT_RESPONSE -> { // Data response text messages
-            logger.log(Level.INFO, "Received: Data text messages response");
+            logger.fine("Received: Data text messages response");
             logger.fine("Sending command: poll_request_config_alarms_codepage1");
             sendCommand(DataConstants.poll_request_config_alarms_codepage1);
           }
           case DataConstants.ALARM_RESPONSE_CP1 -> { // Alarm response cp1
-            logger.log(Level.INFO, "Received: Alarm CP1 response");
+            logger.fine("Received: Alarm CP1 response");
             logger.fine("Sending command: poll_request_config_alarms_codepage2");
             sendCommand(DataConstants.poll_request_config_alarms_codepage2);
           }
           case DataConstants.ALARM_RESPONSE_CP2 -> { // Alarm response cp2
-            logger.log(Level.INFO, "Received: Alarm CP2 response");
+            logger.fine("Received: Alarm CP2 response");
             logger.fine("Sending command: poll_request_config_measured_data_codepage1");
             sendCommand(DataConstants.poll_request_config_measured_data_codepage1);
           }
@@ -324,7 +324,7 @@ public class MedibusProtocol extends Protocol {
 
     byte[] finalBuffer = getRealtimeConfigMessage(waveFormTypeList, tempTxBuffList, multiplier);
 
-    logger.log(Level.INFO, "Send: Configure realtime transmission (command)");
+    logger.fine("Send: Configure realtime transmission (command)");
     sendCommand(finalBuffer);
   }
 
