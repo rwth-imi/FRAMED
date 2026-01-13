@@ -18,15 +18,27 @@ public class MedibusSlowParser extends Parser<byte[]> {
     for (Object device : devices) {
       String deviceName = (String) device;
       eventBus.register(deviceName, msg -> {
-        handleEventBus((byte[]) msg, deviceName);
+        handleEventBus(msg, deviceName);
       });
     }
 
 
   }
 
-  private synchronized void handleEventBus(byte[] msg, String deviceName) {
-    parse(msg, deviceName);
+  private synchronized void handleEventBus(Object msg, String deviceName) {
+    if (msg instanceof byte[] values){
+      parse(values, deviceName);
+    } else if (msg instanceof JSONArray message) {
+      byte[] values = new byte[message.length()];
+      for (int i = 0; i < message.length(); i++) {
+        values[i] = (byte) message.getInt(i);
+      }
+      parse(values, deviceName);
+    } else {
+      logger.warning("Message dataypte unmatched.");
+    }
+
+
   }
 
   @Override
