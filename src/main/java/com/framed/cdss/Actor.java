@@ -14,12 +14,12 @@ public abstract class Actor extends Service {
   // However, this way, we would trigger one call of the msg handler for each attribute.
   // Make sure to handle this via FiringRules
   // improvement idea: one address per device, multiple channels possible per message.
-  private final List<List<String>> firingRules;
-  private final List<String> inputChannels;
-  private final List<String> outputChannels;
+  final List<List<String>> firingRules;
+  final List<String> inputChannels;
+  final List<String> outputChannels;
 
   // this is a consumed at most once logic. Other settings would be possible.
-  private final Map<String, Object> inputBuffer = new ConcurrentHashMap<>();
+  final Map<String, Object> inputBuffer = new ConcurrentHashMap<>();
   private final Map<String, Boolean> updatedFlags = new ConcurrentHashMap<>();
 
   protected Actor(EventBus eventBus, List<List<String>> firingRules, List<String> inputChannels, List<String> outputChannels) {
@@ -46,14 +46,13 @@ public abstract class Actor extends Service {
       // if all channels listed in a particular firing rule were updated, call the fireFunction with the latest observations
       boolean allUpdated = rule.stream().allMatch(ch -> updatedFlags.getOrDefault(ch, false));
       if (allUpdated) {
-        List<Object> values = rule.stream().map(inputBuffer::get).toList();
-        fireFunction(values);
+        fireFunction(inputBuffer);
         rule.forEach(ch -> updatedFlags.put(ch, false));
       }
     }
   }
 
-  public abstract void fireFunction(List<Object> latestValues);
+  public abstract void fireFunction(Map<String, Object> latestValues);
 
   public List<String> getInputChannels() {
     return inputChannels;
