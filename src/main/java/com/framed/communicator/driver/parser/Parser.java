@@ -4,7 +4,7 @@ import com.framed.core.EventBus;
 import com.framed.core.Service;
 
 public abstract class Parser<T> extends Service {
-  public Parser(EventBus eventBus) {
+  protected Parser(EventBus eventBus) {
     super(eventBus);
   }
 

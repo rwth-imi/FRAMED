@@ -3,6 +3,7 @@ package com.framed.communicator.driver.protocol.medibus.utils;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
 
 public class DataUtils {
   private DataUtils() {
@@ -47,7 +48,7 @@ public class DataUtils {
     return finalBuffer;
   }
 
-  public static byte [] getRealtimeConfigMessage(ArrayList<Byte> waveFormTypeList, ArrayList<Byte> tempTxBuffList, String multiplier) {
+  public static byte [] getRealtimeConfigMessage(List<Byte> waveFormTypeList, List<Byte> tempTxBuffList, String multiplier) {
     byte[] rtdListArray = new byte[waveFormTypeList.size()];
     for (int i = 0; i < waveFormTypeList.size(); i++) {
       rtdListArray[i] = waveFormTypeList.get(i);
@@ -76,7 +77,7 @@ public class DataUtils {
     return finalBuffer;
   }
 
-  public static ArrayList<Byte> createWaveFormTypeList(int waveType) {
+  public static List<Byte> createWaveFormTypeList(int waveType) {
     ArrayList<Byte> waveTypesEnums = new ArrayList<>();
     switch (waveType) {
       case 0:
@@ -105,6 +106,8 @@ public class DataUtils {
         waveTypesEnums.add((byte) 0x1C); // Tracheal pressure
         waveTypesEnums.add((byte) 0x1E); // Desflurane concentration percent
         break;
+      default:
+        throw new IllegalArgumentException("There is no waveform of type %d. Check you Config!".formatted(waveType));
     }
     return waveTypesEnums;
   }

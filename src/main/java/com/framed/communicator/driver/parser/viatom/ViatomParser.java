@@ -26,13 +26,13 @@ public class ViatomParser extends Parser<Object> {
     for (String key : data.keySet()) {
       Object value = data.getJSONObject(key).get("value");
       Object field = data.getJSONObject(key).get("field");
-      String address = deviceName + "." + key + ".parsed";
+      String address = "%s.%s.parsed".formatted(deviceName, key);
       JSONObject parsedResult = new JSONObject();
       parsedResult.put("timestamp", timestamp);
       parsedResult.put("channelID", key);
       parsedResult.put("value", value);
       parsedResult.put("className", field.toString());
-      eventBus.publish(deviceName + ".addresses", address);
+      eventBus.publish("%s.addresses".formatted(deviceName), address);
       eventBus.publish(address, parsedResult);
     }
   }

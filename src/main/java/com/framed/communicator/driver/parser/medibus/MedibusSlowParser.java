@@ -7,8 +7,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
+import java.text.MessageFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.logging.Level;
 
 public class MedibusSlowParser extends Parser<byte[]> {
   final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS");
@@ -17,25 +19,23 @@ public class MedibusSlowParser extends Parser<byte[]> {
     super(eventBus);
     for (Object device : devices) {
       String deviceName = (String) device;
-      eventBus.register(deviceName, msg -> {
-        handleEventBus(msg, deviceName);
-      });
+      eventBus.register(deviceName, msg -> handleEventBus(msg, deviceName));
     }
 
 
   }
 
   private synchronized void handleEventBus(Object msg, String deviceName) {
-    if (msg instanceof byte[] values){
-      parse(values, deviceName);
-    } else if (msg instanceof JSONArray message) {
-      byte[] values = new byte[message.length()];
-      for (int i = 0; i < message.length(); i++) {
-        values[i] = (byte) message.getInt(i);
+    switch (msg) {
+      case byte[] values -> parse(values, deviceName);
+      case JSONArray message -> {
+        byte[] values = new byte[message.length()];
+        for (int i = 0; i < message.length(); i++) {
+          values[i] = (byte) message.getInt(i);
+        }
+        parse(values, deviceName);
       }
-      parse(values, deviceName);
-    } else {
-      logger.warning("Message dataypte unmatched.");
+      case null, default -> logger.warning("Message dataypte unmatched.");
     }
 
 
@@ -59,6 +59,8 @@ public class MedibusSlowParser extends Parser<byte[]> {
         parseAlarmMessage(message, "AlarmCP1", deviceName);
       case "\u0001." -> // Alarm cp2
         parseAlarmMessage(message, "AlarmCP2", deviceName);
+      default ->
+        logger.log(Level.WARNING, "Unknown message of type: {}", echo);
     }
   }
 
@@ -82,15 +84,13 @@ public class MedibusSlowParser extends Parser<byte[]> {
       byte textItemLengthByte = lastItemLengthString.getBytes(StandardCharsets.US_ASCII)[0];
       lastItemLength = textItemLengthByte - 0x30;
 
-      if (!(lastItemLength == 0)) {
+      if (lastItemLength != 0) {
         dataValue = response.substring(i + 3, i + 3 + lastItemLength);
         dataValue = dataValue.trim();
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
         channelID = DataConstants.MedibusXTextMessages.get(dataCodeByte);
-        // System.out.printf("TextMessage: %s%n", dataValue);
-        JSONObject result = new JSONObject().put(channelID, "TextMessage");
-        result.put("value", dataValue);
-        write(deviceName, result, "TextMessage");
+
+        write(deviceName, channelID, "TextMessage", dataValue);
       }
     }
   }
@@ -140,11 +140,10 @@ public class MedibusSlowParser extends Parser<byte[]> {
           className = "Settings";
           channelID = DataConstants.MedibusXDeviceSettings.get(dataCodeByte);
         }
-        default -> throw new IllegalStateException("Unexpected value: " + reqType);
+        default -> throw new IllegalStateException("Unexpected value: %s".formatted(reqType));
       }
-      JSONObject result = new JSONObject().put("channelID", channelID);
-      result.put("value", dataValue);
-      write(deviceName, result, className);
+
+      write(deviceName, channelID, className, dataValue);
     }
   }
 
@@ -173,21 +172,20 @@ public class MedibusSlowParser extends Parser<byte[]> {
         channelID = switch (reqType) {
           case "AlarmCP1" -> DataConstants.MedibusXAlarmsCP1.get(dataCodeByte);
           case "AlarmCP2" -> DataConstants.MedibusXAlarmsCP2.get(dataCodeByte);
-          default -> throw new IllegalStateException("Unexpected value: " + reqType);
+          default -> throw new IllegalStateException("Unexpected value: %s".formatted(reqType));
         };
-        JSONObject result = new JSONObject().put("channelID", channelID);
-        result.put("value", dataValue);
-        write(deviceName, result, "Alarm");
+        write(deviceName, channelID, "Alarm", dataValue);
       }
     }
   }
 
-  private void write(String deviceName, JSONObject result, String className) {
+  private void write(String deviceName, String channelID, String className, Object dataValue) {
+    JSONObject result = new JSONObject().put("channelID", channelID);
+    result.put("value", dataValue);
     result.put("timestamp", LocalDateTime.now().format(formatter));
     result.put("className", className);
-    String channelID = result.getString("channelID");
-    String address = deviceName + "." + channelID + ".parsed";
-    eventBus.publish(deviceName + ".addresses", address);
+    String address = "%s.%s.parsed".formatted(deviceName, channelID);
+    eventBus.publish(MessageFormat.format("{0}.addresses", deviceName), address);
     eventBus.publish(address, result);
   }
 }

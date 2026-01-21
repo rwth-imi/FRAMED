@@ -9,6 +9,7 @@ import com.framed.core.utils.Timer;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 
 import static com.framed.communicator.driver.protocol.medibus.utils.DataUtils.*;
@@ -126,7 +127,7 @@ public class MedibusProtocol extends Protocol {
 
     writeData(packetBuffer);
     String echo = response.substring(0, 2);
-    logger.fine("Handling response with echo: " + stringToHex(echo) + " in state " + currentState);
+    logger.fine("Handling response with echo: %s in state %s".formatted(stringToHex(echo), currentState));
 
     switch (currentState) {
       case INITIALIZING -> {
@@ -319,8 +320,8 @@ public class MedibusProtocol extends Protocol {
 
   public void configureRealtimeTransmission() {
     if (this.waveFormType == 0) return; // config set to "No waveform data"
-    ArrayList<Byte> tempTxBuffList = new ArrayList<>();
-    ArrayList<Byte> waveFormTypeList = createWaveFormTypeList(this.waveFormType);
+    List<Byte> tempTxBuffList = new ArrayList<>();
+    List<Byte> waveFormTypeList = createWaveFormTypeList(this.waveFormType);
 
     byte[] finalBuffer = getRealtimeConfigMessage(waveFormTypeList, tempTxBuffList, multiplier);
 
