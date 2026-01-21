@@ -1,5 +1,6 @@
 package com.framed.orchestrator;
 
+import com.framed.cdss.casestudy.SFActor;
 import com.framed.core.remote.*;
 import com.framed.core.utils.DispatchMode;
 import org.json.JSONObject;
@@ -51,6 +52,9 @@ public class Main {
     for (String key : servicesConfigs.keySet()) {
       manager.instantiate(key);
     }
+
+    //Test first actor
+    new SFActor(eventBus);
 
     // Add shutdown hook to stop all services cleanly
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {

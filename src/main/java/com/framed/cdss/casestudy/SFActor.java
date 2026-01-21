@@ -11,18 +11,20 @@ import java.util.Map;
 
 public class SFActor extends Actor {
   final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS");
+  private static final String SPO_2_ADDRESS = "PC60FW.SpO2.parsed";
+  private static final String FIO_2_ADDRESS = "Oxylog-3000-Plus-00.Inspiratory oxygen fraction, FiO2.parsed";
 
 
   public SFActor(EventBus eventBus) {
     super(
       eventBus,
       List.of(
-        List.of("PC60FW.SpO2.parsed"),
-        List.of("Oxylog-3000-Plus-00.Inspiratory oxygen fraction, FiO2.parsed")
+        Map.of(SPO_2_ADDRESS, "*"),
+        Map.of(FIO_2_ADDRESS, "*")
       ),
       List.of(
-        "PC60FW.SpO2.parsed",
-        "Oxylog-3000-Plus-00.Inspiratory oxygen fraction, FiO2.parsed"
+        SPO_2_ADDRESS,
+        FIO_2_ADDRESS
       ),
       List.of(
         "S/F"
@@ -33,8 +35,8 @@ public class SFActor extends Actor {
   @Override
   public void fireFunction(Map<String, Object> latestValues) {
     if (
-      latestValues.get("PC60FW.SpO2.parsed") instanceof Number spo2
-        && latestValues.get("Oxylog-3000-Plus-00.Inspiratory oxygen fraction, FiO2.parsed") instanceof Number fio2
+      latestValues.get(SPO_2_ADDRESS) instanceof Number spo2
+        && latestValues.get(FIO_2_ADDRESS) instanceof Number fio2
     ){
       float sf = spo2.floatValue() / fio2.floatValue();
       JSONObject result = new JSONObject();
