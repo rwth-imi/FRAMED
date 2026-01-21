@@ -13,7 +13,7 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
-      <module name="service" options="-parameters" />
+      <module name="service" options="--enable-preview -parameters" />
     </option>
   </component>
 </project>
