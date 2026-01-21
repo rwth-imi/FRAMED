@@ -27,9 +27,10 @@ public class SFActor extends Actor {
         FIO_2_ADDRESS
       ),
       List.of(
-        "S/F"
+        "S/F-Value"
       )
     );
+
   }
 
   @Override
@@ -42,9 +43,12 @@ public class SFActor extends Actor {
       JSONObject result = new JSONObject();
       result.put("timestamp", LocalDateTime.now().format(formatter));
       result.put("value", sf);
-      result.put("channelID", "S/F");
-      result.put("className", "SFActor");
-      eventBus.publish("S/F", result);
+      for (String channelID: outputChannels) {
+        result.put("channelID", channelID);
+        result.put("className", "S/F");
+        eventBus.publish("CDSS.addresses", channelID);
+        eventBus.publish(channelID, result);
+      }
     }
   }
 }
