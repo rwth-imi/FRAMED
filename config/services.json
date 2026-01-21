@@ -70,7 +70,8 @@
       "devices":
       [
         "Oxylog-3000-Plus-00",
-        "PC60FW"
+        "PC60FW",
+        "CDSS"
       ]
     },
     {
@@ -79,7 +80,8 @@
       "devices":
       [
         "Oxylog-3000-Plus-00",
-        "PC60FW"
+        "PC60FW",
+        "CDSS"
       ],
       "path": "output/streamer/",
       "fileName": "data.jsonl"
