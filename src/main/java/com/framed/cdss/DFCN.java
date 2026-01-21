@@ -16,7 +16,7 @@ public class DFCN {
     }
     computeEdges();
     if (!isAcyclic()) {
-      throw new IllegalAccessException("Acyclic Graph");
+      throw new IllegalAccessException("Cyclic Graph.");
     }
   }
 
