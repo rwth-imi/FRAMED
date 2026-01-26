@@ -1,6 +1,7 @@
 
 package com.framed.cdss;
 
+import com.framed.cdss.casestudy.RuleType;
 import  com.framed.core.EventBus;
 import com.framed.core.Service;
 import org.jetbrains.annotations.NotNull;
@@ -19,7 +20,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * <ul>
  *   <li>Maintains a per-channel <em>latest value</em> and a per-channel <em>monotonic sequence number</em>
  *       (the number of received messages for that channel).</li>
- *   <li>Supports multiple <em>firing rules</em>. Each rule is a {@code Map&lt;channel, token&gt;} where the token
+ *   <li>Supports multiple <em>firing rules</em>. Each rule is a {@code Map<channel, token>} where the token
  *       describes the condition for that channel within the rule. A rule fires when <em>all</em> its
  *       channel conditions are satisfied.</li>
  *   <li>When a rule fires, the actor calls {@link #fireFunction(Map)} with an <em>immutable snapshot</em> of the
@@ -29,11 +30,11 @@ import java.util.concurrent.locks.ReentrantLock;
  * </ul>
  *
  * <h2>Firing Rule Configuration</h2>
- * The constructor accepts {@code List&lt;Map&lt;String,String&gt;&gt; firingRules}. Each map defines one rule; keys are
+ * The constructor accepts {@code List<Map<String,String>> firingRules}. Each map defines one rule; keys are
  * input channel names and values are <em>tokens</em> with the following semantics:
  * <ul>
  *   <li><b>"*"</b> — The channel must have received <em>at least one</em> new message since the last time
- *       <em>this rule</em> fired (i.e., {@code delta &gt;= 1}).</li>
+ *       <em>this rule</em> fired (i.e., {@code delta >= 1}).</li>
  *   <li><b>"N"</b> — The channel must have received <em>at least N</em> new messages since the last time
  *       <em>this rule</em> fired (N is a positive integer).</li>
  *   <li><b>"r:v"</b> — The channel must have received at least one new message since the last time
@@ -166,6 +167,7 @@ public abstract class Actor extends Service {
    * <p>During construction, rules are compiled to internal {@link FiringRule}s and validated for channel existence.
    *
    * @param eventBus      the event bus used to subscribe to input channels and receive messages; must not be {@code null}
+   * @param id            the identifier of the specified Actor. Commonly set in the config.
    * @param firingRules   list of rule maps ({@code channel -> token}), where token is one of {@code "*"}, a positive integer string, or {@code "r:v"}; must not be {@code null}
    * @param inputChannels list of input channels to subscribe to; must contain all channels referenced in {@code firingRules}; must not be {@code null}
    * @param outputChannels list of output channels (not used internally by this class but exposed via {@link #getOutputChannels()}); must not be {@code null}
@@ -334,9 +336,9 @@ public abstract class Actor extends Service {
   /**
    * Parses a condition token into a structured {@link FiringRule}.
    * <ul>
-   *   <li>{@code "*"} -&gt; {@link RuleType#ANY}</li>
-   *   <li>{@code "N"} (digits) -&gt; {@link RuleType#AT_LEAST} with {@code n = N}, where {@code N >= 1}</li>
-   *   <li>{@code "r:v"} -&gt; {@link RuleType#REQUIRE_VALUE} with expected {@code v}</li>
+   *   <li>{@code "*"} -> {@link RuleType#ANY}</li>
+   *   <li>{@code "N"} (digits) -> {@link RuleType#AT_LEAST} with {@code n = N}, where {@code N >= 1}</li>
+   *   <li>{@code "r:v"} -> {@link RuleType#REQUIRE_VALUE} with expected {@code v}</li>
    * </ul>
    *
    * @param token the condition token string; must not be {@code null}

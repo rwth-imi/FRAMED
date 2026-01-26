@@ -1,5 +1,7 @@
 package com.framed.cdss;
 
+import com.framed.cdss.casestudy.RuleType;
+
 /**
  * Structured representation of a parsed channel condition. Instances are created via factory
  * methods {@link #any()}, {@link #atLeast(long)}, and {@link #requireValue(String)}.

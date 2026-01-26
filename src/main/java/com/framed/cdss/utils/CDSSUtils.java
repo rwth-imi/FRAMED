@@ -1,19 +1,16 @@
-package com.framed.cdss;
+package com.framed.cdss.utils;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class CDSSUtils {
 
     private CDSSUtils() {
         throw new IllegalStateException("Utility class");
     }
-    static List<Map<String, String>> parseFiringRulesJson(JSONArray firingRulesJson){
+    public static List<Map<String, String>> parseFiringRulesJson(JSONArray firingRulesJson){
         List<Map<String, String>> firingRules = new ArrayList<>();
         for (Object firingRuleObject: firingRulesJson){
             JSONObject firingRuleJson = (JSONObject) firingRuleObject;
@@ -29,7 +26,7 @@ public class CDSSUtils {
         return firingRules;
     }
 
-    static Map<String, List<Float>> parseLimitsJson(JSONObject limitsJson) {
+    public static Map<String, List<Float>> parseLimitsJson(JSONObject limitsJson) {
         Map<String, List<Float>> result = new HashMap<>();
 
         for (String channel : limitsJson.keySet()) {
@@ -49,13 +46,12 @@ public class CDSSUtils {
     }
 
 
-    static List<String> parseChannelListJson(JSONArray channelListJson) {
+    public static List<String> parseChannelListJson(JSONArray channelListJson) {
         List<String> result = new ArrayList<>();
         for (Object o : channelListJson) {
             result.add(String.valueOf(o));  // safe conversion
         }
         return result;
     }
-
 
 }

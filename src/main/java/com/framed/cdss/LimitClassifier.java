@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.framed.cdss.CDSSUtils.*;
+import static com.framed.cdss.utils.CDSSUtils.*;
 
 
 /**
