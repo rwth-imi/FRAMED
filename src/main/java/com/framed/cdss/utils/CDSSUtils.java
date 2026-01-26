@@ -1,8 +1,11 @@
 package com.framed.cdss.utils;
 
+import com.framed.core.EventBus;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class CDSSUtils {
@@ -79,6 +82,18 @@ public class CDSSUtils {
         }
 
         return result;
+    }
+
+    public static void publishResult(EventBus eventBus, DateTimeFormatter formatter, Object warnValue, String id, List<String> outputChannels) {
+        JSONObject result = new JSONObject();
+        result.put("timestamp", LocalDateTime.now().format(formatter));
+        result.put("className", id);
+        result.put("value", warnValue);
+        for (String out : outputChannels) {
+            result.put("channelID", out);
+            eventBus.publish("CDSS.addresses", out);
+            eventBus.publish(out, result);
+        }
     }
 
 

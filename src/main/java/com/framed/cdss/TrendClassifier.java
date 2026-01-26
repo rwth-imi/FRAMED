@@ -167,8 +167,12 @@ public class TrendClassifier extends Actor {
     }
 
     private void decideWarning(String channel, double slope, Deque<Double> window) {
-        // Decreasing trend condition (DOWN only)
-        boolean conditionMet = slope <= -deltaPerChannel.get(channel);
+        boolean conditionMet = false;
+        switch (direction) {
+            case DOWN ->  conditionMet = slope <= -deltaPerChannel.get(channel);
+            case UP -> conditionMet = slope >= deltaPerChannel.get(channel);
+            case BOTH -> conditionMet = (slope <= -deltaPerChannel.get(channel)) || (slope >= deltaPerChannel.get(channel));
+        }
 
         // Persistence logic
         int hits = consecutiveHits.get(channel);
@@ -179,11 +183,13 @@ public class TrendClassifier extends Actor {
         }
         consecutiveHits.put(channel, hits);
 
-        boolean shouldWarnNow = conditionMet && hits >= persistWindows.get(channel);
-
-        if (shouldWarnNow ) {
-            emitWarning(channel, slope, window);
+        if (conditionMet && hits >= persistWindows.get(channel)){
+           emitWarning(channel, 1, window);
+        } else {
+            emitWarning(channel, 0, window);
         }
+
+
     }
 
     @NotNull
@@ -246,18 +252,17 @@ public class TrendClassifier extends Actor {
      * <p>This method logs a warning and publishes a structured warning message to each configured output channel.</p>
      *
      * @param channel the channel for which the warning is emitted
-     * @param slope   regression slope (negative indicates decreasing trend)
+     * @param warnValue value of the warning, 1 if conditions are met, 0 else
      * @param window  the current evaluation window (used to include context)
      */
-    private void emitWarning(String channel, double slope, Deque<Double> window) {
+    private void emitWarning(String channel, int warnValue, Deque<Double> window) {
         // Publish warning event
         JSONObject result = new JSONObject();
         result.put("timestamp", LocalDateTime.now().format(formatter));
         result.put("className", id);
         result.put("inputChannel", channel);
 
-        // Keep "value" consistent with other classifiers: store the computed metric
-        result.put("value", slope);
+        result.put("value", warnValue);
 
         // Add metadata for consumers
         result.put("trendMetric", "REGRESSION_SLOPE");

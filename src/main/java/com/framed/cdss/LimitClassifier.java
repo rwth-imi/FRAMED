@@ -245,16 +245,7 @@ public class LimitClassifier extends Actor {
     Map<String, Integer> states = checkLimits(latestSnapshot);
 
     for (String ch : inputChannels) {
-      JSONObject result = new JSONObject();
-      result.put("timestamp", LocalDateTime.now().format(formatter));
-      result.put("value", states.get(ch));
-      result.put("className", id);
-
-      for (String out : outputChannels) {
-        result.put("channelID", out);
-        eventBus.publish("CDSS.addresses", out);
-        eventBus.publish(out, result);
-      }
+      publishResult(eventBus, formatter, states.get(ch), id, outputChannels);
     }
   }
 }

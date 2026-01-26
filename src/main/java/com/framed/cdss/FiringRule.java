@@ -14,7 +14,7 @@ import com.framed.cdss.utils.RuleType;
  * @param n     Minimum required delta for {@link RuleType#AT_LEAST}; ignored otherwise.  used when type == AT_LEAST
  * @param value Expected latest value for {@link RuleType#REQUIRE_VALUE}; ignored otherwise.  used when type == REQUIRE_VALUE
  */
-record FiringRule(RuleType type, long n, String value) {
+public record FiringRule(RuleType type, long n, String value) {
   /**
    * @return a condition requiring at least one new message ({@link RuleType#ANY})
    */
