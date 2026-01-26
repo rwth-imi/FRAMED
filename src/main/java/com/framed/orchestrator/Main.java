@@ -19,6 +19,7 @@ public class Main {
     JSONObject communicationConfig;
 
 
+    // load and validate communication and service configs
     try {
       servicesConfigs = ConfigLoader.loadConfig("config/services.json");
       ConfigLoader.validateServiceConfigs(servicesConfigs);
@@ -28,6 +29,7 @@ public class Main {
       throw new IllegalArgumentException(e);
     }
 
+    //initialize EventBus by config, using TCP or UDP remote transportation protocols
     Transport transport;
     int port = communicationConfig.getInt("port");
 
@@ -40,6 +42,8 @@ public class Main {
       transport = new TCPTransport(port);
     }
     SocketEventBus eventBus = new SocketEventBus(transport, DispatchMode.PARALLEL);
+
+    // add configured peers (remote SocketEventBus instances)
     if (communicationConfig.has("peers")) {
       for (Object peer : communicationConfig.getJSONArray("peers")) {
         JSONObject peerConfig = (JSONObject) peer;
@@ -47,16 +51,17 @@ public class Main {
       }
     }
 
-
+    // instantiate all configured service, including DFCN actors
     Manager manager = new Manager(servicesConfigs, eventBus);
     for (String key : servicesConfigs.keySet()) {
       manager.instantiate(key);
     }
 
-    //Test first actor
-    new SFActor(eventBus);
+    // validate the DFCN properties by successfully instantiating the DAG:
+    manager.validateDFCN();
 
-    // Add shutdown hook to stop all services cleanly
+
+      // Add shutdown hook to stop all services cleanly
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
       try {
         logger.info("Shutting down EventBus...");
@@ -65,7 +70,7 @@ public class Main {
         manager.stopAll();
       } catch (Exception e) {
         // log or print error during shutdown — avoid throwing from shutdown hook
-        logger.severe("Error stopping manager: " + e.getMessage());
+        logger.severe("Error stopping manager: %s".formatted(e.getMessage()));
       }
     }));
 

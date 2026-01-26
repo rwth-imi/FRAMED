@@ -72,7 +72,7 @@ public class Factory {
       }
     }
 
-    throw new ClassNotFoundException("No matching constructor found for class: " + className);
+    throw new ClassNotFoundException("No matching constructor found for class: %s".formatted(className));
   }
 
 }

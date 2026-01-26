@@ -20,7 +20,7 @@ public abstract class Dispatcher extends Service {
     super(eventBus);
     for (Object deviceObj : devices) {
       String deviceID = deviceObj.toString();
-      eventBus.register(deviceID + ".addresses", msg -> {
+      eventBus.register("%s.addresses".formatted(deviceID), msg -> {
         if (!addresses.contains(msg.toString())) {
           addresses.add(msg.toString());
           eventBus.register((String) msg, msg_ -> {

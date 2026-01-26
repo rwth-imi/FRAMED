@@ -98,7 +98,6 @@ import java.util.concurrent.locks.ReentrantLock;
  * }</pre>
  */
 public abstract class Actor extends Service {
-  // ==== Configuration (as provided) ====
   /**
    * User-provided list of firing rules. Each rule is a mapping from input channel name to a token:
    * <ul>
@@ -110,6 +109,11 @@ public abstract class Actor extends Service {
    */
   // Each rule is a map: channel -> token ("*", "N", "r:v")
   private final List<Map<String, String>> firingRules; // raw user-facing config
+
+  /**
+   * Identifier of the LimitClassifier instance
+   */
+  protected final String id;
 
   /**
    * Names of input channels that this actor subscribes to and maintains state for.
@@ -169,13 +173,15 @@ public abstract class Actor extends Service {
    * @throws IllegalArgumentException if a rule is empty or references a channel not present in {@code inputChannels}, or contains an invalid token
    */
   protected Actor(EventBus eventBus,
+                  String id,
                   List<Map<String, String>> firingRules,
                   List<String> inputChannels,
                   List<String> outputChannels) {
     super(eventBus);
-    this.firingRules = Objects.requireNonNull(firingRules, "firingRules");
-    this.inputChannels = List.copyOf(Objects.requireNonNull(inputChannels, "inputChannels"));
-    this.outputChannels = List.copyOf(Objects.requireNonNull(outputChannels, "outputChannels"));
+    this.id = id;
+    this.firingRules = firingRules;
+    this.inputChannels = List.copyOf(inputChannels);
+    this.outputChannels = List.copyOf(outputChannels);
 
     // Pre-compile rules
     compileRules();
@@ -187,9 +193,6 @@ public abstract class Actor extends Service {
       latestByChannel.put(inChannel, new JSONObject());
 
       this.eventBus.register(inChannel, msg -> onMessage(inChannel, msg));
-    }
-    for (String ch: this.outputChannels){
-      eventBus.publish("CDSS.addresses", ch);
     }
   }
 

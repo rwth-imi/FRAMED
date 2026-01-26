@@ -1,5 +1,7 @@
 package com.framed.orchestrator;
 
+import com.framed.cdss.Actor;
+import com.framed.cdss.DFCN;
 import com.framed.core.EventBus;
 import com.framed.core.Service;
 
@@ -7,7 +9,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -86,13 +90,21 @@ public class Manager {
         Service service = Factory.instantiate(serviceConfig, eventBus);
         this.instances.put(serviceConfig.getString("id"), service);
       } catch (Exception e) {
-        logger.severe("Failed to instantiate Service for device: " +
-          serviceConfig.getString("id") + e);
+        logger.severe("Failed to instantiate Service for device: %s%s".formatted(serviceConfig.getString("id"), e));
       }
-      logger.info("Successfully instantiated " + clazz);
+      logger.info("Successfully instantiated %s".formatted(clazz));
     }
   }
 
+  public void validateDFCN() {
+    List<Actor> actorList = new ArrayList<>();
+    for (Service service: this.instances.values()) {
+      if (service instanceof Actor actor) {
+        actorList.add(actor);
+      }
+    }
+    new DFCN(actorList);
+  }
 
   /**
    * Stops the service with the specified ID.

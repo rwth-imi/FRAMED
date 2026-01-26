@@ -1,22 +1,30 @@
 package com.framed.cdss;
 
+import com.framed.orchestrator.Main;
+
 import java.util.*;
+import java.util.logging.Logger;
 
 public class DFCN {
+  private static final Logger logger = Logger.getLogger(Main.class.getName());
+
   private final List<Actor> actors;
   private final List<Actor> leafs = new ArrayList<>();
   private final List<Actor> sources =  new ArrayList<>();
   private final Map<Actor, List<Actor>> adj = new HashMap<>();
 
 
-  public DFCN(List<Actor> actors) throws IllegalAccessException {
+  public DFCN(List<Actor> actors) throws IllegalArgumentException {
+
     this.actors = actors;
     for (Actor actor : actors) {
       this.adj.putIfAbsent(actor, new ArrayList<>());
     }
     computeEdges();
     if (!isAcyclic()) {
-      throw new IllegalAccessException("Cyclic Graph.");
+      throw new IllegalArgumentException("Cyclic Graph.");
+    } else {
+      logger.info("Acyclic Data Flow Process Network instantiated.");
     }
   }
 

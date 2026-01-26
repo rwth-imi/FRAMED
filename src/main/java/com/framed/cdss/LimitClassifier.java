@@ -2,124 +2,260 @@
 package com.framed.cdss;
 
 import com.framed.core.EventBus;
-import kotlin.Pair;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.framed.cdss.CDSSUtils.*;
+
+
 /**
- * A specialized {@link Actor} that evaluates per-channel numeric limit states
- * (below lower bound, within range, above upper bound) based on the latest
- * input snapshot provided by {@link #fireFunction(Map)}.
+ * A specialized {@link Actor} that classifies numeric input values per channel
+ * based on a configured, ascending-sorted list of upper bounds.
  *
- * <p>Limits are provided as a map {@code channel -> Pair<lower, upper>}.
- * The {@link #checkLimits(Map)} method returns a map {@code channel -> state}
- * with:
+ * <p><strong>Classification logic:</strong>
+ * For each channel, the classifier receives a list of upper bounds:
+ *
+ * <pre>
+ *  channelA → [b0, b1, b2, ..., bN]   // sorted ascending
+ * </pre>
+ *
+ * Given an incoming numeric value {@code v}, the classifier returns the
+ * <em>first index</em> {@code i} such that:
+ *
+ * <pre>
+ *  v <= b[i]
+ * </pre>
+ *
+ * If no such upper bound exists (i.e., {@code v} is greater than all bounds),
+ * the classifier returns:
+ *
+ * <pre>
+ *  bounds.size()
+ * </pre>
+ *
+ * <p><strong>Example:</strong>
+ *
+ * Suppose the configuration is:
+ *
+ * <pre>
+ *  "SpO2": [90, 93, 96, 100]
+ * </pre>
+ *
+ * Then:
+ *
  * <ul>
- *   <li>{@code -1} if value &lt; lower bound</li>
- *   <li>{@code 0}  if lower bound &le; value &le; upper bound</li>
- *   <li>{@code 1}  if value &gt; upper bound</li>
+ *   <li>{@code v = 89  → index = 0} (89 ≤ 90)</li>
+ *   <li>{@code v = 92  → index = 1} (92 ≤ 93)</li>
+ *   <li>{@code v = 95  → index = 2} (95 ≤ 96)</li>
+ *   <li>{@code v = 100 → index = 3} (100 ≤ 100)</li>
+ *   <li>{@code v = 150 → index = 4} (no bound reached → size = 4)</li>
  * </ul>
  *
- * <p>This class stores the latest snapshot delivered by {@link #fireFunction(Map)}
- * and evaluates against it when {@link #checkLimits(Map)} is called.
+ * <p>The result is therefore a discrete "classification bin" for each channel.
  *
- * <p>Note: This class assumes input values are numeric (e.g., {@link Integer})
- * or at least {@link Number}-typed. If values can be non-numeric, consider
- * overriding this class or adding validation before calling {@link #checkLimits(Map)}.
+ * <p><strong>Input:</strong>
+ * The actor listens to a set of input channels and expects incoming snapshots
+ * in {@link #fireFunction(Map)} where each channel maps to a numeric value
+ * (any {@link Number} subtype is accepted).
+ *
+ * <p><strong>Output:</strong>
+ * For each input event, the actor publishes a result message containing:
+ *
+ * <ul>
+ *   <li>{@code timestamp}: ISO timestamp</li>
+ *   <li>{@code value}:     the computed classification index</li>
+ *   <li>{@code className}: this classifier's ID</li>
+ *   <li>{@code channelID}: the output channel used</li>
+ * </ul>
+ *
+ * <p><strong>Limits configuration:</strong>
+ * Provided as a JSON object of the form:
+ *
+ * <pre>
+ * {
+ *   "channel1": [10, 20, 30],
+ *   "channel2": [5, 7, 9, 12],
+ *   ...
+ * }
+ * </pre>
+ *
+ * All lists are required to be numeric and are automatically sorted ascending.
+ *
+ * <p><strong>Constraints:</strong>
+ * <ul>
+ *   <li>Limited channels must be a subset of the input channels.</li>
+ *   <li>Each value in the snapshot must be numeric.</li>
+ *   <li>Missing channel values will result in an exception.</li>
+ * </ul>
+ *
+ * <p>This class generalizes a "limits classifier" into multiple dynamically
+ * sized classification bins instead of fixed lower/upper bounds.
  */
-public abstract class LimitClassifier extends Actor {
+
+public class LimitClassifier extends Actor {
+
   /**
-   * Per-channel numeric limits: channel -> (lowerBound, upperBound).
+   * Per-channel list of sorted ascending numeric upper bounds.
+   * Example:
+   *  channel → [90, 93, 96, 100]
    */
-  Map<String, Pair<Integer, Integer>> limits;
+  Map<String, List<Float>> limits;
+
 
   /**
    * Constructs a {@code LimitClassifier}.
    *
-   * @param eventBus      the event bus
-   * @param firingRules   firing rules as accepted by {@link Actor} (channel -> token)
-   * @param inputChannels the input channels observed by this actor
-   * @param outputChannels output channels (not used directly here)
-   * @param limits        per-channel limits (lower, upper). The set of limited channels
-   *                      must be equal to or a subset of {@code inputChannels}.
-   * @throws IllegalArgumentException if limited channels are not a subset of input channels
+   * @param eventBus        the event bus used for input and output messaging
+   * @param id              the identifier for this classifier
+   * @param firingRules     firing rules forwarded to {@link Actor}
+   * @param inputChannels   JSON array of input channel names
+   * @param outputChannels  JSON array of output channel names
+   * @param limits      a JSON object describing upper-bound lists per channel
+   *
+   * <p><strong>Format of limitsJson:</strong>
+   * <pre>
+   * {
+   *   "channelA": [limit0, limit1, limit2, ...],
+   *   "channelB": [...],
+   *   ...
+   * }
+   * </pre>
+   *
+   * <p>The lists must contain numeric values. They will be sorted ascending.
+   *
+   * @throws IllegalArgumentException
+   *         if limit channels are not a subset of input channels
    */
-  protected LimitClassifier(EventBus eventBus,
-                            List<Map<String, String>> firingRules,
-                            List<String> inputChannels,
-                            List<String> outputChannels,
-                            Map<String, Pair<Integer, Integer>> limits) {
-    super(eventBus, firingRules, inputChannels, outputChannels);
-    // validate that input channels are equal to limited channels or at least that limited channels are a subset of input channels.
 
-    if (!Set.copyOf(inputChannels).equals(limits.keySet())) {
-      logger.warning("InputChannels are not equal to limited channels.");
-      if (!Set.copyOf(inputChannels).containsAll(limits.keySet())) {
-        throw new IllegalArgumentException("Limited channels are not a subset of input channels.");
-      }
+  public LimitClassifier(EventBus eventBus,
+                         String id,
+                         JSONArray firingRules,
+                         JSONArray inputChannels,
+                         JSONArray outputChannels,
+                         JSONObject limits) {
+
+    super(eventBus, id,
+            parseFiringRulesJson(firingRules),
+            parseChannelListJson(inputChannels),
+            parseChannelListJson(outputChannels));
+
+    if (!Set.copyOf(this.inputChannels).containsAll(limits.keySet())) {
+      throw new IllegalArgumentException("Limited channels must be a subset of input channels.");
     }
-    this.limits = limits;
+
+    this.limits = parseLimitsJson(limits);
   }
 
+
+
   /**
-   * Evaluates current values against configured {@link #limits} using the most recent snapshot
-   * delivered via {@link #fireFunction(Map)}.
+   * Classifies each channel's input value using its configured list of
+   * ascending upper bounds.
    *
-   * <p>Return values per channel:
-   * <ul>
-   *   <li>{@code -1}: value &lt; lower bound</li>
-   *   <li>{@code 0}:  lower bound &le; value &le; upper bound</li>
-   *   <li>{@code 1}:  value &gt; upper bound</li>
-   * </ul>
+   * <p>For each channel, given:
+   * <pre>
+   * bounds = [b0, b1, b2, ..., bN]  // sorted ascending
+   * value = v
+   * </pre>
    *
-   * <p>If a channel is missing in the snapshot or the value is not numeric,
-   * this method will throw an {@link IllegalStateException} or {@link ClassCastException}.
+   * the returned index is the first {@code i} such that:
    *
-   * @return a map of channel -> alarm state
-   * @throws IllegalStateException if no snapshot has been received yet or a channel value is missing
-   * @throws ClassCastException if a channel value is not numeric
+   * <pre>
+   * v <= b[i]
+   * </pre>
+   *
+   * If {@code v} exceeds all bounds, the result is:
+   *
+   * <pre>
+   * bounds.size()
+   * </pre>
+   *
+   * @param snapshot a map channel → numeric value (must contain all required channels)
+   * @return a map channel → classification index
+   *
+   * @throws IllegalStateException
+   *         if snapshot is null or missing a required channel
+   *
+   * @throws ClassCastException
+   *         if a snapshot value is not numeric
    */
   public Map<String, Integer> checkLimits(Map<String, Object> snapshot) {
     if (snapshot == null || snapshot.isEmpty()) {
-      throw new IllegalStateException("No snapshot available yet. fireFunction() has not been invoked.");
+      throw new IllegalStateException("No snapshot available yet.");
     }
 
     Map<String, Integer> alarmStates = new HashMap<>();
+
     for (String channel : this.getInputChannels()) {
       if (!limits.containsKey(channel)) {
-        // If a channel has no defined limits, you may decide to skip or set 0.
-        // Here we skip channels without limits.
         continue;
       }
 
       Object raw = snapshot.get(channel);
       if (raw == null) {
-        throw new IllegalStateException("Missing value for channel '%s' in the latest snapshot.".formatted(channel));
+        throw new IllegalStateException("Missing value for channel: %s".formatted(channel));
       }
 
-      int value;
-      switch (raw) {
-        case Integer i -> value = i;
-        case Number n -> value = n.intValue();
-        default -> throw new ClassCastException("Value for channel '%s' is not numeric: %s".formatted(channel, raw.getClass().getName()));
+      int value = switch (raw) {
+        case Integer i -> i;
+        case Number n -> n.intValue();
+        default -> throw new ClassCastException("Non-numeric value on channel: %s".formatted(raw));
+      };
+
+      List<Float> bounds = limits.get(channel);
+
+      // find first index where upperBound >= value
+      int index = 0;
+      for (; index < bounds.size(); index++) {
+        if (value <= bounds.get(index)) {
+          break;
+        }
       }
 
-      Pair<Integer, Integer> bounds = limits.get(channel);
-      int lower = bounds.component1();
-      int upper = bounds.component2();
+      alarmStates.put(channel, index);
+    }
 
-      if (value < lower) {
-        alarmStates.put(channel, -1);
-      } else if (value > upper) {
-        alarmStates.put(channel, 1);
-      } else {
-        alarmStates.put(channel, 0);
+    return alarmStates;
+  }
+
+
+  /**
+   * Receives a snapshot from the runtime, classifies all channel values via
+   * {@link #checkLimits(Map)}, and publishes one result message per output channel.
+   *
+   * <p>The output message contains:
+   * <ul>
+   *   <li>{@code timestamp}: ISO-8601 timestamp</li>
+   *   <li>{@code value}: classification index computed by {@link #checkLimits(Map)}</li>
+   *   <li>{@code className}: this classifier's ID</li>
+   *   <li>{@code channelID}: the output channel the message is published to</li>
+   * </ul>
+   *
+   * @param latestSnapshot a map channel → numeric value
+   */
+
+  @Override
+  public void fireFunction(Map<String, Object> latestSnapshot) {
+    Map<String, Integer> states = checkLimits(latestSnapshot);
+
+    for (String ch : inputChannels) {
+      JSONObject result = new JSONObject();
+      result.put("timestamp", LocalDateTime.now().format(formatter));
+      result.put("value", states.get(ch));
+      result.put("className", id);
+
+      for (String out : outputChannels) {
+        result.put("channelID", out);
+        eventBus.publish("CDSS.addresses", out);
+        eventBus.publish(out, result);
       }
     }
-    return alarmStates;
   }
 }
 

@@ -32,7 +32,7 @@
       "path": "output/parsed/"
     }
   ],
-  "parsers": [
+  "Parsers": [
     {
       "class": "com.framed.communicator.driver.parser.medibus.MedibusSlowParser",
       "id": "Medibus-Slow-Parser",
@@ -85,6 +85,42 @@
       ],
       "path": "output/streamer/",
       "fileName": "data.jsonl"
+    }
+  ],
+  "Actors":  [
+    {
+      "class": "com.framed.cdss.LimitClassifier",
+      "id": "etCO2-Limit-Classifier",
+      "firingRules": [
+        {
+        "Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": "*"
+        }
+      ],
+      "inputChannels": ["Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed"],
+      "outputChannels": ["etCO2-limit"],
+      "limits": {
+        "Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": [0,25,30,40]
+      }
+    },
+    {
+      "class": "com.framed.cdss.LimitClassifier",
+      "id": "spo2-Limit-Classifier",
+      "firingRules": [
+        {
+        "PC60FW.SpO2.parsed": "*"
+        }
+      ],
+      "inputChannels": ["PC60FW.SpO2.parsed"],
+      "outputChannels": ["SpO2-limit"],
+      "limits": {
+        "PC60FW.SpO2.parsed": [90, 100]
+      }
+    },
+    {
+      "class": "com.framed.cdss.casestudy.SFActor",
+      "id": "SF-Computation-Actor",
+      "spo2Channel": "PC60FW.SpO2.parsed",
+      "fio2Channel": "Oxylog-3000-Plus-00.Inspiratory oxygen fraction, FiO2.parsed"
     }
   ]
 }
