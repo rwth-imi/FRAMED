@@ -27,10 +27,13 @@ public class HRClassifier extends Actor {
      *
      * @param eventBus       the event bus used to subscribe to input channels and receive messages; must not be {@code null}
      * @param id             the identifier of the specified Actor. Commonly set in the config.
+     * @param etCO2TrendChannel the channel on which the etCO2 trend warning is published
+     * @param hrLimitChannel    the channel on which the Heartrate limit warning is published
+     * @param outputChannel     the channel on which to publish the arrhythmia warning
      * @throws NullPointerException     if any argument is {@code null}
      * @throws IllegalArgumentException if a rule is empty or references a channel not present in {@code inputChannels}, or contains an invalid token
      */
-    protected HRClassifier(
+    public HRClassifier(
             EventBus eventBus,
             String id,
             String etCO2TrendChannel,

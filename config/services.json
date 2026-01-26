@@ -118,6 +118,20 @@
     },
     {
       "class": "com.framed.cdss.LimitClassifier",
+      "id": "S/F-Limit-Classifier",
+      "firingRules": [
+        {
+          "S/F-Value": "*"
+        }
+      ],
+      "inputChannels": ["S/F-Value"],
+      "outputChannels": ["S/F-limit"],
+      "limits": {
+        "S/F-Value": [148, 235, 315]
+      }
+    },
+    {
+      "class": "com.framed.cdss.LimitClassifier",
       "id": "HR-Limit-Classifier",
       "firingRules": [
         {
@@ -178,6 +192,21 @@
         "Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 4
       },
       "direction": "DOWN"
+    },
+    {
+      "class": "com.framed.cdss.casestudy.HRClassifier",
+      "id": "Hemodynamic arrhythmia",
+      "etCO2TrendChannel": "etCO2-trend",
+      "hrLimitChannel": "HR-Limit",
+      "outputChannel":"HD-aryth"
+    },
+    {
+      "class": "com.framed.cdss.casestudy.DislocationClassifier",
+      "id": "Dislocation-Classifier",
+      "spo2TrendChannel": "SpO2-trend",
+      "etCO2LimitChannel": "etCO2-limit",
+      "sfLimitChannel": "S/F-limit",
+      "outputChannel": "Dislocation"
     }
   ]
 }

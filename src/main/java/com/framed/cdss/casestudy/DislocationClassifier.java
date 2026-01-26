@@ -35,7 +35,7 @@ public class DislocationClassifier extends Actor {
      * @throws NullPointerException     if any argument is {@code null}
      * @throws IllegalArgumentException if a rule is empty or references a channel not present in {@code inputChannels}, or contains an invalid token
      */
-    protected DislocationClassifier(
+    public DislocationClassifier(
             EventBus eventBus,
             String id,
             String spo2TrendChannel,
