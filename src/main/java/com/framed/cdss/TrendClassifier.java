@@ -1,20 +1,16 @@
 
 package com.framed.cdss;
 
-import com.framed.cdss.casestudy.TrendDirection;
+import com.framed.cdss.utils.TrendDirection;
 import com.framed.core.EventBus;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.time.LocalDateTime;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
-import static com.framed.cdss.utils.CDSSUtils.parseChannelListJson;
-import static com.framed.cdss.utils.CDSSUtils.parseFiringRulesJson;
+import static com.framed.cdss.utils.CDSSUtils.*;
 
 /**
  * A specialized {@link Actor} that detects a decreasing trend (downward drift)
@@ -66,20 +62,20 @@ import static com.framed.cdss.utils.CDSSUtils.parseFiringRulesJson;
 public class TrendClassifier extends Actor {
 
     private final TrendDirection direction;
-    /** Sliding window size; must be >= 2. */
-    private final int windowSize;
+    /** Sliding window size per input channel; must be >= 2. */
+    private final Map<String, Integer> windowSizes;
 
     /**
      * Decrease threshold. Warning if slope <= -delta.
      * Units: "value units per sample" (e.g., SpO₂ percent per sample).
      */
-    private final double delta;
+    private final Map<String, Integer> deltaPerChannel;
 
     /**
      * Number of consecutive windows that must satisfy the warning condition
      * before emitting a warning. Must be >= 1.
      */
-    private final int persistWindows;
+    private final Map<String, Integer> persistWindows;
 
     /** Per-channel sliding window of the most recent values. */
     private final Map<String, Deque<Double>> windows = new HashMap<>();
@@ -96,8 +92,8 @@ public class TrendClassifier extends Actor {
      * @param firingRules     firing rules as accepted by {@link Actor}; must not be {@code null}
      * @param inputChannels   channels observed by this classifier; must not be {@code null}
      * @param outputChannels  channels to publish warning messages to; must not be {@code null}
-     * @param windowSize      number of recent samples used for trend detection; must be {@code >= 2}
-     * @param delta           non-negative threshold; warning if slope {@code <= -delta}
+     * @param windowSizes      number of recent samples per channel used for trend detection; must be {@code >= 2}
+     * @param deltas           non-negative threshold per Channel; warning if slope {@code <= -delta}
      * @param persistWindows  required number of consecutive satisfied windows; must be {@code >= 1}
      *
      * @throws NullPointerException     if any required argument is {@code null}
@@ -108,33 +104,26 @@ public class TrendClassifier extends Actor {
                               JSONArray firingRules,
                               JSONArray inputChannels,
                               JSONArray outputChannels,
-                              Integer windowSize,
-                              Integer delta,
-                              Integer persistWindows,
+                              JSONObject windowSizes,
+                              JSONObject persistWindows,
+                              JSONObject deltas,
                               String direction
                            ) {
 
         super(eventBus, id, parseFiringRulesJson(firingRules), parseChannelListJson(inputChannels), parseChannelListJson(outputChannels));
 
-        if (windowSize == null || windowSize < 2) {
-            throw new IllegalArgumentException("windowSize must be >= 2");
-        }
-        if (delta == null || delta < 0) {
-            throw new IllegalArgumentException("delta must be >= 0");
-        }
-        if (persistWindows == null || persistWindows < 1) {
-            throw new IllegalArgumentException("persistWindows must be >= 1");
-        }
+        this.windowSizes = parsePerChannelIntMap(windowSizes, 2);
+        this.persistWindows = parsePerChannelIntMap(persistWindows, 1);
+        // TODO: allow for doubles here.
+        this.deltaPerChannel = parsePerChannelIntMap(deltas, 0);
 
-        this.windowSize = windowSize;
-        this.delta = delta.doubleValue();
-        this.persistWindows = persistWindows;
 
-        // Initialize per-channel state
         for (String ch : this.inputChannels) {
+            int windowSize = this.windowSizes.getOrDefault(ch, 2);
             windows.put(ch, new ArrayDeque<>(windowSize));
             consecutiveHits.put(ch, 0);
         }
+
 
         this.direction = TrendDirection.valueOf(direction);
     }
@@ -168,7 +157,7 @@ public class TrendClassifier extends Actor {
                 Deque<Double> window = getWindow(channel, raw);
 
                 // Need a full window to evaluate trend
-                if (window.size() >= windowSize) {
+                if (window.size() >= windowSizes.get(channel)) {
                     double slope = computeRegressionSlope(window);
                     decideWarning(channel, slope, window);
                 }
@@ -179,7 +168,7 @@ public class TrendClassifier extends Actor {
 
     private void decideWarning(String channel, double slope, Deque<Double> window) {
         // Decreasing trend condition (DOWN only)
-        boolean conditionMet = slope <= -delta;
+        boolean conditionMet = slope <= -deltaPerChannel.get(channel);
 
         // Persistence logic
         int hits = consecutiveHits.get(channel);
@@ -190,7 +179,7 @@ public class TrendClassifier extends Actor {
         }
         consecutiveHits.put(channel, hits);
 
-        boolean shouldWarnNow = conditionMet && hits >= persistWindows;
+        boolean shouldWarnNow = conditionMet && hits >= persistWindows.get(channel);
 
         if (shouldWarnNow ) {
             emitWarning(channel, slope, window);
@@ -209,7 +198,7 @@ public class TrendClassifier extends Actor {
 
         // Maintain sliding window
         Deque<Double> window = windows.get(channel);
-        if (window.size() == windowSize) {
+        if (window.size() == windowSizes.get(channel)) {
             window.removeFirst();
         }
         window.addLast(value);
@@ -261,10 +250,6 @@ public class TrendClassifier extends Actor {
      * @param window  the current evaluation window (used to include context)
      */
     private void emitWarning(String channel, double slope, Deque<Double> window) {
-        // Log warning
-        logger.warning("Decreasing trend detected on channel '%s': slope=%.4f (threshold=-%.4f), windowSize=%d, persistWindows=%d"
-                .formatted(channel, slope, delta, windowSize, persistWindows));
-
         // Publish warning event
         JSONObject result = new JSONObject();
         result.put("timestamp", LocalDateTime.now().format(formatter));
@@ -277,8 +262,8 @@ public class TrendClassifier extends Actor {
         // Add metadata for consumers
         result.put("trendMetric", "REGRESSION_SLOPE");
         result.put("direction", this.direction);
-        result.put("windowSize", windowSize);
-        result.put("delta", delta);
+        result.put("windowSize", windowSizes.get(channel));
+        result.put("delta", deltaPerChannel.get(channel));
         result.put("persistWindows", persistWindows);
 
         result.put("windowFirst", window.peekFirst());

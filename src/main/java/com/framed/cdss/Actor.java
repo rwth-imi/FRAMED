@@ -1,7 +1,7 @@
 
 package com.framed.cdss;
 
-import com.framed.cdss.casestudy.RuleType;
+import com.framed.cdss.utils.RuleType;
 import  com.framed.core.EventBus;
 import com.framed.core.Service;
 import org.jetbrains.annotations.NotNull;

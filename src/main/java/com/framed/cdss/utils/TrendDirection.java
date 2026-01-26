@@ -1,4 +1,4 @@
-package com.framed.cdss.casestudy;
+package com.framed.cdss.utils;
 /**
  * Enumerates the directions of trends:
  * <ul>

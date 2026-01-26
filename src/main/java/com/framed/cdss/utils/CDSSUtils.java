@@ -54,4 +54,32 @@ public class CDSSUtils {
         return result;
     }
 
+
+    public static Map<String, Integer> parsePerChannelIntMap(
+            JSONObject json,
+            int minValue) {
+
+        Map<String, Integer> result = new HashMap<>();
+
+        for (String channel : json.keySet()) {
+
+            Object raw = json.get(channel);
+            if (!(raw instanceof Number n)) {
+                throw new IllegalArgumentException(
+                        "Value for channel '%s' must be numeric, but was: %s".formatted(channel, raw.getClass().getSimpleName()));
+            }
+
+            int value = n.intValue();
+            if (value < minValue) {
+                throw new IllegalArgumentException(
+                        "Value for channel '%s' must be >= %d, but was: %d".formatted(channel, minValue, value));
+            }
+
+            result.put(channel, value);
+        }
+
+        return result;
+    }
+
+
 }

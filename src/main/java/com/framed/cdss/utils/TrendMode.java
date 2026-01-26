@@ -1,4 +1,4 @@
-package com.framed.cdss.casestudy;
+package com.framed.cdss.utils;
 /**
  * Enumerates the mode of tends conditions supported:
  * <ul>

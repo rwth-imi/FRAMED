@@ -124,32 +124,29 @@
     },
     {
       "class": "com.framed.cdss.TrendClassifier",
-      "id": "spo2-Trend-Classifier",
+      "id": "spo2-etCO2-Trend-Classifier",
       "firingRules": [
         {
           "PC60FW.SpO2.parsed": "*"
-        }
-      ],
-      "inputChannels": ["PC60FW.SpO2.parsed"],
-      "outputChannels": ["SpO2-trend"],
-      "windowSize": 6,
-      "delta": 2,
-      "persistWindows": 1,
-      "direction": "DOWN"
-    },
-    {
-      "class": "com.framed.cdss.TrendClassifier",
-      "id": "etCO2-Trend-Classifier",
-      "firingRules": [
+        },
         {
           "Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": "*"
         }
       ],
-      "inputChannels": ["Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed"],
-      "outputChannels": ["etCO2-trend"],
-      "windowSize": 6,
-      "delta": 2,
-      "persistWindows": 1,
+      "inputChannels": ["PC60FW.SpO2.parsed", "Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed"],
+      "outputChannels": ["SpO2-etCO2-trend"],
+      "windowSizes": {
+        "PC60FW.SpO2.parsed": 6,
+        "Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 8
+      },
+      "persistWindows": {
+        "PC60FW.SpO2.parsed": 1,
+        "Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 1
+      },
+      "deltas": {
+        "PC60FW.SpO2.parsed": 3,
+        "Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 4
+      },
       "direction": "DOWN"
     }
   ]
