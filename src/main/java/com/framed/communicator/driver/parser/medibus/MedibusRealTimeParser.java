@@ -9,7 +9,6 @@ import org.json.JSONObject;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,10 +17,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class MedibusRealTimeParser extends Parser<Byte> {
   private final List<Byte> realTimeByteList = new CopyOnWriteArrayList<>();
-  private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS");
 
-  private List<Byte> waveFormTypeList;
-  private final List<Map<String, Object>> waveValResultList = new CopyOnWriteArrayList<>();
+  private final List<Byte> waveFormTypeList;
 
   private final List<JSONObject> realTimeConfigResponsesList = new CopyOnWriteArrayList<>();
 

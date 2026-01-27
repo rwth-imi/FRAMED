@@ -85,6 +85,7 @@ public class DataUtils {
       case 1:
         waveTypesEnums.add((byte) 0x00); // PAW
         waveTypesEnums.add((byte) 0x01); // Flow
+        waveTypesEnums.add((byte) 0x06); // CO2 Concentration mmHg
         break;
       case 2:
         waveTypesEnums.add((byte) 0x02); // Pleth

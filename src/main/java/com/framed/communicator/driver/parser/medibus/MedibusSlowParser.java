@@ -184,7 +184,7 @@ public class MedibusSlowParser extends Parser<byte[]> {
     result.put("value", dataValue);
     result.put("timestamp", LocalDateTime.now().format(formatter));
     result.put("className", className);
-    String address = "%s.%s.parsed".formatted(deviceName, channelID);
+    String address = "%s.%s.%s.parsed".formatted(className, deviceName, channelID);
     eventBus.publish(MessageFormat.format("{0}.addresses", deviceName), address);
     eventBus.publish(address, result);
   }

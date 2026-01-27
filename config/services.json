@@ -8,7 +8,7 @@
       "dataBits": 8,
       "stopBits": 1,
       "waveFormType": 1,
-      "realTime": true,
+      "realTime": false,
       "slowData": true,
       "multiplier": "10"
     }
@@ -93,13 +93,13 @@
       "id": "etCO2-Limit-Classifier",
       "firingRules": [
         {
-        "Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": "*"
+        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": "*"
         }
       ],
-      "inputChannels": ["Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed"],
+      "inputChannels": ["Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed"],
       "outputChannels": ["etCO2-limit"],
       "limits": {
-        "Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": [0,25,30,40]
+        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": [0,25,30,40]
       }
     },
     {
@@ -148,7 +148,7 @@
       "class": "com.framed.cdss.casestudy.SFActor",
       "id": "SF-Computation-Actor",
       "spo2Channel": "PC60FW.SpO2.parsed",
-      "fio2Channel": "Oxylog-3000-Plus-00.Inspiratory oxygen fraction, FiO2.parsed",
+      "fio2Channel": "Measurement.Oxylog-3000-Plus-00.Inspiratory oxygen fraction, FiO2.parsed",
       "outputChannel": "S/F-Value"
     },
     {
@@ -177,19 +177,19 @@
       "id": "etCO2-Trend-Classifier",
       "firingRules": [
         {
-          "Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": "*"
+          "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": "*"
         }
       ],
-      "inputChannels": ["Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed"],
+      "inputChannels": ["Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed"],
       "outputChannels": ["etCO2-trend"],
       "windowSizes": {
-        "Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 8
+        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 8
       },
       "persistWindows": {
-        "Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 1
+        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 1
       },
       "deltas": {
-        "Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 4
+        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 4
       },
       "direction": "DOWN"
     },

@@ -7,9 +7,14 @@ import com.framed.core.Service;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+
+import static com.framed.cdss.utils.CDSSUtils.publishResult;
 
 /**
  * An abstract reactive {@code Actor} that listens to a set of input channels on an {@link EventBus},
@@ -108,9 +113,9 @@ public abstract class Actor extends Service {
    * </ul>
    * Rules are evaluated independently and can fire concurrently (in sequence) within one evaluation pass.
    */
-  // Each rule is a map: channel -> token ("*", "N", "r:v")
   private final List<Map<String, String>> firingRules; // raw user-facing config
 
+  private final Map<String, Instant> snapshotTimes;
   /**
    * Identifier of the LimitClassifier instance
    */
@@ -127,31 +132,26 @@ public abstract class Actor extends Service {
    */
   protected final List<String> outputChannels;
 
-  // ==== Compiled rule state ====
   /**
    * Parsed (compiled) view of {@link #firingRules}: for each rule, maps channel to a structured {@link FiringRule}.
    */
-  // Parsed rules: channel -> Condition
   private final List<Map<String, FiringRule>> compiledRules = new ArrayList<>();
 
 
   /**
    * Latest message object observed for each input channel. Updated on every incoming message.
    */
-  // Latest value per channel
   private final Map<String, Object> latestByChannel = new ConcurrentHashMap<>();
 
   /**
    * Monotonic per-channel sequence (count of received messages). Incremented on every incoming message.
    */
-  // Monotonic sequence (count of received messages) per channel
   private final Map<String, Long> channelSeq = new ConcurrentHashMap<>();
 
   /**
    * Lock to ensure atomic update-and-evaluate. Protects rule evaluation, snapshot creation,
    * and invocation of {@link #fireFunction(Map)} to prevent races that could cause missed or duplicated firings.
    */
-  // Concurrency control for evaluation (update+evaluate as an atomic unit)
   private final ReentrantLock evalLock = new ReentrantLock();
 
   /**
@@ -187,6 +187,7 @@ public abstract class Actor extends Service {
 
     // Pre-compile rules
     compileRules();
+    snapshotTimes = new HashMap<>();
 
     // Register listeners for each input channel
     for (String inChannel : this.inputChannels) {
@@ -233,6 +234,7 @@ public abstract class Actor extends Service {
     latestByChannel.put(channel, msg);
     channelSeq.merge(channel, 1L, Long::sum);
     evaluateRules();
+
   }
 
   /**
@@ -278,6 +280,10 @@ public abstract class Actor extends Service {
           }
 
           fireFunction(unmodifiableSnapshot);
+          // for benchmarking only:
+          for (String ch : inputChannels) {
+            publishResult(eventBus, formatter, Instant.now().compareTo(snapshotTimes.getOrDefault(ch, Instant.now())), id, List.of("Latency-%s".formatted(ch)));
+          }
           break;
         }
       }
@@ -293,12 +299,14 @@ public abstract class Actor extends Service {
     for (String ch : inputChannels) {
       JSONObject dataPoint = (JSONObject) latestByChannel.get(ch);
       snapshot.put(ch, dataPoint.has("value") ? dataPoint.get("value") : 0);
+      LocalDateTime ldt = LocalDateTime.parse(dataPoint.getString("timestamp"), formatter);
+      ZoneId zoneId = ZoneId.systemDefault();
+      Instant timestamp = ldt.atZone(zoneId).toInstant();
+      snapshotTimes.put(ch, timestamp);
     }
     return Collections.unmodifiableMap(snapshot);
   }
 
-
-  // ==== Rule compilation & condition logic ====
 
   /**
    * Compiles the user-provided {@link #firingRules} into internal {@link FiringRule}s.
