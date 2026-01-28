@@ -1,6 +1,5 @@
 package com.framed.orchestrator;
 
-import com.framed.cdss.casestudy.SFActor;
 import com.framed.core.remote.*;
 import com.framed.core.utils.DispatchMode;
 import org.json.JSONObject;
