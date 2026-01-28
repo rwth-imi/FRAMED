@@ -7,6 +7,7 @@ import org.json.JSONObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Parameter;
+import java.math.BigDecimal;
 
 /**
  * The {@code Factory} class provides dynamic instantiation of {@link Service} implementations
@@ -58,6 +59,9 @@ public class Factory {
         Class<?> paramType = parameters[i].getType();
         if (config.keySet().contains(paramName)) {
           Object value = config.get(paramName);
+          if (value instanceof BigDecimal decimal) {
+            value = decimal.doubleValue();
+          }
           args[i] = value;
         } else if (paramType.equals(EventBus.class)) {
           args[i] = eventBus;
