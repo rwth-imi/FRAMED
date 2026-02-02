@@ -9,11 +9,9 @@ import org.json.JSONObject;
 import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.logging.Level;
 
 public class MedibusSlowParser extends Parser<byte[]> {
-  final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS");
 
   public MedibusSlowParser(EventBus eventBus, JSONArray devices) {
     super(eventBus);
@@ -43,29 +41,30 @@ public class MedibusSlowParser extends Parser<byte[]> {
 
   @Override
   public void parse(byte[] message, String deviceName) {
+    LocalDateTime timestamp = LocalDateTime.now();
     String data = new String(message, StandardCharsets.US_ASCII);
 
     String echo = data.substring(0, 2);
     switch (echo) {
       case "\u0001$" -> // Data cp1
-        parseNumMessage(message, 6, "MeasurementCP1", deviceName);
+        parseNumMessage(message, 6, "MeasurementCP1", deviceName, timestamp);
       case "\u0001+" -> // Data cp2
-        parseNumMessage(message, 6, "MeasurementCP2", deviceName);
+        parseNumMessage(message, 6, "MeasurementCP2", deviceName, timestamp);
       case "\u0001)" -> // Data device settings
-        parseNumMessage(message, 7, "DeviceSettings", deviceName);
+        parseNumMessage(message, 7, "DeviceSettings", deviceName, timestamp);
       case "\u0001*" -> // Data text messages
-        parseTextMessage(message, deviceName);
+        parseTextMessage(message, deviceName, timestamp);
       case "\u0001'" -> // Alarm cp1
-        parseAlarmMessage(message, "AlarmCP1", deviceName);
+        parseAlarmMessage(message, "AlarmCP1", deviceName, timestamp);
       case "\u0001." -> // Alarm cp2
-        parseAlarmMessage(message, "AlarmCP2", deviceName);
+        parseAlarmMessage(message, "AlarmCP2", deviceName, timestamp);
       default ->
         logger.log(Level.WARNING, "Unknown message of type: {}", echo);
     }
   }
 
 
-  private void parseTextMessage(byte[] message, String deviceName) {
+  private void parseTextMessage(byte[] message, String deviceName, LocalDateTime timestamp) {
     int offset = 4;
     int dataArrayLength = message.length - 2;
     byte[] dataArray = new byte[dataArrayLength];
@@ -77,7 +76,7 @@ public class MedibusSlowParser extends Parser<byte[]> {
     String dataValue;
     String channelID;
 
-    int lastItemLength = 0;
+    int lastItemLength;
     for (int i = 0; i < responseLength; i += offset + lastItemLength) {
       dataCode = response.substring(i, i + 1);
       String lastItemLengthString = response.substring(i + 2, i + 3);
@@ -90,22 +89,21 @@ public class MedibusSlowParser extends Parser<byte[]> {
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
         channelID = DataConstants.MedibusXTextMessages.get(dataCodeByte);
 
-        write(deviceName, channelID, "TextMessage", dataValue);
+        write(deviceName, channelID, "TextMessage", dataValue, timestamp);
       }
     }
   }
 
-  private void parseNumMessage(byte[] message, int offset, String reqType, String deviceName) {
-    // init local parser variables
-    String dataCode;
-    double dataValue;
-    String channelID;
-
+  private void parseNumMessage(byte[] message, int offset, String reqType, String deviceName, LocalDateTime timestamp) {
     int dataLength = 4;
     int dataArrayLength = message.length - 2;
     byte[] dataArray = new byte[dataArrayLength];
     System.arraycopy(message, 2, dataArray, 0, dataArrayLength);
     String response = new String(dataArray, StandardCharsets.US_ASCII);
+
+    String dataCode;
+    double dataValue;
+    String channelID;
 
     int responseLength = response.length();
 
@@ -125,7 +123,7 @@ public class MedibusSlowParser extends Parser<byte[]> {
       }
 
       byte dataCodeByte = (byte) (Integer.parseInt(dataCode, 16) % 256);
-      String className = "";
+      String className;
 
       switch (reqType) {
         case "MeasurementCP1" -> {
@@ -143,20 +141,20 @@ public class MedibusSlowParser extends Parser<byte[]> {
         default -> throw new IllegalStateException("Unexpected value: %s".formatted(reqType));
       }
 
-      write(deviceName, channelID, className, dataValue);
+      write(deviceName, channelID, className, dataValue, timestamp);
     }
   }
 
-  private void parseAlarmMessage(byte[] message, String reqType, String deviceName) {
+  private void parseAlarmMessage(byte[] message, String reqType, String deviceName, LocalDateTime timestamp) {
     int offset = 15;
     int dataArrayLength = message.length - 2;
     byte[] dataArray = new byte[dataArrayLength];
     System.arraycopy(message, 2, dataArray, 0, dataArrayLength);
     String response = new String(dataArray, StandardCharsets.US_ASCII);
     int responseLength = response.length();
-    String dataCode = "";
-    String dataValue = "";
-    String channelID = "";
+    String dataCode;
+    String dataValue;
+    String channelID;
 
     if (responseLength > 0) {
       for (int i = 0; i < responseLength; i += offset) {
@@ -174,15 +172,15 @@ public class MedibusSlowParser extends Parser<byte[]> {
           case "AlarmCP2" -> DataConstants.MedibusXAlarmsCP2.get(dataCodeByte);
           default -> throw new IllegalStateException("Unexpected value: %s".formatted(reqType));
         };
-        write(deviceName, channelID, "Alarm", dataValue);
+        write(deviceName, channelID, "Alarm", dataValue, timestamp);
       }
     }
   }
 
-  private void write(String deviceName, String channelID, String className, Object dataValue) {
+  private void write(String deviceName, String channelID, String className, Object dataValue, LocalDateTime timestamp) {
     JSONObject result = new JSONObject().put("channelID", channelID);
     result.put("value", dataValue);
-    result.put("timestamp", LocalDateTime.now().format(formatter));
+    result.put("timestamp", timestamp.format(formatter));
     result.put("className", className);
     String address = "%s.%s.%s.parsed".formatted(className, deviceName, channelID);
     eventBus.publish(MessageFormat.format("{0}.addresses", deviceName), address);

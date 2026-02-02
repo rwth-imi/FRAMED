@@ -1,11 +1,11 @@
 
-package com.framed.cdss;
+package com.framed.cdss.actors;
 
+import com.framed.cdss.Actor;
 import com.framed.core.EventBus;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -98,7 +98,7 @@ import static com.framed.cdss.utils.CDSSUtils.*;
  * sized classification bins instead of fixed lower/upper bounds.
  */
 
-public class LimitClassifier extends Actor {
+public class LimitClassificationActor extends Actor {
 
   /**
    * Per-channel list of sorted ascending numeric upper bounds.
@@ -133,12 +133,12 @@ public class LimitClassifier extends Actor {
    *         if limit channels are not a subset of input channels
    */
 
-  public LimitClassifier(EventBus eventBus,
-                         String id,
-                         JSONArray firingRules,
-                         JSONArray inputChannels,
-                         JSONArray outputChannels,
-                         JSONObject limits) {
+  public LimitClassificationActor(EventBus eventBus,
+                                  String id,
+                                  JSONArray firingRules,
+                                  JSONArray inputChannels,
+                                  JSONArray outputChannels,
+                                  JSONObject limits) {
 
     super(eventBus, id,
             parseFiringRulesJson(firingRules),

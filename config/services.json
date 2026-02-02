@@ -8,7 +8,7 @@
       "dataBits": 8,
       "stopBits": 1,
       "waveFormType": 1,
-      "realTime": false,
+      "realTime": true,
       "slowData": true,
       "multiplier": "10"
     }
@@ -89,7 +89,7 @@
   ],
   "Actors":  [
     {
-      "class": "com.framed.cdss.LimitClassifier",
+      "class": "com.framed.cdss.actors.LimitClassificationActor",
       "id": "etCO2-Limit-Classifier",
       "firingRules": [
         {
@@ -103,7 +103,7 @@
       }
     },
     {
-      "class": "com.framed.cdss.LimitClassifier",
+      "class": "com.framed.cdss.actors.LimitClassificationActor",
       "id": "spo2-Limit-Classifier",
       "firingRules": [
         {
@@ -117,7 +117,7 @@
       }
     },
     {
-      "class": "com.framed.cdss.LimitClassifier",
+      "class": "com.framed.cdss.actors.LimitClassificationActor",
       "id": "S/F-Limit-Classifier",
       "firingRules": [
         {
@@ -127,11 +127,11 @@
       "inputChannels": ["S/F-Value"],
       "outputChannels": ["S/F-limit"],
       "limits": {
-        "S/F-Value": [148, 235, 315]
+        "S/F-Value": [1.48, 2.35, 3.15]
       }
     },
     {
-      "class": "com.framed.cdss.LimitClassifier",
+      "class": "com.framed.cdss.actors.LimitClassificationActor",
       "id": "HR-Limit-Classifier",
       "firingRules": [
         {
@@ -145,14 +145,14 @@
       }
     },
     {
-      "class": "com.framed.cdss.casestudy.SFActor",
+      "class": "com.framed.cdss.actors.SFComputationActor",
       "id": "SF-Computation-Actor",
       "spo2Channel": "PC60FW.SpO2.parsed",
       "fio2Channel": "Measurement.Oxylog-3000-Plus-00.Inspiratory oxygen fraction, FiO2.parsed",
       "outputChannel": "S/F-Value"
     },
     {
-      "class": "com.framed.cdss.TrendClassifier",
+      "class": "com.framed.cdss.actors.TrendClassificationActor",
       "id": "spo2-Trend-Classifier",
       "firingRules": [
         {
@@ -173,7 +173,7 @@
       "direction": "DOWN"
     },
     {
-      "class": "com.framed.cdss.TrendClassifier",
+      "class": "com.framed.cdss.actors.TrendClassificationActor",
       "id": "etCO2-Trend-Classifier",
       "firingRules": [
         {
@@ -194,19 +194,45 @@
       "direction": "DOWN"
     },
     {
-      "class": "com.framed.cdss.casestudy.HRClassifier",
+      "class": "com.framed.cdss.actors.HeartrateClassificationActor",
       "id": "Hemodynamic arrhythmia",
       "etCO2TrendChannel": "etCO2-trend",
       "hrLimitChannel": "HR-Limit",
       "outputChannel":"HD-aryth"
     },
     {
-      "class": "com.framed.cdss.casestudy.DislocationClassifier",
+      "class": "com.framed.cdss.actors.DislocationClassificationActor",
       "id": "Dislocation-Classifier",
       "spo2TrendChannel": "SpO2-trend",
       "etCO2LimitChannel": "etCO2-limit",
       "sfLimitChannel": "S/F-limit",
       "outputChannel": "Dislocation"
+    },
+    {
+      "class": "com.framed.cdss.actors.RespiratoryRateEstimationActor",
+      "id": "RespiratoryRateEstimator",
+      "etco2Channel":"Oxylog-3000-Plus-00.CO2 concentration, CO2 (mmHg).parsed",
+      "outputChannels": [
+        "EstimatedRR"
+      ],
+      "windowSize": 20,
+      "riseSlopeMin": 0.1,
+      "fallSlopeMin": 0.1,
+      "minBreathIntervalSec": 1,
+      "historySeconds": 10,
+      "useEMA": true,
+      "emaAlpha": 0.5,
+      "useHampel": true,
+      "hampelWindow": 5,
+      "hampelK": 3
+    },
+    {
+      "class": "com.framed.cdss.actors.RRMismatchClassificationActor",
+      "id": "RRMismatchClassifier",
+      "rrEstimationChannel": "EstimatedRR",
+      "rrSettingsChannel": "Settings.Oxylog-3000-Plus-00.Respiratory rate, RR.parsed",
+      "outputChannels": ["RRMismatchClassification"],
+      "varLimit": 4
     }
   ]
 }

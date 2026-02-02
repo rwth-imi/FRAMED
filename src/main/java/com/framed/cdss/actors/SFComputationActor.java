@@ -1,4 +1,4 @@
-package com.framed.cdss.casestudy;
+package com.framed.cdss.actors;
 
 import com.framed.cdss.Actor;
 import com.framed.core.EventBus;
@@ -8,12 +8,12 @@ import java.util.Map;
 
 import static com.framed.cdss.utils.CDSSUtils.publishResult;
 
-public class SFActor extends Actor {
+public class SFComputationActor extends Actor {
   private final String spo2Channel;
   private final String fio2Channel;
 
 
-  public SFActor(EventBus eventBus, String id, String spo2Channel, String fio2Channel, String outputChannel) {
+  public SFComputationActor(EventBus eventBus, String id, String spo2Channel, String fio2Channel, String outputChannel) {
     super(
       eventBus,
       id,

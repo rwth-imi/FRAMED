@@ -227,8 +227,8 @@ public class MedibusRealTimeParser extends Parser<Byte> {
       waveValResult.put("value", value);
       waveValResult.put("className", "RealTime");
 
-      String address = deviceName + "." + channelID + ".parsed";
-      eventBus.publish(deviceName + ".addresses", address);
+      String address = "%s.%s.parsed".formatted(deviceName, channelID);
+      eventBus.publish("%s.addresses".formatted(deviceName), address);
       eventBus.publish(address, waveValResult);
     }
   }

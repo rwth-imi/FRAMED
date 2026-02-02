@@ -1,4 +1,4 @@
-package com.framed.cdss.casestudy;
+package com.framed.cdss.actors;
 
 import com.framed.cdss.Actor;
 import com.framed.cdss.FiringRule;
@@ -9,7 +9,7 @@ import java.util.Map;
 
 import static com.framed.cdss.utils.CDSSUtils.publishResult;
 
-public class DislocationClassifier extends Actor {
+public class DislocationClassificationActor extends Actor {
 
     private final String etCO2LimitChannel;
     private final String spo2TrendChannel;
@@ -35,7 +35,7 @@ public class DislocationClassifier extends Actor {
      * @throws NullPointerException     if any argument is {@code null}
      * @throws IllegalArgumentException if a rule is empty or references a channel not present in {@code inputChannels}, or contains an invalid token
      */
-    public DislocationClassifier(
+    public DislocationClassificationActor(
             EventBus eventBus,
             String id,
             String spo2TrendChannel,

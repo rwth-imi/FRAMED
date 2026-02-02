@@ -1,6 +1,7 @@
 
-package com.framed.cdss;
+package com.framed.cdss.actors;
 
+import com.framed.cdss.Actor;
 import com.framed.cdss.utils.TrendDirection;
 import com.framed.core.EventBus;
 import org.jetbrains.annotations.NotNull;
@@ -59,7 +60,7 @@ import static com.framed.cdss.utils.CDSSUtils.*;
  * {@link ClassCastException}.</p>
  *
  */
-public class TrendClassifier extends Actor {
+public class TrendClassificationActor extends Actor {
 
     private final TrendDirection direction;
     /** Sliding window size per input channel; must be >= 2. */
@@ -99,15 +100,15 @@ public class TrendClassifier extends Actor {
      * @throws NullPointerException     if any required argument is {@code null}
      * @throws IllegalArgumentException if {@code windowSize < 2}, {@code delta < 0}, or {@code persistWindows < 1}
      */
-    public TrendClassifier(EventBus eventBus,
-                              String id,
-                              JSONArray firingRules,
-                              JSONArray inputChannels,
-                              JSONArray outputChannels,
-                              JSONObject windowSizes,
-                              JSONObject persistWindows,
-                              JSONObject deltas,
-                              String direction
+    public TrendClassificationActor(EventBus eventBus,
+                                    String id,
+                                    JSONArray firingRules,
+                                    JSONArray inputChannels,
+                                    JSONArray outputChannels,
+                                    JSONObject windowSizes,
+                                    JSONObject persistWindows,
+                                    JSONObject deltas,
+                                    String direction
                            ) {
 
         super(eventBus, id, parseFiringRulesJson(firingRules), parseChannelListJson(inputChannels), parseChannelListJson(outputChannels));

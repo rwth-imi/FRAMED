@@ -115,7 +115,6 @@ public abstract class Actor extends Service {
    */
   private final List<Map<String, String>> firingRules; // raw user-facing config
 
-  private final Map<String, Instant> snapshotTimes;
   /**
    * Identifier of the LimitClassifier instance
    */
@@ -127,6 +126,10 @@ public abstract class Actor extends Service {
    */
   protected final List<String> inputChannels;
 
+  /**
+   *  Tracks the last timestamp per channel for which we already published benchmarking info
+   */
+  private final Map<String, Instant> lastTsPublishedByChannel = new ConcurrentHashMap<>();
   /**
    * Names of output channels this actor may use (not used internally in this base class).
    */
@@ -187,7 +190,6 @@ public abstract class Actor extends Service {
 
     // Pre-compile rules
     compileRules();
-    snapshotTimes = new HashMap<>();
 
     // Register listeners for each input channel
     for (String inChannel : this.inputChannels) {
@@ -264,7 +266,6 @@ public abstract class Actor extends Service {
           long curSeq = channelSeq.getOrDefault(channel, 0L);
           Object latest = latestByChannel.get(channel);
 
-          // For global consumption, delta = curSeq (since last reset)
           if (!testCondition(cond, curSeq, latest)) {
             satisfied = false;
             break;
@@ -280,9 +281,32 @@ public abstract class Actor extends Service {
           }
 
           fireFunction(unmodifiableSnapshot);
+          Instant benchmarkTs = Instant.now();
           // for benchmarking only:
+          // for benchmarking only: publish only once per observation (first use)
           for (String ch : inputChannels) {
-            publishResult(eventBus, formatter, Instant.now().compareTo(snapshotTimes.getOrDefault(ch, Instant.now())), id, List.of("Latency-%s".formatted(ch)));
+            String timeAddress = "%s-timestamp".formatted(ch);
+            Object tsObj = unmodifiableSnapshot.get(timeAddress);
+            if (tsObj instanceof Instant ts) {
+              Instant lastPublished = lastTsPublishedByChannel.get(ch);
+
+              // Only publish if this observation (timestamp) hasn't been published yet
+              if (lastPublished == null || !lastPublished.equals(ts)) {
+                // Compute real time difference from observation to now
+                double millisDiff = (double) java.time.Duration.between(ts, benchmarkTs).toNanos() / 1000000000;
+
+                publishResult(
+                        eventBus,
+                        formatter,
+                        millisDiff,
+                        "Latency",
+                        List.of("Latency-%s-%s".formatted(ch, id))
+                );
+
+                // Mark this observation as published
+                lastTsPublishedByChannel.put(ch, ts);
+              }
+            }
           }
           break;
         }
@@ -302,7 +326,7 @@ public abstract class Actor extends Service {
       LocalDateTime ldt = LocalDateTime.parse(dataPoint.getString("timestamp"), formatter);
       ZoneId zoneId = ZoneId.systemDefault();
       Instant timestamp = ldt.atZone(zoneId).toInstant();
-      snapshotTimes.put(ch, timestamp);
+      snapshot.put("%s-timestamp".formatted(ch), timestamp);
     }
     return Collections.unmodifiableMap(snapshot);
   }

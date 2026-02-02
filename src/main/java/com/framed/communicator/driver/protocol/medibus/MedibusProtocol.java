@@ -60,7 +60,8 @@ public class MedibusProtocol extends Protocol {
       serialPort.setRTS();
       serialPort.setDTR();
     } catch (Exception e) {
-      logger.warning("Failed to open serial port: " + portName + " with message: " +  e);
+      String errorMsg = "Failed to open serial port: %s with message: %s".formatted(portName, e);
+      logger.log(Level.WARNING, errorMsg);
     }
 
     this.framer = new MedibusFramer(this::handleResponse, eventBus, this.id);
@@ -99,7 +100,7 @@ public class MedibusProtocol extends Protocol {
   }
 
   private void writeData(byte[] data) {
-    eventBus.publish(id, data);
+    eventBus.publish(id,data);
   }
 
   private void listenToSerial() {
@@ -119,15 +120,17 @@ public class MedibusProtocol extends Protocol {
   }
 
   private void handleResponse(byte[] packetBuffer) {
+    // TODO: handle timestamps on listener
     String response = new String(packetBuffer, StandardCharsets.US_ASCII);
     if (response.length() < 2) {
-      logger.warning("Received response too short: " + response);
+      logger.log(Level.WARNING, "Received response too short: {}", response);
       return;
     }
 
     writeData(packetBuffer);
     String echo = response.substring(0, 2);
-    logger.fine("Handling response with echo: %s in state %s".formatted(stringToHex(echo), currentState));
+    String logMsg = "Handling response with echo: %s in state %s".formatted(stringToHex(echo), currentState);
+    logger.fine(logMsg);
 
     switch (currentState) {
       case INITIALIZING -> {
@@ -147,7 +150,7 @@ public class MedibusProtocol extends Protocol {
           }
           default -> {
             String echoHex = stringToHex(echo);
-            logger.warning("Received unknown response from ICC: " + echoHex);
+            logger.log(Level.WARNING, "Received unknown response from ICC: {}", echoHex);
           }
         }
       }
@@ -209,7 +212,7 @@ public class MedibusProtocol extends Protocol {
           }
           default -> {
             String echoHex = stringToHex(echo);
-            logger.warning("Unknown response in CONFIGURING: " + echoHex);
+            logger.log(Level.WARNING, "Unknown response in CONFIGURING: {}", echoHex);
           }
         }
       }
@@ -275,7 +278,7 @@ public class MedibusProtocol extends Protocol {
           }
           default -> {
             String echoHex = stringToHex(echo);
-            logger.warning("Unknown response in ACTIVE: " + echoHex);
+            logger.log(Level.WARNING, "Unknown response in ACTIVE: {}", echoHex);
             if (echo.startsWith("\u001b")) {
               byte[] echoResponse = echo.substring(1).getBytes(StandardCharsets.US_ASCII);
               commandEchoResponse(echoResponse);
@@ -294,7 +297,11 @@ public class MedibusProtocol extends Protocol {
             logger.fine("NOP request received.");
             commandEchoResponse(DataConstants.poll_request_no_operation);
           }
-          default -> logger.warning("Unhandled state or echo: " + currentState + " / " + stringToHex(echo));
+
+          default -> {
+            logMsg = "Unhandled state or echo: %s / %s".formatted(currentState, stringToHex(echo));
+            logger.log(Level.WARNING, logMsg);
+          }
         }
       }
     }

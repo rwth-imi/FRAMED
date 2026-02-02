@@ -1,4 +1,4 @@
-package com.framed.cdss.casestudy;
+package com.framed.cdss.actors;
 
 import com.framed.cdss.Actor;
 import com.framed.cdss.FiringRule;
@@ -9,7 +9,7 @@ import java.util.Map;
 
 import static com.framed.cdss.utils.CDSSUtils.publishResult;
 
-public class HRClassifier extends Actor {
+public class HeartrateClassificationActor extends Actor {
     private final String etCO2TrendChannel;
     private final String hrLimitChannel;
 
@@ -33,7 +33,7 @@ public class HRClassifier extends Actor {
      * @throws NullPointerException     if any argument is {@code null}
      * @throws IllegalArgumentException if a rule is empty or references a channel not present in {@code inputChannels}, or contains an invalid token
      */
-    public HRClassifier(
+    public HeartrateClassificationActor(
             EventBus eventBus,
             String id,
             String etCO2TrendChannel,
