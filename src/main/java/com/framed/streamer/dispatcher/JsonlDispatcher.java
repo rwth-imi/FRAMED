@@ -18,18 +18,18 @@ public class JsonlDispatcher extends Dispatcher {
   public JsonlDispatcher(EventBus eventBus, JSONArray devices, String path, String fileName) {
     super(eventBus, devices);
     long timeOnStart = Instant.now().toEpochMilli();
-    String file = timeOnStart + "_" + fileName;
+    String file = "%d_%s".formatted(timeOnStart, fileName);
     this.path = Path.of(path).resolve(file);
   }
 
   @Override
   public void push(DataPoint<?> dataPoint) throws IOException {
     String dataString = dataPoint.toJsonString();
-    Files.write(path, (dataString + "\n").getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+    Files.write(path, ("%s\n".formatted(dataString)).getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
   }
 
   @Override
   public void pushBatch(List<DataPoint<?>> batch) {
-
+    // TODO
   }
 }

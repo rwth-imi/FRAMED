@@ -40,7 +40,7 @@ public class Main {
       logger.warning("Invalid communication type config, using blocking TCP instead...");
       transport = new TCPTransport(port);
     }
-    SocketEventBus eventBus = new SocketEventBus(transport, DispatchMode.PARALLEL);
+    SocketEventBus eventBus = new SocketEventBus(transport, DispatchMode.PER_HANDLER);
 
     // add configured peers (remote SocketEventBus instances)
     if (communicationConfig.has("peers")) {

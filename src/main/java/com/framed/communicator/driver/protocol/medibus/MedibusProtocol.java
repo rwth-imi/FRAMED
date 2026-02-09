@@ -120,7 +120,6 @@ public class MedibusProtocol extends Protocol {
   }
 
   private void handleResponse(byte[] packetBuffer) {
-    // TODO: handle timestamps on listener
     String response = new String(packetBuffer, StandardCharsets.US_ASCII);
     if (response.length() < 2) {
       logger.log(Level.WARNING, "Received response too short: {}", response);
