@@ -47,9 +47,8 @@ public class DislocationClassificationActor extends Actor {
             eventBus,
             id,
             List.of(
-                Map.of(spo2TrendChannel, "*"),
-                Map.of(etCO2LimitChannel,"*"),
-                Map.of(sfLimitChannel, "*")
+                Map.of(spo2TrendChannel, "*", sfLimitChannel, "*"),
+                Map.of(etCO2LimitChannel,"*")
             ),
             List.of(
                     etCO2LimitChannel,

@@ -2,16 +2,19 @@
 package com.framed.cdss.actors;
 
 import com.framed.cdss.Actor;
+import com.framed.cdss.utils.SlopeUtils;
 import com.framed.cdss.utils.TrendDirection;
 import com.framed.core.EventBus;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 
 import static com.framed.cdss.utils.CDSSUtils.*;
+import static com.framed.cdss.utils.SlopeUtils.computeSlope;
 
 /**
  * A specialized {@link Actor} that detects a decreasing trend (downward drift)
@@ -79,7 +82,7 @@ public class TrendClassificationActor extends Actor {
     private final Map<String, Integer> persistWindows;
 
     /** Per-channel sliding window of the most recent values. */
-    private final Map<String, Deque<Double>> windows = new HashMap<>();
+    private final Map<String, Deque<SlopeUtils.Sample>> windows = new HashMap<>();
 
     /** Per-channel counter of consecutive "trend condition met" evaluations. */
     private final Map<String, Integer> consecutiveHits = new HashMap<>();
@@ -154,12 +157,14 @@ public class TrendClassificationActor extends Actor {
 
         for (String channel : inputChannels) {
             Object raw = latestSnapshot.get(channel);
+            Instant ts = (Instant) latestSnapshot.getOrDefault("%s-timestamp".formatted(channel), Instant.now());
+
             if (raw != null) {
-                Deque<Double> window = getWindow(channel, raw);
+                Deque<SlopeUtils.Sample> window = getWindow(channel, raw, ts);
 
                 // Need a full window to evaluate trend
                 if (window.size() >= windowSizes.get(channel)) {
-                    double slope = computeRegressionSlope(window);
+                    double slope = computeSlope(window);
                     decideWarning(channel, slope, window);
                 }
 
@@ -167,7 +172,7 @@ public class TrendClassificationActor extends Actor {
         }
     }
 
-    private void decideWarning(String channel, double slope, Deque<Double> window) {
+    private void decideWarning(String channel, double slope, Deque<SlopeUtils.Sample> window) {
         boolean conditionMet = false;
         switch (direction) {
             case DOWN ->  conditionMet = slope <= -deltaPerChannel.get(channel);
@@ -194,7 +199,7 @@ public class TrendClassificationActor extends Actor {
     }
 
     @NotNull
-    private Deque<Double> getWindow(String channel, Object raw) {
+    private Deque<SlopeUtils.Sample> getWindow(String channel, Object raw, Instant ts) {
         double value = switch (raw) {
             case Integer i -> i.doubleValue();
             case Number n -> n.doubleValue();
@@ -204,48 +209,15 @@ public class TrendClassificationActor extends Actor {
         };
 
         // Maintain sliding window
-        Deque<Double> window = windows.get(channel);
+        Deque<SlopeUtils.Sample> window = windows.get(channel);
         if (window.size() == windowSizes.get(channel)) {
             window.removeFirst();
         }
-        window.addLast(value);
+        window.addLast(new SlopeUtils.Sample(ts, value));
         return window;
     }
 
-    /**
-     * Computes the ordinary least squares regression slope over a window using sample indices {@code 0..n-1}.
-     *
-     * <p>The returned slope is in "value units per sample" and is robust to noise compared to
-     * endpoint-based differences.</p>
-     *
-     * @param window deque containing exactly {@code n} samples (n >= 2)
-     * @return regression slope (units per sample)
-     */
-    private double computeRegressionSlope(Deque<Double> window) {
-        int n = window.size();
-        double meanX = (n - 1) / 2.0; // mean of 0...n-1
 
-        double[] y = new double[n];
-        double meanY = 0.0;
-
-        int i = 0;
-        for (double v : window) {
-            y[i++] = v;
-            meanY += v;
-        }
-        meanY /= n;
-
-        double num = 0.0; // Σ (xi - meanX)(yi - meanY)
-        double den = 0.0; // Σ (xi - meanX)^2
-        for (i = 0; i < n; i++) {
-            double dx = i - meanX;
-            double dy = y[i] - meanY;
-            num += dx * dy;
-            den += dx * dx;
-        }
-
-        return den == 0.0 ? 0.0 : (num / den);
-    }
 
     /**
      * Emits a decreasing-trend warning for the given channel.
@@ -256,7 +228,7 @@ public class TrendClassificationActor extends Actor {
      * @param warnValue value of the warning, 1 if conditions are met, 0 else
      * @param window  the current evaluation window (used to include context)
      */
-    private void emitWarning(String channel, int warnValue, Deque<Double> window) {
+    private void emitWarning(String channel, int warnValue, Deque<SlopeUtils.Sample> window) {
         // Publish warning event
         JSONObject result = new JSONObject();
         result.put("timestamp", LocalDateTime.now().format(formatter));

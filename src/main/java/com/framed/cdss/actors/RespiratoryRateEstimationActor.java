@@ -1,6 +1,7 @@
 package com.framed.cdss.actors;
 
 import com.framed.cdss.Actor;
+import com.framed.cdss.utils.SlopeUtils;
 import com.framed.core.EventBus;
 import org.json.JSONArray;
 
@@ -10,6 +11,7 @@ import java.util.*;
 
 import static com.framed.cdss.utils.CDSSUtils.parseChannelListJson;
 import static com.framed.cdss.utils.CDSSUtils.publishResult;
+import static com.framed.cdss.utils.SlopeUtils.computeSlope;
 
 /**
  * <p>
@@ -147,11 +149,8 @@ public class RespiratoryRateEstimationActor extends Actor {
     private final int hampelWindow;               // in samples, odd preferred (e.g., 7)
     private final double hampelK;                 // threshold in MAD multiples (e.g., 3.0)
 
-    // ---- State ----
-        private record Sample(Instant t, double v) {
-    }
 
-    private final Deque<Sample> window = new ArrayDeque<>();
+    private final Deque<SlopeUtils.Sample> window = new ArrayDeque<>();
     private final Deque<Instant> detectedPeaks = new ArrayDeque<>();
     private boolean armed = false;                // set when slope exceeds riseSlopeMin
     private Instant lastPeakTs = null;
@@ -264,7 +263,7 @@ public class RespiratoryRateEstimationActor extends Actor {
         }
 
         // Append to window
-        window.addLast(new Sample(ts, v));
+        window.addLast(new SlopeUtils.Sample(ts, v));
         if (window.size() > windowSize) {
             window.pollFirst();
         }
@@ -296,42 +295,7 @@ public class RespiratoryRateEstimationActor extends Actor {
     }
 
 
-    /**
-     * Computes the least-squares linear regression slope of the ETCO2 signal over the
-     * provided sliding window, using time in seconds relative to the first sample in the window.
-     *
-     * <p>The slope is returned in units of mmHg/sec (assuming input values are mmHg).</p>
-     *
-     * <p><strong>Numerical stability:</strong> If the time axis degenerates (e.g., repeated identical timestamps),
-     * the denominator may be zero; in that case, the method returns {@code 0.0}.</p>
-     *
-     * @param win Deque of recent samples (time/value) representing the current slope window.
-     * @return The regression slope in mmHg/sec; returns {@code 0.0} if insufficient variance in time.
-     */
-    private double computeSlope(Deque<Sample> win) {
-        // Linear regression of v over time t (seconds relative to first)
-        int n = win.size();
-        Sample first = win.peekFirst();
-        if (first == null) return 0.0;
 
-        double sumT = 0;
-        double sumV = 0;
-        double sumTT = 0;
-        double sumTV = 0;
-
-        for (Sample s : win) {
-            double t = Duration.between(first.t, s.t).toMillis() / 1000.0;
-            sumT += t;
-            sumV += s.v;
-            sumTT += t * t;
-            sumTV += t * s.v;
-        }
-
-        double denom = (n * sumTT - sumT * sumT);
-        if (denom == 0) return 0.0;
-
-        return (n * sumTV - sumT * sumV) / denom; // units: (mmHg) / sec
-    }
 
     /**
      * Estimates the end-tidal (peak) timestamp using the recent portion of the window.
@@ -344,7 +308,7 @@ public class RespiratoryRateEstimationActor extends Actor {
      * @param win Deque of recent samples forming the current analysis window.
      * @return The {@link Instant} of the peak within the last half-window, or {@code null} if not found.
      */
-    private Instant estimatePeakTime(Deque<Sample> win) {
+    private Instant estimatePeakTime(Deque<SlopeUtils.Sample> win) {
         // Use the last half of the window to find the local maximum as the likely end-tidal point
         int n = win.size();
         int startIdx = Math.max(0, n - Math.max(3, n / 2));
@@ -352,12 +316,10 @@ public class RespiratoryRateEstimationActor extends Actor {
         int idx = 0;
         double maxV = -Double.MAX_VALUE;
         Instant maxT = null;
-        for (Sample s : win) {
-            if (idx >= startIdx) {
-                if (s.v > maxV) {
-                    maxV = s.v;
-                    maxT = s.t;
-                }
+        for (SlopeUtils.Sample s : win) {
+            if (idx >= startIdx && s.v() > maxV) {
+                maxV = s.v();
+                maxT = s.t();
             }
             idx++;
         }
