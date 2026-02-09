@@ -1,5 +1,6 @@
 package com.framed.core.utils;
 
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.*;
 
 
@@ -32,6 +33,8 @@ import java.util.concurrent.*;
  * to prevent resource leaks.</p>
  */
 public class Timer {
+
+  public static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS");
 
   /**
    * A single-threaded scheduled executor used for task scheduling.

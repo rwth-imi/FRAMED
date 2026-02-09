@@ -1,5 +1,6 @@
 package com.framed.streamer;
 
+import com.framed.core.utils.Timer;
 import com.framed.streamer.model.DataPoint;
 import org.json.JSONObject;
 
@@ -12,8 +13,8 @@ public class Parser {
   public static DataPoint<?> parse(JSONObject jsonObject) throws Exception {
     Object value = jsonObject.get("value");
 
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS"); // TODO this needs to be global, right?
-    LocalDateTime ldt = LocalDateTime.parse(jsonObject.getString("timestamp"), formatter);
+
+    LocalDateTime ldt = LocalDateTime.parse(jsonObject.getString("timestamp"), Timer.formatter);
     ZoneId zoneId = ZoneId.systemDefault();
     Instant timestamp = ldt.atZone(zoneId).toInstant();
     String channelID = jsonObject.getString("channelID");

@@ -1,5 +1,7 @@
 package com.framed.core;
 
+import com.framed.core.utils.Timer;
+
 import java.time.format.DateTimeFormatter;
 import java.util.logging.Logger;
 
@@ -22,7 +24,7 @@ public abstract class Service {
    * Logger instance for this service, initialized with the class name.
    */
   protected final Logger logger;
-  protected final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS");
+  protected static final DateTimeFormatter formatter = Timer.formatter;
 
 
 
