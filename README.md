@@ -23,10 +23,10 @@ If platform specific bugs occur, please refer to (TODO contributing.md)
 
 The following devices / protocols are supported by default:
 - Medibus (Draeger devices, tested with Oxylog 3000 Plus)
-- PC60FW Pulse-Oximeter (BLE device, external python service (TODO: Reference link))
+- PC60FW Pulse-Oximeter (BLE device, external python service (coming soon))
 
 Further, the default setup includes an InfluxDB and a JSONLines dispatcher to store the acquired data.
-An external python service may be used to annotate data streams online (TODO: Reference link)
+An external python service may be used to annotate data streams online (coming soon)
 
 ### FRAMED Configuration 
 Adapt the services.json config file to run the FRAMED services you need.
@@ -239,17 +239,7 @@ docker start inxluxdb2
 mvn exec:java
 ```
 
-3. start the external python services
-
-```bash
-python viatom.py
-```
-
-```bash
-python annotation_service.py
-```
-
-4. 🔥 Watch your data coming in (configure an Influx dashboard) 🔥:
+3. 🔥 Watch your data coming in (configure an Influx dashboard) 🔥:
 
 ![InfluxDB2](images/influx_example.png)
 
