@@ -1,3 +1,6 @@
+
+<img src="images/logo.drawio.png" alt="Logo" width="120" style="float: right; margin-left: 20px;">
+
 # FRAMED
 
 A **F**ramework for **R**ealtime **A**bstraction of **M**edical **E**vent **D**ata
