@@ -1,0 +1,238 @@
+{
+  "devices": [
+    {
+      "class": "com.framed.communicator.driver.protocol.medibus.MedibusProtocol",
+      "id": "Oxylog-3000-Plus-00",
+      "portName": "/dev/ttyUSB0",
+      "baudRate": 19200,
+      "dataBits": 8,
+      "stopBits": 1,
+      "waveFormType": 1,
+      "realTime": true,
+      "slowData": true,
+      "multiplier": "10"
+    }
+  ],
+  "writers": [
+    {
+      "class": "com.framed.communicator.io.raw.RawByteWriter",
+      "id": "Raw-Byte-Writer",
+      "devices": [
+        "Oxylog-3000-Plus-00",
+        "PC60FW"
+      ],
+      "path": "output/raw/"
+    },
+    {
+      "class": "com.framed.communicator.io.parsed.MedibusParsedWriter",
+      "id": "'Medibus-Parsed-Writer",
+      "devices": [
+        "Oxylog-3000-Plus-00"
+      ],
+      "path": "output/parsed/"
+    }
+  ],
+  "Parsers": [
+    {
+      "class": "com.framed.communicator.driver.parser.medibus.MedibusSlowParser",
+      "id": "Medibus-Slow-Parser",
+      "devices":
+        [
+          "Oxylog-3000-Plus-00"
+        ]
+    },
+    {
+      "class": "com.framed.communicator.driver.parser.viatom.ViatomParser",
+      "id": "Viatom-Parser",
+      "devices":
+      [
+        "PC60FW"
+      ]
+    },
+    {
+      "class": "com.framed.communicator.driver.parser.medibus.MedibusRealTimeParser",
+      "id": "Medibus-RT-Parser",
+      "devices":
+      [
+        "Oxylog-3000-Plus-00"
+      ],
+      "waveFormType": 1
+    }
+  ],
+  "Dispatchers": [
+    {
+      "class": "com.framed.streamer.dispatcher.InfluxDispatcher",
+      "bucket": "safety-box",
+      "id": "InfluxDB",
+      "url": "http://localhost:8086",
+      "token": "ThoKiNpWG1QpK8NjBayxWiXq2vwj4L7q-0NvisFVpp-af9tt1qh8ohL00V_pRDksSKTt7hqLkOKRQ6GKxFmKzg==",
+      "org": "IMI-MSE",
+      "devices":
+      [
+        "Oxylog-3000-Plus-00",
+        "PC60FW",
+        "CDSS"
+      ]
+    },
+    {
+      "class": "com.framed.streamer.dispatcher.JsonlDispatcher",
+      "id": "Json-Lines",
+      "devices":
+      [
+        "Oxylog-3000-Plus-00",
+        "PC60FW",
+        "CDSS"
+      ],
+      "path": "output/streamer/",
+      "fileName": "data.jsonl"
+    }
+  ],
+  "Actors":  [
+    {
+      "class": "com.framed.cdss.actors.LimitClassificationActor",
+      "id": "etCO2-Limit-Classifier",
+      "firingRules": [
+        {
+        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": "*"
+        }
+      ],
+      "inputChannels": ["Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed"],
+      "outputChannels": ["etCO2-limit"],
+      "limits": {
+        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": [0,25,30,40]
+      }
+    },
+    {
+      "class": "com.framed.cdss.actors.LimitClassificationActor",
+      "id": "spo2-Limit-Classifier",
+      "firingRules": [
+        {
+        "PC60FW.SpO2.parsed": "*"
+        }
+      ],
+      "inputChannels": ["PC60FW.SpO2.parsed"],
+      "outputChannels": ["SpO2-limit"],
+      "limits": {
+        "PC60FW.SpO2.parsed": [90, 100]
+      }
+    },
+    {
+      "class": "com.framed.cdss.actors.LimitClassificationActor",
+      "id": "S/F-Limit-Classifier",
+      "firingRules": [
+        {
+          "S/F-Value": "*"
+        }
+      ],
+      "inputChannels": ["S/F-Value"],
+      "outputChannels": ["S/F-limit"],
+      "limits": {
+        "S/F-Value": [1.48, 2.35, 3.15]
+      }
+    },
+    {
+      "class": "com.framed.cdss.actors.LimitClassificationActor",
+      "id": "HR-Limit-Classifier",
+      "firingRules": [
+        {
+          "PC60FW.HR.parsed": "*"
+        }
+      ],
+      "inputChannels": ["PC60FW.HR.parsed"],
+      "outputChannels": ["HR-limit"],
+      "limits": {
+        "PC60FW.HR.parsed": [0, 125]
+      }
+    },
+    {
+      "class": "com.framed.cdss.actors.SFComputationActor",
+      "id": "SF-Computation-Actor",
+      "spo2Channel": "PC60FW.SpO2.parsed",
+      "fio2Channel": "Measurement.Oxylog-3000-Plus-00.Inspiratory oxygen fraction, FiO2.parsed",
+      "outputChannel": "S/F-Value"
+    },
+    {
+      "class": "com.framed.cdss.actors.TrendClassificationActor",
+      "id": "spo2-Trend-Classifier",
+      "firingRules": [
+        {
+          "PC60FW.SpO2.parsed": "*"
+        }
+      ],
+      "inputChannels": ["PC60FW.SpO2.parsed"],
+      "outputChannels": ["SpO2-trend"],
+      "windowSizes": {
+        "PC60FW.SpO2.parsed": 6
+      },
+      "persistWindows": {
+        "PC60FW.SpO2.parsed": 1
+      },
+      "deltas": {
+        "PC60FW.SpO2.parsed": 3
+      },
+      "direction": "DOWN"
+    },
+    {
+      "class": "com.framed.cdss.actors.TrendClassificationActor",
+      "id": "etCO2-Trend-Classifier",
+      "firingRules": [
+        {
+          "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": "*"
+        }
+      ],
+      "inputChannels": ["Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed"],
+      "outputChannels": ["etCO2-trend"],
+      "windowSizes": {
+        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 8
+      },
+      "persistWindows": {
+        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 1
+      },
+      "deltas": {
+        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 4
+      },
+      "direction": "DOWN"
+    },
+    {
+      "class": "com.framed.cdss.actors.HeartrateClassificationActor",
+      "id": "Hemodynamic arrhythmia",
+      "etCO2TrendChannel": "etCO2-trend",
+      "hrLimitChannel": "HR-Limit",
+      "outputChannel":"HD-aryth"
+    },
+    {
+      "class": "com.framed.cdss.actors.DislocationClassificationActor",
+      "id": "Dislocation-Classifier",
+      "spo2TrendChannel": "SpO2-trend",
+      "etCO2LimitChannel": "etCO2-limit",
+      "sfLimitChannel": "S/F-limit",
+      "outputChannel": "Dislocation"
+    },
+    {
+      "class": "com.framed.cdss.actors.RespiratoryRateEstimationActor",
+      "id": "RespiratoryRateEstimator",
+      "etco2Channel":"Oxylog-3000-Plus-00.CO2 concentration, CO2 (mmHg).parsed",
+      "outputChannels": [
+        "EstimatedRR"
+      ],
+      "windowSize": 20,
+      "riseSlopeMin": 0.1,
+      "fallSlopeMin": 0.1,
+      "minBreathIntervalSec": 1,
+      "historySeconds": 10,
+      "useEMA": true,
+      "emaAlpha": 0.5,
+      "useHampel": true,
+      "hampelWindow": 5,
+      "hampelK": 3
+    },
+    {
+      "class": "com.framed.cdss.actors.RRMismatchClassificationActor",
+      "id": "RRMismatchClassifier",
+      "rrEstimationChannel": "EstimatedRR",
+      "rrSettingsChannel": "Settings.Oxylog-3000-Plus-00.Respiratory rate, RR.parsed",
+      "outputChannels": ["RRMismatchClassification"],
+      "varLimit": 4
+    }
+  ]
+}

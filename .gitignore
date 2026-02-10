@@ -1,0 +1,6 @@
+.idea/
+.editorconfig
+.mvn/
+/output/*
+!output/.gitkeep
+/target
