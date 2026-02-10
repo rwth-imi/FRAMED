@@ -268,14 +268,14 @@ The physical tool layer specifies an exemplary hardware setup:
 
 ![3LGM²](images/physical_tool_layer_3lgm2.drawio.png)
 
-### Model Diagram (TODO: adapt eventbus for new transport abstraction)
+### Model Diagram
 
 ![Model Diagram](images/package_diagram.drawio.png)
 
 ### EventBus Schema
 ![EventBus](images/model_diagram_no_vertx.drawio.png)
 ## Support 
-For support, please refer to nfreyer@ukaachen.de or simlab@ukaachen.de
+Please write an issue to get support on your matters.
 
 ## Roadmap 
 There are more default protocols to come, including IEEE SDC!
