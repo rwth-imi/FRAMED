@@ -5,21 +5,21 @@
 
 A **F**ramework for **R**ealtime **A**bstraction of **M**edical **E**vent **D**ata
 
-## What is FRAMED 🖼️?
+## What is FRAMED?
 FRAMED is a service oriented software framework to acquire and integrate data from multiple sources.
 These sources can be medical-devices, sensors, etc.
 The architecture is designed highly modular to be deployed either on a single edge device, or on a distributed setup.
 Asynchronous computation and communication between services is supported by a SocketEventBus.
 
-## Getting started 🎬
+## Getting started
 
-### Javadoc API Documentation 📚
+### Javadoc API Documentation 
 
 The full generated Javadoc for FRAMED is available here:
 
 **[Documentation](https://rwth-imi.github.io/FRAMED/docs/)**
 
-### Compatibility 🔌
+### Compatibility 
 FRAMED is written in Java and tested on Ubuntu 24.04. It should work cross-platform.
 If platform specific bugs occur, please refer to (TODO contributing.md)
 
@@ -30,7 +30,7 @@ The following devices / protocols are supported by default:
 Further, the default setup includes an InfluxDB and a JSONLines dispatcher to store the acquired data.
 An external python service may be used to annotate data streams online (TODO: Reference link)
 
-### FRAMED Configuration 👩‍🔧
+### FRAMED Configuration 
 Adapt the services.json config file to run the FRAMED services you need.
 The config consists of 4 default sections:
 1. devices
@@ -67,11 +67,11 @@ Adapt the communication.json config file to configure the socket type, the port,
 ```
 See the default communication.json for example
 
-### Adding your own device 📟
+### Adding your own device 
 To add a device, you will need to implement the Protocol class and the Parser class for that device.
 Handle the dataflow via the EventBus Architecture (cf. Architecture).
 
-### Building 👷‍♀️
+### Building 
 To launch the tests:
 
 ```bash
@@ -115,7 +115,7 @@ sudo apt-get install doxygen
 
 Refer to [influx](https://docs.influxdata.com/influxdb/v2/install/use-docker-compose/) for InfluxDBv2 Docker deployment.
 
-## Usage ℹ️
+## Usage 
 Let's consider an example from the FRAMED Case-Study (see future paper...).
 We want to receive data from:
 1. The Draeger Oxylog 3000 Plus Transport Ventilator
@@ -256,7 +256,7 @@ python annotation_service.py
 ![InfluxDB2](images/influx_example.png)
 
 
-## Architecture 📐
+## Architecture 
 ### 3LGM² Design
 The domain layer categorizes user groups, software functions, and data types to identify reuse scenarios:
 
@@ -276,10 +276,10 @@ The physical tool layer specifies an exemplary hardware setup:
 
 ### EventBus Schema
 ![EventBus](images/model_diagram_no_vertx.drawio.png)
-## Support ⛑️
+## Support 
 For support, please refer to nfreyer@ukaachen.de or simlab@ukaachen.de
 
-## Roadmap 🛣️
+## Roadmap 
 There are more default protocols to come, including IEEE SDC!
 Also, we are at the state of developing an Alarm-CDSS on top of the data gathering layer (cf. Architecture).
 ## Contributing 🫶
@@ -301,5 +301,5 @@ the Free Software Foundation, version 2.
     with this program; if not, write to the Free Software Foundation, Inc.,
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-## Project status 🚧
+## Project status 
 Running. ✅
