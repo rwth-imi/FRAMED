@@ -19,7 +19,7 @@ The full generated Javadoc for FRAMED is available here:
 
 ### Compatibility 
 FRAMED is written in Java and tested on Ubuntu 24.04. It should work cross-platform.
-If platform specific bugs occur, please refer to (TODO contributing.md)
+If platform specific bugs occur, please refer to [Contributing](##Contributing)
 
 The following devices / protocols are supported by default:
 - Medibus (Draeger devices, tested with Oxylog 3000 Plus)
