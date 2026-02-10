@@ -40,7 +40,7 @@ import static com.framed.cdss.utils.SlopeUtils.computeSlope;
  * <p>This classifier is configured to warn on decreasing trends only. A warning is raised when:</p>
  *
  * <pre>
- *   slope <= -delta
+ *   slope &lt;= -delta
  * </pre>
  *
  * <p>where {@code delta} is a non-negative threshold.</p>

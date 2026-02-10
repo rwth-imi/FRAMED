@@ -29,7 +29,7 @@ import static com.framed.cdss.utils.CDSSUtils.*;
  * <em>first index</em> {@code i} such that:
  *
  * <pre>
- *  v <= b[i]
+ * v &lt;= b[i]
  * </pre>
  *
  * If no such upper bound exists (i.e., {@code v} is greater than all bounds),
@@ -167,7 +167,7 @@ public class LimitClassificationActor extends Actor {
    * the returned index is the first {@code i} such that:
    *
    * <pre>
-   * v <= b[i]
+   * v &lt;= b[i]
    * </pre>
    *
    * If {@code v} exceeds all bounds, the result is:
