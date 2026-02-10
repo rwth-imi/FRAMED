@@ -13,6 +13,12 @@ Asynchronous computation and communication between services is supported by a So
 
 ## Getting started 🎬
 
+### Javadoc API Documentation 📚
+
+The full generated Javadoc for FRAMED is available here:
+
+**[Documentation](https://rwth-imi.github.io/FRAMED/docs/)**
+
 ### Compatibility 🔌
 FRAMED is written in Java and tested on Ubuntu 24.04. It should work cross-platform.
 If platform specific bugs occur, please refer to (TODO contributing.md)
