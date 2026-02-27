@@ -1,3 +1,5 @@
+package com.framed.core;
+
 import com.framed.core.remote.Peer;
 import com.framed.core.remote.SocketEventBus;
 import com.framed.core.remote.TCPTransport;
@@ -6,6 +8,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -17,25 +21,46 @@ public class SocketEventBusTcpTest {
   private SocketEventBus busA;
   private SocketEventBus busB;
 
-  @BeforeEach
-  public void setup() {
-    // Bus A on port 6000
-    TCPTransport transportA = new TCPTransport(5000);
-    busA = new SocketEventBus(transportA, DispatchMode.SEQUENTIAL);
+  private int portA;
+  private int portB;
+  private String loopbackHost;
 
-    // Bus B on port 6001
-    TCPTransport transportB = new TCPTransport(5001);
+  @BeforeEach
+  public void setup() throws Exception {
+    // Use canonical loopback literal to avoid IPv6/IPv4 mismatch on CI hosts
+    loopbackHost = InetAddress.getLoopbackAddress().getHostAddress();
+
+    // Get two free TCP ports for this test instance
+    portA = findFreeTcpPort();
+    portB = findFreeTcpPort();
+
+    // Create transports on dynamic ports
+    TCPTransport transportA = new TCPTransport(portA);
+    TCPTransport transportB = new TCPTransport(portB);
+
+    // Create buses
+    busA = new SocketEventBus(transportA, DispatchMode.SEQUENTIAL);
     busB = new SocketEventBus(transportB, DispatchMode.SEQUENTIAL);
 
-    // Add each other as peers
-    busA.addPeer(new Peer("localhost", 5001));
-    busB.addPeer(new Peer("localhost", 5000));
+    // Wire peers to each other
+    busA.addPeer(new Peer(loopbackHost, portB));
+    busB.addPeer(new Peer(loopbackHost, portA));
+
+    // Give the listener threads a brief moment to start (prefer an explicit "ready" if available)
+    Thread.sleep(25);
   }
 
   @AfterEach
   public void teardown() {
-    if (busA != null) busA.shutdown();
-    if (busB != null) busB.shutdown();
+    try {
+      if (busA != null) busA.shutdown();
+    } catch (Exception ignored) {}
+    try {
+      if (busB != null) busB.shutdown();
+    } catch (Exception ignored) {}
+
+    // Yield to allow the OS to fully release listening sockets on CI runners
+    try { Thread.sleep(25); } catch (InterruptedException ignored) {}
   }
 
   @Test
@@ -54,12 +79,11 @@ public class SocketEventBusTcpTest {
     // Send from A to B
     busA.send(address, message);
 
-    // Wait for message to be received
-    boolean success = latch.await(50, TimeUnit.MILLISECONDS);
+    // CI can be slower; wait a bit longer to avoid flakiness
+    boolean success = latch.await(2, TimeUnit.SECONDS);
 
     assertTrue(success, "Message was not received in time");
     assertEquals(message, received.get());
-
   }
 
   @Test
@@ -85,11 +109,18 @@ public class SocketEventBusTcpTest {
     // Publish from A to B
     busA.publish(address, message);
 
-    // Wait for both handlers to receive the message
-    boolean success = latch.await(50, TimeUnit.MILLISECONDS);
+    boolean success = latch.await(2, TimeUnit.SECONDS);
 
     assertTrue(success, "Not all handlers received the message in time");
     assertEquals(message, received1.get());
     assertEquals(message, received2.get());
+  }
+
+  /** Finds a currently free TCP port by binding a ServerSocket to port 0 on loopback. */
+  private static int findFreeTcpPort() throws Exception {
+    try (ServerSocket seocket = new ServerSocket(0, 0, InetAddress.getLoopbackAddress())) {
+      seocket.setReuseAddress(true);
+      return seocket.getLocalPort();
+    }
   }
 }

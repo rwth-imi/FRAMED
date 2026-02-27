@@ -1,6 +1,7 @@
+package com.framed.core;
+
 import com.framed.core.remote.Peer;
 import com.framed.core.remote.SocketEventBus;
-import com.framed.core.remote.MockTransport;
 import com.framed.core.utils.DispatchMode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -251,10 +251,22 @@ public abstract class Actor extends Service {
 
     for (String ch : inputChannels) {
       JSONObject dp = (JSONObject) latestAtCall.get(ch);
-      snapshot.put(ch, dp.has("value") ? dp.get("value") : 0);
 
-      LocalDateTime ldt = LocalDateTime.parse(dp.getString("timestamp"), formatter);
-      Instant ts = ldt.atZone(ZoneId.systemDefault()).toInstant();
+      // --- Value handling ---
+      Object value = dp.has("value") ? dp.get("value") : 0;
+      snapshot.put(ch, value);
+
+      // --- Timestamp handling ---
+      Instant ts;
+      if (dp.has("timestamp")) {
+        // Parse normally
+        LocalDateTime ldt = LocalDateTime.parse(dp.getString("timestamp"), formatter);
+        ts = ldt.atZone(ZoneId.systemDefault()).toInstant();
+      } else {
+        // Channel has not yet received any data → default timestamp
+        ts = Instant.EPOCH;
+      }
+
       snapshot.put("%s-timestamp".formatted(ch), ts);
     }
 

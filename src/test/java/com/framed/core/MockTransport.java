@@ -1,4 +1,6 @@
-package com.framed.core.remote;
+package com.framed.core;
+
+import com.framed.core.remote.Transport;
 
 import java.util.List;
 import java.util.Map;
@@ -41,7 +43,7 @@ public class MockTransport implements Transport {
    */
   @Override
   public void send(String host, int port, String address, Object message) {
-    sentMessages.add("SEND:" + address + ":" + message);
+    sentMessages.add("SEND:%s:%s".formatted(address, message));
     dispatch(address, message);
   }
 
@@ -57,7 +59,7 @@ public class MockTransport implements Transport {
   */
   @Override
   public void publish(String host, int port, String address, Object message) {
-    sentMessages.add("PUBLISH:" + address + ":" + message);
+    sentMessages.add("PUBLISH:%s:%s".formatted(address, message));
     dispatch(address, message);
   }
 
