@@ -11,6 +11,12 @@
       "realTime": true,
       "slowData": true,
       "multiplier": "10"
+    },
+    {
+      "class": "com.framed.communicator.driver.protocol.replay.ReplayProtocol",
+      "id": "Replay",
+      "filePath": "output/streamer/1772557119016_data.jsonl",
+      "devices": ["PC60FW", "Oxylog-3000-Plus-00"]
     }
   ],
   "writers": [
@@ -97,23 +103,25 @@
         }
       ],
       "inputChannels": ["Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed"],
-      "outputChannels": ["etCO2-limit"],
+      "outputChannels": ["etCO2-Limit"],
       "limits": {
         "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": [0,25,30,40]
       }
     },
     {
       "class": "com.framed.cdss.actors.LimitClassificationActor",
-      "id": "spo2-Limit-Classifier",
+      "id": "PulseOxi-Limit-Classifier",
       "firingRules": [
         {
-        "PC60FW.SpO2.parsed": "*"
+          "PC60FW.SpO2.parsed": "*",
+          "PC60FW.PI.parsed": "*"
         }
       ],
-      "inputChannels": ["PC60FW.SpO2.parsed"],
-      "outputChannels": ["SpO2-limit"],
+      "inputChannels": ["PC60FW.SpO2.parsed", "PC60FW.PI.parsed"],
+      "outputChannels": ["PulseOxi-Limit"],
       "limits": {
-        "PC60FW.SpO2.parsed": [90, 100]
+        "PC60FW.SpO2.parsed": [87, 98],
+        "PC60FW.PI.parsed": [0.2, 20]
       }
     },
     {
@@ -121,13 +129,15 @@
       "id": "S/F-Limit-Classifier",
       "firingRules": [
         {
-          "S/F-Value": "*"
+          "S/F-Value": "*",
+          "PC60FW.SpO2.parsed": "*"
         }
       ],
-      "inputChannels": ["S/F-Value"],
-      "outputChannels": ["S/F-limit"],
+      "inputChannels": ["S/F-Value", "PC60FW.SpO2.parsed"],
+      "outputChannels": ["S/F-Limit"],
       "limits": {
-        "S/F-Value": [1.48, 2.35, 3.15]
+        "S/F-Value": [1.48, 2.35, 3.15],
+        "PC60FW.SpO2.parsed": [97]
       }
     },
     {
@@ -135,13 +145,13 @@
       "id": "HR-Limit-Classifier",
       "firingRules": [
         {
-          "PC60FW.HR.parsed": "*"
+          "PC60FW.PR.parsed": "*"
         }
       ],
-      "inputChannels": ["PC60FW.HR.parsed"],
-      "outputChannels": ["HR-limit"],
+      "inputChannels": ["PC60FW.PR.parsed"],
+      "outputChannels": ["HR-Limit"],
       "limits": {
-        "PC60FW.HR.parsed": [0, 125]
+        "PC60FW.PR.parsed": [0, 125]
       }
     },
     {
@@ -160,7 +170,7 @@
         }
       ],
       "inputChannels": ["PC60FW.SpO2.parsed"],
-      "outputChannels": ["SpO2-trend"],
+      "outputChannels": ["SpO2-Trend"],
       "windowSizes": {
         "PC60FW.SpO2.parsed": 6
       },
@@ -181,7 +191,7 @@
         }
       ],
       "inputChannels": ["Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed"],
-      "outputChannels": ["etCO2-trend"],
+      "outputChannels": ["etCO2-Trend"],
       "windowSizes": {
         "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 8
       },
@@ -194,18 +204,18 @@
       "direction": "DOWN"
     },
     {
-      "class": "com.framed.cdss.actors.HeartrateClassificationActor",
+      "class": "com.framed.cdss.actors.HemodynamicRhythmClassificationActor",
       "id": "Hemodynamic arrhythmia",
-      "etCO2TrendChannel": "etCO2-trend",
+      "etCO2TrendChannel": "etCO2-Trend",
       "hrLimitChannel": "HR-Limit",
       "outputChannel":"HD-aryth"
     },
     {
       "class": "com.framed.cdss.actors.DislocationClassificationActor",
       "id": "Dislocation-Classifier",
-      "spo2TrendChannel": "SpO2-trend",
-      "etCO2LimitChannel": "etCO2-limit",
-      "sfLimitChannel": "S/F-limit",
+      "spo2TrendChannel": "SpO2-Trend",
+      "etCO2LimitChannel": "etCO2-Limit",
+      "sfLimitChannel": "S/F-Limit",
       "outputChannel": "Dislocation"
     },
     {
