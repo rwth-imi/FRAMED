@@ -39,7 +39,7 @@ public class SFComputationActor extends Actor {
       latestValues.get(spo2Channel) instanceof Number spo2
         && latestValues.get(fio2Channel) instanceof Number fio2
     ){
-      float sf = spo2.floatValue() / fio2.floatValue();
+      float sf = 100 * spo2.floatValue() / fio2.floatValue();
       publishResult(eventBus, formatter, sf, id, outputChannels);
     }
   }

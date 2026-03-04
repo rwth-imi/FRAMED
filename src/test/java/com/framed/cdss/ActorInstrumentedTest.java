@@ -5,7 +5,8 @@ import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 import static com.framed.utils.JsonFixtures.dp;
@@ -53,9 +54,9 @@ public class ActorInstrumentedTest {
 
     @Test
     void stricterRuleIsNotFiredSeparatelyInSameEvaluation() {
-        LocalDateTime t0 = LocalDateTime.now();
-        LocalDateTime t1 = t0.plusSeconds(1);
-        LocalDateTime t2 = t0.plusSeconds(2);
+        ZonedDateTime t0 = ZonedDateTime.now(ZoneOffset.UTC);
+        ZonedDateTime t1 = t0.plusSeconds(1);
+        ZonedDateTime t2 = t0.plusSeconds(2);
 
         // Three messages on A
         bus.publish(A, dp(1, t0)); // R0 satisfied (delta(A)=1)
@@ -73,7 +74,7 @@ public class ActorInstrumentedTest {
 
     @Test
     void noFireWithoutNewData() {
-        LocalDateTime t0 = LocalDateTime.now();
+        ZonedDateTime t0 = ZonedDateTime.now(ZoneOffset.UTC);
         bus.publish(A, dp(10, t0));
         int n = actor.fired().size();
 

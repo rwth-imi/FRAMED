@@ -70,7 +70,7 @@ public class DislocationClassificationActor extends Actor {
         int etCO2State = (int) latestSnapshot.get(etCO2LimitChannel);
         int spo2State = (int) latestSnapshot.get(spo2TrendChannel);
         int sfState = (int) latestSnapshot.get(sfLimitChannel);
-        if (spo2State == 1 && sfState >= 1 ) {
+        if (spo2State == 1 && sfState >= 1) {
            if (etCO2State == 0){
                warnValue = 1;
            } else if (etCO2State == 2) {

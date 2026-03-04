@@ -13,6 +13,7 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 
 import static com.framed.cdss.utils.CDSSUtils.publishResult;
 
@@ -366,16 +367,35 @@ public abstract class Actor extends Service {
   private void publishPerChannelLatency(Map<String, Object> snapshot, Instant benchmarkTs) {
     for (String ch : inputChannels) {
       String timeKey = "%s-timestamp".formatted(ch);
-      Instant ts = (Instant) snapshot.get(timeKey);
+      Object v = snapshot.get(timeKey);
+      if (!(v instanceof Instant ts)) {
+        // No timestamp present for this channel in the snapshot → nothing to do
+        continue;
+      }
+
+      // Guard: datapoint claims to be in the future (clock skew or bad source)
+      if (ts.isAfter(benchmarkTs)) {
+        logger.log(Level.WARNING, "Timestamp from future: {0} > {1}".formatted(ts, benchmarkTs));
+        continue;
+      }
 
       Instant lastPublished = lastTsPublishedByChannel.get(ch);
-      if (lastPublished != null && lastPublished.equals(ts))
-        return; // already published this timestamp
+
+      // Skip if we already published this exact datapoint OR a newer one.
+      // (Older or equal timestamps should not be republished.)
+      if (lastPublished != null && !ts.isAfter(lastPublished)) {
+        continue;  // <-- IMPORTANT: was 'return' before, which aborted the whole method
+      }
 
       double seconds = Duration.between(ts, benchmarkTs).toNanos() / 1_000_000_000d;
 
-      publishResult(eventBus, formatter, seconds, "Latency",
-              List.of("Latency-%s-%s".formatted(ch, id)));
+      publishResult(
+              eventBus,
+              formatter,
+              seconds,
+              "Latency",
+              List.of("Latency-%s-%s".formatted(ch, id))
+      );
 
       lastTsPublishedByChannel.put(ch, ts);
     }
@@ -391,6 +411,11 @@ public abstract class Actor extends Service {
     for (String ch : inputChannels) {
       Instant ts = (Instant) snapshot.get("%s-timestamp".formatted(ch));
       if (earliest == null || ts.isBefore(earliest)) earliest = ts;
+    }
+
+    if (earliest.isAfter(benchmarkTs)){
+      logger.log(Level.WARNING, "Timestamp from future: {0} > {1}".formatted(earliest, benchmarkTs));
+      return;
     }
 
     if (earliest != null) {
@@ -428,6 +453,10 @@ public abstract class Actor extends Service {
     for (String ch : participating) {
       String timeKey = "%s-timestamp".formatted(ch);
       Instant ts = (Instant) snapshot.get(timeKey);
+      if (ts.isAfter(benchmarkTs)){
+        logger.log(Level.WARNING, "Timestamp from future: {0} > {1}".formatted(ts, benchmarkTs));
+        continue;
+      }
 
       double seconds = Duration.between(ts, benchmarkTs).toNanos() / 1_000_000_000d;
 

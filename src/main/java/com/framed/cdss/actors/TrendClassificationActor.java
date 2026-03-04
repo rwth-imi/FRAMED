@@ -189,11 +189,11 @@ public class TrendClassificationActor extends Actor {
         }
         consecutiveHits.put(channel, hits);
 
+        int warnValue = 0;
         if (conditionMet && hits >= persistWindows.get(channel)){
-           emitWarning(channel, 1, window);
-        } else {
-            emitWarning(channel, 0, window);
+            warnValue = 1;
         }
+        publishResult(eventBus, formatter, warnValue, id, outputChannels);
 
 
     }
@@ -217,40 +217,4 @@ public class TrendClassificationActor extends Actor {
         return window;
     }
 
-
-
-    /**
-     * Emits a decreasing-trend warning for the given channel.
-     *
-     * <p>This method logs a warning and publishes a structured warning message to each configured output channel.</p>
-     *
-     * @param channel the channel for which the warning is emitted
-     * @param warnValue value of the warning, 1 if conditions are met, 0 else
-     * @param window  the current evaluation window (used to include context)
-     */
-    private void emitWarning(String channel, int warnValue, Deque<SlopeUtils.Sample> window) {
-        // Publish warning event
-        JSONObject result = new JSONObject();
-        result.put("timestamp", LocalDateTime.now().format(formatter));
-        result.put("className", id);
-        result.put("inputChannel", channel);
-
-        result.put("value", warnValue);
-
-        // Add metadata for consumers
-        result.put("trendMetric", "REGRESSION_SLOPE");
-        result.put("direction", this.direction);
-        result.put("windowSize", windowSizes.get(channel));
-        result.put("delta", deltaPerChannel.get(channel));
-        result.put("persistWindows", persistWindows);
-
-        result.put("windowFirst", window.peekFirst());
-        result.put("windowLast", window.peekLast());
-
-        for (String out : outputChannels) {
-            result.put("channelID", out);
-            eventBus.publish("CDSS.addresses", out);
-            eventBus.publish(out, result);
-        }
-    }
 }

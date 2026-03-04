@@ -4,6 +4,7 @@ import com.framed.core.utils.Timer;
 import org.json.JSONObject;
 
 import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 
 /** Helpers for building input JSON datapoints. */
@@ -15,7 +16,7 @@ public final class JsonFixtures {
      * Build a JSON datapoint: {"value": value, "timestamp": tsString}
      * The timestamp is truncated to seconds to avoid fractional seconds.
      */
-    public static JSONObject dp(Object value, LocalDateTime ts) {
+    public static JSONObject dp(Object value, ZonedDateTime ts) {
         JSONObject o = new JSONObject();
         o.put("value", value);
         o.put("timestamp", ts.truncatedTo(ChronoUnit.SECONDS).format(Timer.formatter));

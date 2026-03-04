@@ -4,7 +4,8 @@ import com.framed.utils.InMemoryEventBus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 import static com.framed.utils.JsonFixtures.dp;
@@ -44,8 +45,8 @@ public class ActorEventBusMockTest {
 
     @Test
     void publishesLatencyOnFire() {
-        LocalDateTime t0 = LocalDateTime.now();
-        LocalDateTime t1 = t0.plusSeconds(1);
+        ZonedDateTime t0 = ZonedDateTime.now(ZoneOffset.UTC);;
+        ZonedDateTime t1 = t0.plusSeconds(1);
 
         // Only when both have new data should the rule fire
         bus.publish(A, dp(1, t0));
