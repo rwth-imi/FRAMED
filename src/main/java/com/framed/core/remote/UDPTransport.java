@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -145,7 +146,8 @@ public class UDPTransport implements Transport {
       json.put("payload", message);
       json.put("type", type);
 
-      byte[] data = json.toString().getBytes(StandardCharsets.UTF_8);
+      String msg = "%s\n".formatted(json);
+      byte[] data = msg.getBytes(StandardCharsets.UTF_8);
       DatagramPacket packet = new DatagramPacket(data, data.length, InetAddress.getByName(host), port);
       socket.send(packet);
     } catch (IOException e) {

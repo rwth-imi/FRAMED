@@ -94,7 +94,7 @@ public class ReplayProtocol extends Protocol {
 
             // Create JSON object identical to real driver output
             JSONObject parsedResult = new JSONObject();
-            parsedResult.put("timestamp", ZonedDateTime.now().format(formatter));
+            parsedResult.put("timestamp", ZonedDateTime.now(ZoneOffset.UTC).format(formatter));
             parsedResult.put("channelID", channelID);
             parsedResult.put("value", ev.value);
             parsedResult.put("className", ev.className);
@@ -107,10 +107,6 @@ public class ReplayProtocol extends Protocol {
             LOGGER.log(Level.WARNING, "Could not publish event: %s".formatted(ev), e);
         }
     }
-
-    // ------------------------------------------------------------------------
-    // File parsing for CSV + JSONL
-    // ------------------------------------------------------------------------
 
     private List<ReplayEvent> loadEvents(Path path) throws IOException {
         List<ReplayEvent> events = new ArrayList<>();

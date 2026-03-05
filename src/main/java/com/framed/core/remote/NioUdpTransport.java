@@ -162,7 +162,8 @@ public class NioUdpTransport implements Transport {
       json.put("payload", message);
       json.put("type", type);
 
-      ByteBuffer buffer = charset.encode(CharBuffer.wrap(json.toString()));
+      String msg = "%s\n".formatted(json);        // <-- ADD NEWLINE
+      ByteBuffer buffer = charset.encode(msg);
       channel.send(buffer, new InetSocketAddress(host, port));
     } catch (IOException e) {
       logger.warning("UDP send failed: " + e.getMessage());
