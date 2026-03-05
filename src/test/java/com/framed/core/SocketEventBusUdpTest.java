@@ -1,3 +1,5 @@
+package com.framed.core;
+
 import com.framed.core.remote.Peer;
 import com.framed.core.remote.SocketEventBus;
 import com.framed.core.remote.UDPTransport;
@@ -6,6 +8,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -17,25 +21,48 @@ public class SocketEventBusUdpTest {
   private SocketEventBus busA;
   private SocketEventBus busB;
 
-  @BeforeEach
-  public void setup() {
-    // Bus A on port 7000
-    UDPTransport transportA = new UDPTransport(7000);
-    busA = new SocketEventBus(transportA, DispatchMode.SEQUENTIAL);
+  private int portA;
+  private int portB;
+  private String loopbackHost;
 
-    // Bus B on port 7001
-    UDPTransport transportB = new UDPTransport(7001);
+  @BeforeEach
+  public void setup() throws Exception {
+    // Resolve a canonical loopback literal to avoid IPv4/IPv6 surprises on CI
+    loopbackHost = InetAddress.getLoopbackAddress().getHostAddress();
+
+    // Find two free UDP ports for this test instance
+    portA = findFreeUdpPort();
+    portB = findFreeUdpPort();
+
+    // Build transports on dynamic ports
+    UDPTransport transportA = new UDPTransport(portA);
+    UDPTransport transportB = new UDPTransport(portB);
+
+    // Create buses
+    busA = new SocketEventBus(transportA, DispatchMode.SEQUENTIAL);
     busB = new SocketEventBus(transportB, DispatchMode.SEQUENTIAL);
 
-    // Add each other as peers
-    busA.addPeer(new Peer("localhost", 7001));
-    busB.addPeer(new Peer("localhost", 7000));
+    // Wire peers to each other using loopback
+    busA.addPeer(new Peer(loopbackHost, portB));
+    busB.addPeer(new Peer(loopbackHost, portA));
+
+    // Small pause to let listener threads bind before sending (CI is slower)
+    // If your UDPTransport exposes a "ready" signal, prefer that over sleep.
+    Thread.sleep(25);
   }
 
   @AfterEach
   public void teardown() {
-    busA.shutdown();
-    busB.shutdown();
+    // Defensive teardown so partial setup doesn't produce NPEs
+    try {
+      if (busA != null) busA.shutdown();
+    } catch (Exception ignored) {}
+    try {
+      if (busB != null) busB.shutdown();
+    } catch (Exception ignored) {}
+
+    // Give the OS a breath to fully release sockets on CI
+    try { Thread.sleep(25); } catch (InterruptedException ignored) {}
   }
 
   @Test
@@ -54,8 +81,8 @@ public class SocketEventBusUdpTest {
     // Send from A to B
     busA.send(address, message);
 
-    // Wait for message to be received
-    boolean success = latch.await(50, TimeUnit.MILLISECONDS);
+    // Wait a bit longer on CI to avoid flakiness
+    boolean success = latch.await(2, TimeUnit.SECONDS);
 
     assertTrue(success, "Message was not received in time");
     assertEquals(message, received.get());
@@ -63,6 +90,7 @@ public class SocketEventBusUdpTest {
 
   @Test
   public void testPublishMessageToMultipleHandlers() throws InterruptedException {
+    // Keeping the original address, though "udp" would be clearer
     String address = "broadcast.tcp";
     String message = "Broadcast message";
 
@@ -84,11 +112,21 @@ public class SocketEventBusUdpTest {
     // Publish from busA to busB
     busA.publish(address, message);
 
-    // Wait for both handlers to receive the message
-    boolean success = latch.await(50, TimeUnit.MILLISECONDS);
+    boolean success = latch.await(2, TimeUnit.SECONDS);
 
     assertTrue(success, "Not all handlers received the published message");
     assertEquals(message, received1.get());
     assertEquals(message, received2.get());
+  }
+
+  /**
+   * Finds a currently free UDP port by letting the OS assign one to a temporary
+   * socket and then releasing it. While there's a theoretical race between discovery
+   * and bind, it's practically reliable for tests—especially since we need two distinct ports.
+   */
+  private static int findFreeUdpPort() throws Exception {
+    try (DatagramSocket socket = new DatagramSocket(0, InetAddress.getLoopbackAddress())) {
+      return socket.getLocalPort();
+    }
   }
 }

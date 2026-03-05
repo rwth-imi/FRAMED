@@ -44,6 +44,6 @@ public abstract class Service {
    * Subclasses should override this method to provide custom shutdown behavior when necessary.</p>
    */
   public void stop(){
-    logger.info("No stop logic implemented for Service: " + this.getClass().getName());
+    logger.info("No stop logic implemented for Service: %s".formatted(this.getClass().getName()));
   }
 }
