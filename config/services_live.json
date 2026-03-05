@@ -1,6 +1,18 @@
 {
   "devices": [
     {
+      "class": "com.framed.communicator.driver.protocol.medibus.MedibusProtocol",
+      "id": "Oxylog-3000-Plus-00",
+      "portName": "/dev/ttyUSB0",
+      "baudRate": 19200,
+      "dataBits": 8,
+      "stopBits": 1,
+      "waveFormType": 1,
+      "realTime": true,
+      "slowData": true,
+      "multiplier": "10"
+    },
+    {
       "class": "com.framed.communicator.driver.protocol.replay.ReplayProtocol",
       "id": "Replay",
       "filePath": "output/streamer/1772557119016_data.jsonl",

@@ -15,7 +15,7 @@
     {
       "class": "com.framed.communicator.driver.protocol.replay.ReplayProtocol",
       "id": "Replay",
-      "filePath": "output/streamer/1772557119016_data.jsonl",
+      "filePath": "output/streamer/1772555941459_data.jsonl", 
       "devices": ["PC60FW", "Oxylog-3000-Plus-00"]
     }
   ],
@@ -145,13 +145,13 @@
       "id": "HR-Limit-Classifier",
       "firingRules": [
         {
-          "Percentage_int.PC60FW.PR.parsed": "*"
+          "BPM.PC60FW.PR.parsed": "*"
         }
       ],
-      "inputChannels": ["Percentage_int.PC60FW.PR.parsed"],
+      "inputChannels": ["BPM.PC60FW.PR.parsed"],
       "outputChannels": ["HR-Limit"],
       "limits": {
-        "Percentage_int.PC60FW.PR.parsed": [0, 125]
+        "BPM.PC60FW.PR.parsed": [0, 125]
       }
     },
     {
