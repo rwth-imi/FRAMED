@@ -87,9 +87,10 @@ public class ReplayProtocol extends Protocol {
         try {
             String deviceName = ev.deviceID;
             String channelID  = ev.channelID;
+            String className = ev.className;
 
             // Construct address = "<device>.<channel>.parsed"
-            String address = "%s.%s.parsed".formatted(deviceName, channelID);
+            String address = "%s.%s.%s.parsed".formatted(className, deviceName, channelID);
 
             // Create JSON object identical to real driver output
             JSONObject parsedResult = new JSONObject();
