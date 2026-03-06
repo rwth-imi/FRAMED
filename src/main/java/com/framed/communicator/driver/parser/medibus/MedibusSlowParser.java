@@ -8,7 +8,8 @@ import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
-import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.logging.Level;
 
 public class MedibusSlowParser extends Parser<byte[]> {
@@ -41,7 +42,7 @@ public class MedibusSlowParser extends Parser<byte[]> {
 
   @Override
   public void parse(byte[] message, String deviceName) {
-    LocalDateTime timestamp = LocalDateTime.now();
+    ZonedDateTime timestamp = ZonedDateTime.now(ZoneOffset.UTC);
     String data = new String(message, StandardCharsets.US_ASCII);
 
     String echo = data.substring(0, 2);
@@ -64,7 +65,7 @@ public class MedibusSlowParser extends Parser<byte[]> {
   }
 
 
-  private void parseTextMessage(byte[] message, String deviceName, LocalDateTime timestamp) {
+  private void parseTextMessage(byte[] message, String deviceName, ZonedDateTime timestamp) {
     int offset = 4;
     int dataArrayLength = message.length - 2;
     byte[] dataArray = new byte[dataArrayLength];
@@ -94,7 +95,7 @@ public class MedibusSlowParser extends Parser<byte[]> {
     }
   }
 
-  private void parseNumMessage(byte[] message, int offset, String reqType, String deviceName, LocalDateTime timestamp) {
+  private void parseNumMessage(byte[] message, int offset, String reqType, String deviceName, ZonedDateTime timestamp) {
     int dataLength = 4;
     int dataArrayLength = message.length - 2;
     byte[] dataArray = new byte[dataArrayLength];
@@ -145,7 +146,7 @@ public class MedibusSlowParser extends Parser<byte[]> {
     }
   }
 
-  private void parseAlarmMessage(byte[] message, String reqType, String deviceName, LocalDateTime timestamp) {
+  private void parseAlarmMessage(byte[] message, String reqType, String deviceName, ZonedDateTime timestamp) {
     int offset = 15;
     int dataArrayLength = message.length - 2;
     byte[] dataArray = new byte[dataArrayLength];
@@ -177,7 +178,7 @@ public class MedibusSlowParser extends Parser<byte[]> {
     }
   }
 
-  private void write(String deviceName, String channelID, String className, Object dataValue, LocalDateTime timestamp) {
+  private void write(String deviceName, String channelID, String className, Object dataValue, ZonedDateTime timestamp) {
     JSONObject result = new JSONObject().put("channelID", channelID);
     result.put("value", dataValue);
     result.put("timestamp", timestamp.format(formatter));

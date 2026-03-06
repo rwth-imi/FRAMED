@@ -15,7 +15,7 @@
     {
       "class": "com.framed.communicator.driver.protocol.replay.ReplayProtocol",
       "id": "Replay",
-      "filePath": "output/streamer/1772555941459_data.jsonl", 
+      "filePath": "output/streamer/vc_cmv_ph_03032026.jsonl",
       "devices": ["PC60FW", "Oxylog-3000-Plus-00"]
     }
   ],

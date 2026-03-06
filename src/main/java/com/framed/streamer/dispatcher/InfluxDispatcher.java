@@ -11,6 +11,7 @@ import com.framed.streamer.model.DataPoint;
 import org.json.JSONArray;
 
 import java.util.List;
+import java.util.Map;
 
 
 public class InfluxDispatcher extends Dispatcher {
@@ -39,14 +40,16 @@ public class InfluxDispatcher extends Dispatcher {
 
     Object value = dataPoint.value();
 
-    if (value instanceof String) {
-      point.addField(dataPoint.className(), (String) value);
-    } else if (value instanceof Number) {
-      point.addField(dataPoint.className(), ((Number) value).floatValue());
-    } else if (value instanceof Boolean) {
-      point.addField(dataPoint.className(), (Boolean) value);
-    } else {
-      System.err.printf("Invalid value for data point %s\n", dataPoint.channelID());
+    if (value instanceof String string) {
+      point.addField(dataPoint.className(), string);
+    } else if (value instanceof Number number) {
+      point.addField(dataPoint.className(), number.floatValue());
+    } else if (value instanceof Boolean bool) {
+      point.addField(dataPoint.className(), bool);
+    } else if (value instanceof Map map) {
+      point.addField(dataPoint.className(), map.toString());
+    }else {
+      throw new IllegalArgumentException("Invalid value for data point %s\n".formatted(dataPoint.channelID()));
     }
     System.out.println(dataPoint.timestamp() + dataPoint.className());
     point.addTag("channelID", dataPoint.channelID());

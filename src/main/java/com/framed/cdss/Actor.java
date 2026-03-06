@@ -6,10 +6,7 @@ import com.framed.core.Service;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -175,12 +172,21 @@ public abstract class Actor extends Service {
    * Main evaluation procedure. Produces exactly one snapshot + one fire
    * per evaluation cycle, regardless of how many rules were satisfied.
    */
+  /**
+   * Main evaluation procedure. Produces exactly one snapshot + one fire
+   * per evaluation cycle, regardless of how many rules were satisfied.
+   *
+   * Corrected to:
+   *   • Only treat a channel as "new" if its sequence number actually advanced.
+   *   • Update lastConsumedSeqByRule only for channels with real deltas.
+   *   • Preserve true AND semantics for multi-input rules.
+   */
   private void evaluateRules() {
     Map<String, Object> snapshotToFire = new HashMap<>();
 
     evalLock.lock();
     try {
-      // Stable state snapshot
+      // --- Build stable snapshot of state at call ---
       Map<String, Long> seqAtCall = new HashMap<>();
       Map<String, Object> latestAtCall = new HashMap<>();
 
@@ -189,7 +195,7 @@ public abstract class Actor extends Service {
         latestAtCall.put(ch, latestByChannel.get(ch));
       }
 
-      // Determine satisfied rules
+      // --- Evaluate rules ---
       List<Integer> satisfiedRules = new ArrayList<>();
 
       for (int i = 0; i < compiledRules.size(); i++) {
@@ -198,40 +204,57 @@ public abstract class Actor extends Service {
 
         boolean satisfied = true;
 
+        // AND semantics: every channel in the rule must satisfy its condition
         for (var e : rule.entrySet()) {
           String ch = e.getKey();
           FiringRule cond = e.getValue();
 
-          long delta = seqAtCall.get(ch) - lastPtr.get(ch);
+          long cur = seqAtCall.get(ch);
+          long last = lastPtr.get(ch);
+          long delta = cur - last;
+
           Object latest = latestAtCall.get(ch);
 
           if (!testCondition(cond, delta, latest)) {
-            satisfied = false; break;
+            satisfied = false;
+            break;
           }
         }
 
-        if (satisfied) satisfiedRules.add(i);
+        if (satisfied) {
+          satisfiedRules.add(i);
+        }
       }
 
-      // Only one snapshot per evaluation
+      // --- Build snapshot AND advance pointers if any rule fired ---
       if (!satisfiedRules.isEmpty()) {
         snapshotToFire = buildSnapshotFrom(latestAtCall);
 
-        // Advance all satisfied rules’ pointers
-        for (int idx : satisfiedRules) {
-          Map<String, Long> lastPtr = lastConsumedSeqByRule.get(idx);
-          for (String ch : inputChannels) {
-            lastPtr.put(ch, seqAtCall.get(ch));
+        // For each satisfied rule:
+        for (int ruleIndex : satisfiedRules) {
+          Map<String, Long> lastPtr = lastConsumedSeqByRule.get(ruleIndex);
+
+          Map<String, FiringRule> rule = compiledRules.get(ruleIndex);
+
+          // Only advance pointers for channels that actually had new data
+          for (var e : rule.entrySet()) {
+            String ch = e.getKey();
+            long cur = seqAtCall.get(ch);
+            long last = lastPtr.get(ch);
+
+            if (cur > last) {
+              lastPtr.put(ch, cur);   // correct per-channel pointer update
+            }
+            // If cur == last → no update (keeps delta=0 on next round)
           }
         }
-
       }
 
     } finally {
       evalLock.unlock();
     }
 
-    // Execute fire + latency reporting outside lock
+    // --- Fire and publish latency outside lock ---
     if (!snapshotToFire.isEmpty()) {
       fireFunction(snapshotToFire);
       publishAllLatencyModes(snapshotToFire);
@@ -262,7 +285,7 @@ public abstract class Actor extends Service {
       if (dp.has("timestamp")) {
         // Parse normally
         LocalDateTime ldt = LocalDateTime.parse(dp.getString("timestamp"), formatter);
-        ts = ldt.atZone(ZoneId.systemDefault()).toInstant();
+        ts = ldt.atZone(ZoneOffset.UTC).toInstant();
       } else {
         // Channel has not yet received any data → default timestamp
         ts = Instant.EPOCH;
@@ -324,7 +347,7 @@ public abstract class Actor extends Service {
     if (t.startsWith("r:"))
       return FiringRule.requireValue(t.substring(2));
 
-    throw new IllegalArgumentException("Unsupported token: " + token);
+    throw new IllegalArgumentException("Unsupported token: %s".formatted(token));
   }
 
   /** Tests whether a given rule condition is satisfied according to delta + latest value. */

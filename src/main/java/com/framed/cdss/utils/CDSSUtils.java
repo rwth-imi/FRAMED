@@ -4,7 +4,8 @@ import com.framed.core.EventBus;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -86,7 +87,7 @@ public class CDSSUtils {
 
     public static void publishResult(EventBus eventBus, DateTimeFormatter formatter, Object warnValue, String id, List<String> outputChannels) {
         JSONObject result = new JSONObject();
-        result.put("timestamp", LocalDateTime.now().format(formatter));
+        result.put("timestamp", ZonedDateTime.now(ZoneOffset.UTC).format(formatter));
         result.put("className", id);
         result.put("value", warnValue);
         for (String out : outputChannels) {
