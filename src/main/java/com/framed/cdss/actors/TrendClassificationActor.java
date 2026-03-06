@@ -156,19 +156,19 @@ public class TrendClassificationActor extends Actor {
             Instant ts = (Instant) latestSnapshot.getOrDefault("%s-timestamp".formatted(channel), Instant.now());
 
             if (raw != null) {
-                Deque<SlopeUtils.Sample> curWindow = getWindow(channel, raw, ts);
+                Deque<SlopeUtils.Sample> curWindow = getWindow(raw, ts);
 
                 // Need a full window to evaluate trend
                 if (window.size() >= windowSize) {
                     double slope = computeSlope(curWindow);
-                    decideWarning(slope, curWindow);
+                    decideWarning(slope);
                 }
 
             }
         }
     }
 
-    private void decideWarning(double slope, Deque<SlopeUtils.Sample> window) {
+    private void decideWarning(double slope) {
         boolean conditionMet = false;
         switch (direction) {
             case DOWN ->  conditionMet = slope <= -delta;
@@ -195,7 +195,7 @@ public class TrendClassificationActor extends Actor {
     }
 
     @NotNull
-    private Deque<SlopeUtils.Sample> getWindow(String channel, Object raw, Instant ts) {
+    private Deque<SlopeUtils.Sample> getWindow(Object raw, Instant ts) {
         double value = switch (raw) {
             case Integer i -> i.doubleValue();
             case Number n -> n.doubleValue();

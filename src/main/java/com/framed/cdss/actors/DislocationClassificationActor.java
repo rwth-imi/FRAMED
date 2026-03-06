@@ -72,11 +72,11 @@ public class DislocationClassificationActor extends Actor {
         int sfState = (int) latestSnapshot.get(sfLimitChannel);
         if (spo2State == 1 && sfState >= 1) {
            if (etCO2State == 0){
-               warnValue = 1;
+               warnValue = 1; // possibly esophagus intubated
            } else if (etCO2State == 2) {
-               warnValue = 2;
+               warnValue = 2; // possibly only one lung intubated
            } else if (etCO2State == 3) {
-               warnValue = 3;
+               warnValue = 3; // correctly intubated but non-optimal spo2 / SF values
            }
         }
         publishResult(eventBus, formatter, warnValue, id, outputChannels);

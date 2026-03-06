@@ -232,6 +232,19 @@
       "rrSettingsChannel": "Settings.Oxylog-3000-Plus-00.Respiratory rate, RR.parsed",
       "outputChannels": ["RRMismatchClassification"],
       "varLimit": 4
+    },
+    {
+      "class": "com.framed.cdss.actors.InterpretationActor",
+      "id": "Interpreter",
+      "rrMismatchChannel": "RRMismatchClassification",
+      "dislocationChannel": "Dislocation",
+      "spo2LimitChannel": "SpO2-Limit",
+      "spo2TrendChannel": "SpO2-Trend",
+      "etCO2LimitChannel": "etCO2-Limit",
+      "hdArythChannel": "HD-aryth",
+      "piLimitChannel": "PI-Limit",
+      "hrLimitChannel": "HR-Limit",
+      "sfLimitChannel": "S/F-Limit"
     }
   ]
 }

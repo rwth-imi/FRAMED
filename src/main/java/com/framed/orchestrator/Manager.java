@@ -89,10 +89,10 @@ public class Manager {
       try {
         Service service = Factory.instantiate(serviceConfig, eventBus);
         this.instances.put(serviceConfig.getString("id"), service);
+        logger.info("Successfully instantiated %s: %s".formatted(classType, serviceConfig.getString("id")));
       } catch (Exception e) {
         logger.severe("Failed to instantiate Service: %s%s".formatted(serviceConfig.getString("id"), e));
       }
-      logger.info("Successfully instantiated %s: %s".formatted(classType, serviceConfig.getString("id")));
     }
   }
 
