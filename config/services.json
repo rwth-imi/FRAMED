@@ -102,43 +102,45 @@
         "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": "*"
         }
       ],
-      "inputChannels": ["Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed"],
+      "inputChannel": "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed",
       "outputChannels": ["etCO2-Limit"],
-      "limits": {
-        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": [0,25,30,40]
-      }
+      "limits": [0,25,30,40]
     },
     {
       "class": "com.framed.cdss.actors.LimitClassificationActor",
-      "id": "PulseOxi-Limit-Classifier",
+      "id": "SpO2-Limit-Classifier",
       "firingRules": [
         {
-          "Percentage_int.PC60FW.SpO2.parsed": "*",
+          "Percentage_int.PC60FW.SpO2.parsed": "*"
+        }
+      ],
+      "inputChannel": "Percentage_int.PC60FW.SpO2.parsed",
+      "outputChannels": ["SpO2-Limit"],
+      "limits": [87, 97, 98]
+    },
+    {
+      "class": "com.framed.cdss.actors.LimitClassificationActor",
+      "id": "PI-Limit-Classifier",
+      "firingRules": [
+        {
           "Percentage_float.PC60FW.PI.parsed": "*"
         }
       ],
-      "inputChannels": ["Percentage_int.PC60FW.SpO2.parsed", "Percentage_float.PC60FW.PI.parsed"],
-      "outputChannels": ["PulseOxi-Limit"],
-      "limits": {
-        "Percentage_int.PC60FW.SpO2.parsed": [87, 98],
-        "Percentage_float.PC60FW.PI.parsed": [0.2, 20]
-      }
+      "inputChannel": "Percentage_float.PC60FW.PI.parsed",
+      "outputChannels": ["PI-Limit"],
+      "limits": [0.2, 20]
     },
     {
       "class": "com.framed.cdss.actors.LimitClassificationActor",
       "id": "S/F-Limit-Classifier",
       "firingRules": [
         {
-          "S/F-Value": "*",
-          "Percentage_int.PC60FW.SpO2.parsed": "*"
+          "S/F-Value": "*"
         }
       ],
-      "inputChannels": ["S/F-Value", "Percentage_int.PC60FW.SpO2.parsed"],
+      "inputChannel": "S/F-Value",
       "outputChannels": ["S/F-Limit"],
-      "limits": {
-        "S/F-Value": [1.48, 2.35, 3.15],
-        "Percentage_int.PC60FW.SpO2.parsed": [97]
-      }
+      "limits": [1.48, 2.35, 3.15]
     },
     {
       "class": "com.framed.cdss.actors.LimitClassificationActor",
@@ -148,11 +150,9 @@
           "BPM.PC60FW.PR.parsed": "*"
         }
       ],
-      "inputChannels": ["BPM.PC60FW.PR.parsed"],
+      "inputChannel": "BPM.PC60FW.PR.parsed",
       "outputChannels": ["HR-Limit"],
-      "limits": {
-        "BPM.PC60FW.PR.parsed": [0, 125]
-      }
+      "limits": [0, 125]
     },
     {
       "class": "com.framed.cdss.actors.SFComputationActor",
@@ -169,17 +169,11 @@
           "Percentage_int.PC60FW.SpO2.parsed": "*"
         }
       ],
-      "inputChannels": ["Percentage_int.PC60FW.SpO2.parsed"],
+      "inputChannel": "Percentage_int.PC60FW.SpO2.parsed",
       "outputChannels": ["SpO2-Trend"],
-      "windowSizes": {
-        "Percentage_int.PC60FW.SpO2.parsed": 6
-      },
-      "persistWindows": {
-        "Percentage_int.PC60FW.SpO2.parsed": 1
-      },
-      "deltas": {
-        "Percentage_int.PC60FW.SpO2.parsed": 3
-      },
+      "windowSize": 6,
+      "persistWindows": 1,
+      "delta": 3,
       "direction": "DOWN"
     },
     {
@@ -190,17 +184,11 @@
           "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": "*"
         }
       ],
-      "inputChannels": ["Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed"],
+      "inputChannel": "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed",
       "outputChannels": ["etCO2-Trend"],
-      "windowSizes": {
-        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 8
-      },
-      "persistWindows": {
-        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 1
-      },
-      "deltas": {
-        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": 4
-      },
+      "windowSize": 8,
+      "persistWindows": 1,
+      "delta": 4,
       "direction": "DOWN"
     },
     {
@@ -214,6 +202,7 @@
       "class": "com.framed.cdss.actors.DislocationClassificationActor",
       "id": "Dislocation-Classifier",
       "spo2TrendChannel": "SpO2-Trend",
+      "spo2LimitChannel": "SpO2-Limit",
       "etCO2LimitChannel": "etCO2-Limit",
       "sfLimitChannel": "S/F-Limit",
       "outputChannel": "Dislocation"

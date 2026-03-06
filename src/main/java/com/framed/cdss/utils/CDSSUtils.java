@@ -30,23 +30,18 @@ public class CDSSUtils {
         return firingRules;
     }
 
-    public static Map<String, List<Float>> parseLimitsJson(JSONObject limitsJson) {
-        Map<String, List<Float>> result = new HashMap<>();
+    public static List<Float> parseLimitsJson(JSONArray limitsList) {
+        List<Float> bounds = new java.util.ArrayList<>();
 
-        for (String channel : limitsJson.keySet()) {
-            JSONArray arr = limitsJson.getJSONArray(channel);
-            List<Float> bounds = new java.util.ArrayList<>();
-
-            for (Object o : arr) {
-                Number n = (Number) o;
-                bounds.add(n.floatValue());
-            }
-
-            bounds.sort(Float::compare);
-            result.put(channel, List.copyOf(bounds));
+        for (Object o : limitsList) {
+            Number n = (Number) o;
+            bounds.add(n.floatValue());
         }
 
-        return result;
+        bounds.sort(Float::compare);
+
+
+        return bounds;
     }
 
 

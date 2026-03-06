@@ -11,12 +11,6 @@
       "realTime": true,
       "slowData": true,
       "multiplier": "10"
-    },
-    {
-      "class": "com.framed.communicator.driver.protocol.replay.ReplayProtocol",
-      "id": "Replay",
-      "filePath": "output/streamer/1772557119016_data.jsonl",
-      "devices": ["PC60FW", "Oxylog-3000-Plus-00"]
     }
   ],
   "writers": [
