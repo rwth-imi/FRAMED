@@ -15,7 +15,7 @@
     {
       "class": "com.framed.communicator.driver.protocol.replay.ReplayProtocol",
       "id": "Replay",
-      "filePath": "output/streamer/1773241821887_data.jsonl",
+      "filePath": "output/streamer/vc_cmv_ph_03032026.jsonl",
       "devices": ["PC60FW", "Oxylog-3000-Plus-00"]
     }
   ],
@@ -43,9 +43,9 @@
       "class": "com.framed.communicator.driver.parser.medibus.MedibusSlowParser",
       "id": "Medibus-Slow-Parser",
       "devices":
-      [
-        "Oxylog-3000-Plus-00"
-      ]
+        [
+          "Oxylog-3000-Plus-00"
+        ]
     },
     {
       "class": "com.framed.communicator.driver.parser.viatom.ViatomParser",
@@ -99,7 +99,7 @@
       "id": "etCO2-Limit-Classifier",
       "firingRules": [
         {
-          "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": "*"
+        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": "*"
         }
       ],
       "inputChannel": "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed",

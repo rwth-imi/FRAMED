@@ -4,7 +4,8 @@ import com.framed.utils.InMemoryEventBus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 import static com.framed.utils.JsonFixtures.dp;
@@ -66,9 +67,9 @@ public class ActorMinimalTest {
     @Test
     void firesOncePerMessage_whenEachRuleSingleChannelStar() {
         // Send datapoints with increasing timestamps
-        LocalDateTime t0 = LocalDateTime.now();
-        LocalDateTime t1 = t0.plusSeconds(1);
-        LocalDateTime t2 = t0.plusSeconds(2);
+        ZonedDateTime t0 = ZonedDateTime.now(ZoneOffset.UTC);
+        ZonedDateTime t1 = t0.plusSeconds(1);
+        ZonedDateTime t2 = t0.plusSeconds(2);
 
         bus.publish(CH_A, dp(10, t0));
         bus.publish(CH_B, dp(20, t1));
@@ -97,7 +98,7 @@ public class ActorMinimalTest {
 
     @Test
     void snapshotIsImmutable() {
-        bus.publish(CH_A, dp(1, LocalDateTime.now()));
+        bus.publish(CH_A, dp(1, ZonedDateTime.now(ZoneOffset.UTC)));
         Map<String, Object> snap = actor.getFired().get(0);
 
         assertThrows(UnsupportedOperationException.class, () -> snap.put("x", 1));

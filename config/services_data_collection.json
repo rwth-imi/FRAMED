@@ -1,0 +1,90 @@
+{
+  "devices": [
+    {
+      "class": "com.framed.communicator.driver.protocol.medibus.MedibusProtocol",
+      "id": "Oxylog-3000-Plus-00",
+      "portName": "/dev/ttyUSB0",
+      "baudRate": 19200,
+      "dataBits": 8,
+      "stopBits": 1,
+      "waveFormType": 1,
+      "realTime": true,
+      "slowData": true,
+      "multiplier": "10"
+    }
+  ],
+  "writers": [
+    {
+      "class": "com.framed.communicator.io.raw.RawByteWriter",
+      "id": "Raw-Byte-Writer",
+      "devices": [
+        "Oxylog-3000-Plus-00",
+        "PC60FW"
+      ],
+      "path": "output/raw/"
+    },
+    {
+      "class": "com.framed.communicator.io.parsed.MedibusParsedWriter",
+      "id": "'Medibus-Parsed-Writer",
+      "devices": [
+        "Oxylog-3000-Plus-00"
+      ],
+      "path": "output/parsed/"
+    }
+  ],
+  "Parsers": [
+    {
+      "class": "com.framed.communicator.driver.parser.medibus.MedibusSlowParser",
+      "id": "Medibus-Slow-Parser",
+      "devices":
+        [
+          "Oxylog-3000-Plus-00"
+        ]
+    },
+    {
+      "class": "com.framed.communicator.driver.parser.viatom.ViatomParser",
+      "id": "Viatom-Parser",
+      "devices":
+      [
+        "PC60FW"
+      ]
+    },
+    {
+      "class": "com.framed.communicator.driver.parser.medibus.MedibusRealTimeParser",
+      "id": "Medibus-RT-Parser",
+      "devices":
+      [
+        "Oxylog-3000-Plus-00"
+      ],
+      "waveFormType": 1
+    }
+  ],
+  "Dispatchers": [
+    {
+      "class": "com.framed.streamer.dispatcher.InfluxDispatcher",
+      "bucket": "safety-box",
+      "id": "InfluxDB",
+      "url": "http://localhost:8086",
+      "token": "ThoKiNpWG1QpK8NjBayxWiXq2vwj4L7q-0NvisFVpp-af9tt1qh8ohL00V_pRDksSKTt7hqLkOKRQ6GKxFmKzg==",
+      "org": "IMI-MSE",
+      "devices":
+      [
+        "Oxylog-3000-Plus-00",
+        "PC60FW",
+        "CDSS"
+      ]
+    },
+    {
+      "class": "com.framed.streamer.dispatcher.JsonlDispatcher",
+      "id": "Json-Lines",
+      "devices":
+      [
+        "Oxylog-3000-Plus-00",
+        "PC60FW",
+        "CDSS"
+      ],
+      "path": "output/streamer/",
+      "fileName": "data.jsonl"
+    }
+  ]
+}

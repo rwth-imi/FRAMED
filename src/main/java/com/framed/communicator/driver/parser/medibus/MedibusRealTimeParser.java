@@ -9,6 +9,8 @@ import org.json.JSONObject;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -217,17 +219,16 @@ public class MedibusRealTimeParser extends Parser<Byte> {
 
       long tsMs = (long) map.get("timestampMs");
       // Render ISO-8601 with microseconds from the captured ms
-      String tsIso = LocalDateTime.ofInstant(Instant.ofEpochMilli(tsMs), java.time.ZoneId.systemDefault())
-        .format(formatter);
-
+      String tsIso = ZonedDateTime.ofInstant(Instant.ofEpochMilli(tsMs), ZoneOffset.UTC).format(formatter);
+      String className = "RealTime";
       JSONObject waveValResult = new JSONObject();
       waveValResult.put("timestamp", tsIso);
       waveValResult.put("timestampMs", tsMs);           // optional raw ms
       waveValResult.put("channelID", channelID);
       waveValResult.put("value", value);
-      waveValResult.put("className", "RealTime");
+      waveValResult.put("className", className);
 
-      String address = "%s.%s.parsed".formatted(deviceName, channelID);
+      String address = "%s.%s.%s.parsed".formatted(className, deviceName, channelID);
       eventBus.publish("%s.addresses".formatted(deviceName), address);
       eventBus.publish(address, waveValResult);
     }

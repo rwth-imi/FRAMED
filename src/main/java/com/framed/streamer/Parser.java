@@ -6,8 +6,7 @@ import org.json.JSONObject;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
+import java.time.ZoneOffset;
 
 public class Parser {
   public static DataPoint<?> parse(JSONObject jsonObject) throws Exception {
@@ -15,8 +14,7 @@ public class Parser {
 
 
     LocalDateTime ldt = LocalDateTime.parse(jsonObject.getString("timestamp"), Timer.formatter);
-    ZoneId zoneId = ZoneId.systemDefault();
-    Instant timestamp = ldt.atZone(zoneId).toInstant();
+    Instant timestamp = ldt.atZone(ZoneOffset.UTC).toInstant();
     String channelID = jsonObject.getString("channelID");
     String deviceID = jsonObject.getString("deviceID");
     String className = jsonObject.getString("className");

@@ -38,8 +38,8 @@ public class RRMismatchClassificationActor extends Actor {
     }
     @Override
     public void fireFunction(Map<String, Object> latestSnapshot) {
-        double rrEstimation = (double) latestSnapshot.getOrDefault(rrEstimationChannel, 0);
-        double rrSetting = (double) latestSnapshot.getOrDefault(rrSettingsChannel, 0 );
+        double rrEstimation = ((Number) latestSnapshot.get(rrEstimationChannel)).doubleValue();
+        double rrSetting = ((Number) latestSnapshot.get(rrSettingsChannel)).doubleValue();
         int warnValue = 0;
         if (Math.abs(rrEstimation - rrSetting) > varLimit){
             warnValue = 1;

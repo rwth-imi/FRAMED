@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -175,8 +176,9 @@ public class TCPTransport implements Transport {
       json.put("payload", message);
       json.put("type", type);
 
+      String msg = "%s\n".formatted(json);        // <-- ADD NEWLINE
       PrintWriter writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8);
-      writer.println(json);
+      writer.println(msg);
     } catch (IOException e) {
       logger.warning("Failed to send message " + e.getMessage());
     }

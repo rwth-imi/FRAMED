@@ -227,7 +227,9 @@ public class NioTcpTransport implements Transport {
       json.put("payload", message);
       json.put("type", type);
 
-      ByteBuffer buffer = charset.encode(CharBuffer.wrap(json.toString()));
+
+      String msg = "%s\n".formatted(json);
+      ByteBuffer buffer = charset.encode(msg);
       while (buffer.hasRemaining()) {
         channel.write(buffer);
       }

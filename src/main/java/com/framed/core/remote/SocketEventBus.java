@@ -139,7 +139,9 @@ import java.util.logging.Logger;
   public void publish(String address, Object message) {
     dispatchLocally(address, message);
     for (Peer peer : peers) {
-      transport.publish(peer.host(), peer.port(), address, message);
+        parallelPool.submit(()
+                -> transport.publish(peer.host(), peer.port(), address, message)
+        );
     }
   }
 

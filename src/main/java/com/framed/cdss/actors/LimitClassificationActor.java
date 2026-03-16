@@ -78,11 +78,7 @@ import static com.framed.cdss.utils.CDSSUtils.*;
  * Provided as a JSON object of the form:
  *
  * <pre>
- * {
- *   "channel1": [10, 20, 30],
- *   "channel2": [5, 7, 9, 12],
- *   ...
- * }
+ *  [10, 20, 30],
  * </pre>
  *
  * All lists are required to be numeric and are automatically sorted ascending.
@@ -101,11 +97,11 @@ import static com.framed.cdss.utils.CDSSUtils.*;
 public class LimitClassificationActor extends Actor {
 
   /**
-   * Per-channel list of sorted ascending numeric upper bounds.
+   * list of sorted ascending numeric upper bounds.
    * Example:
-   *  channel → [90, 93, 96, 100]
+   *  [90, 93, 96, 100]
    */
-  Map<String, List<Float>> limits;
+  List<Float> limits;
 
 
   /**
@@ -114,7 +110,7 @@ public class LimitClassificationActor extends Actor {
    * @param eventBus        the event bus used for input and output messaging
    * @param id              the identifier for this classifier
    * @param firingRules     firing rules forwarded to {@link Actor}
-   * @param inputChannels   JSON array of input channel names
+   * @param inputChannel   JSON array of input channel names
    * @param outputChannels  JSON array of output channel names
    * @param limits      a JSON object describing upper-bound lists per channel
    *
@@ -136,18 +132,14 @@ public class LimitClassificationActor extends Actor {
   public LimitClassificationActor(EventBus eventBus,
                                   String id,
                                   JSONArray firingRules,
-                                  JSONArray inputChannels,
+                                  String inputChannel,
                                   JSONArray outputChannels,
-                                  JSONObject limits) {
+                                  JSONArray limits) {
 
     super(eventBus, id,
             parseFiringRulesJson(firingRules),
-            parseChannelListJson(inputChannels),
+            List.of(inputChannel),
             parseChannelListJson(outputChannels));
-
-    if (!Set.copyOf(this.inputChannels).containsAll(limits.keySet())) {
-      throw new IllegalArgumentException("Limited channels must be a subset of input channels.");
-    }
 
     this.limits = parseLimitsJson(limits);
   }
@@ -155,7 +147,7 @@ public class LimitClassificationActor extends Actor {
 
 
   /**
-   * Classifies each channel's input value using its configured list of
+   * Classifies each input value using its configured list of
    * ascending upper bounds.
    *
    * <p>For each channel, given:
@@ -193,9 +185,6 @@ public class LimitClassificationActor extends Actor {
     Map<String, Integer> alarmStates = new HashMap<>();
 
     for (String channel : this.getInputChannels()) {
-      if (!limits.containsKey(channel)) {
-        continue;
-      }
 
       Object raw = snapshot.get(channel);
       if (raw == null) {
@@ -208,12 +197,10 @@ public class LimitClassificationActor extends Actor {
         default -> throw new ClassCastException("Non-numeric value on channel: %s".formatted(raw));
       };
 
-      List<Float> bounds = limits.get(channel);
-
       // find first index where upperBound >= value
       int index = 0;
-      for (; index < bounds.size(); index++) {
-        if (value <= bounds.get(index)) {
+      for (; index < limits.size(); index++) {
+        if (value <= limits.get(index)) {
           break;
         }
       }

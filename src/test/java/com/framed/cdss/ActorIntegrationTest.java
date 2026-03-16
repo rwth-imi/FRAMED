@@ -4,7 +4,8 @@ import com.framed.utils.InMemoryEventBus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 import static com.framed.utils.JsonFixtures.dp;
@@ -62,7 +63,7 @@ public class ActorIntegrationTest {
         // Use same channels as before
         List<String> channels = List.of(A, B, C);
 
-        record Step(String ch, int val, LocalDateTime ts) {}
+        record Step(String ch, int val, ZonedDateTime ts) {}
 
         List<Step> steps = new ArrayList<>(N);
         Random rnd = new Random();
@@ -77,7 +78,7 @@ public class ActorIntegrationTest {
             int val = rnd.nextInt(1000);
 
             // Real timestamp
-            LocalDateTime ts = LocalDateTime.now();
+            ZonedDateTime ts = ZonedDateTime.now(ZoneOffset.UTC);
 
             Step s = new Step(ch, val, ts);
             steps.add(s);
@@ -131,7 +132,7 @@ public class ActorIntegrationTest {
         );
         actor = new CaptureActor(bus, "int2", rules, List.of(A, B, C), List.of("OUT"));
 
-        LocalDateTime t = LocalDateTime.now();
+        ZonedDateTime t = ZonedDateTime.now(ZoneOffset.UTC);
         bus.publish(A, dp(100, t.plusSeconds(1)));
         assertTrue(actor.snapshots().isEmpty(), "Not enough to satisfy A&B");
 

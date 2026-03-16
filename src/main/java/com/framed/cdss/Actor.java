@@ -6,13 +6,11 @@ import com.framed.core.Service;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 
 import static com.framed.cdss.utils.CDSSUtils.publishResult;
 
@@ -174,12 +172,21 @@ public abstract class Actor extends Service {
    * Main evaluation procedure. Produces exactly one snapshot + one fire
    * per evaluation cycle, regardless of how many rules were satisfied.
    */
+  /**
+   * Main evaluation procedure. Produces exactly one snapshot + one fire
+   * per evaluation cycle, regardless of how many rules were satisfied.
+   *
+   * Corrected to:
+   *   • Only treat a channel as "new" if its sequence number actually advanced.
+   *   • Update lastConsumedSeqByRule only for channels with real deltas.
+   *   • Preserve true AND semantics for multi-input rules.
+   */
   private void evaluateRules() {
     Map<String, Object> snapshotToFire = new HashMap<>();
 
     evalLock.lock();
     try {
-      // Stable state snapshot
+      // --- Build stable snapshot of state at call ---
       Map<String, Long> seqAtCall = new HashMap<>();
       Map<String, Object> latestAtCall = new HashMap<>();
 
@@ -188,7 +195,7 @@ public abstract class Actor extends Service {
         latestAtCall.put(ch, latestByChannel.get(ch));
       }
 
-      // Determine satisfied rules
+      // --- Evaluate rules ---
       List<Integer> satisfiedRules = new ArrayList<>();
 
       for (int i = 0; i < compiledRules.size(); i++) {
@@ -197,40 +204,57 @@ public abstract class Actor extends Service {
 
         boolean satisfied = true;
 
+        // AND semantics: every channel in the rule must satisfy its condition
         for (var e : rule.entrySet()) {
           String ch = e.getKey();
           FiringRule cond = e.getValue();
 
-          long delta = seqAtCall.get(ch) - lastPtr.get(ch);
+          long cur = seqAtCall.get(ch);
+          long last = lastPtr.get(ch);
+          long delta = cur - last;
+
           Object latest = latestAtCall.get(ch);
 
           if (!testCondition(cond, delta, latest)) {
-            satisfied = false; break;
+            satisfied = false;
+            break;
           }
         }
 
-        if (satisfied) satisfiedRules.add(i);
+        if (satisfied) {
+          satisfiedRules.add(i);
+        }
       }
 
-      // Only one snapshot per evaluation
+      // --- Build snapshot AND advance pointers if any rule fired ---
       if (!satisfiedRules.isEmpty()) {
         snapshotToFire = buildSnapshotFrom(latestAtCall);
 
-        // Advance all satisfied rules’ pointers
-        for (int idx : satisfiedRules) {
-          Map<String, Long> lastPtr = lastConsumedSeqByRule.get(idx);
-          for (String ch : inputChannels) {
-            lastPtr.put(ch, seqAtCall.get(ch));
+        // For each satisfied rule:
+        for (int ruleIndex : satisfiedRules) {
+          Map<String, Long> lastPtr = lastConsumedSeqByRule.get(ruleIndex);
+
+          Map<String, FiringRule> rule = compiledRules.get(ruleIndex);
+
+          // Only advance pointers for channels that actually had new data
+          for (var e : rule.entrySet()) {
+            String ch = e.getKey();
+            long cur = seqAtCall.get(ch);
+            long last = lastPtr.get(ch);
+
+            if (cur > last) {
+              lastPtr.put(ch, cur);   // correct per-channel pointer update
+            }
+            // If cur == last → no update (keeps delta=0 on next round)
           }
         }
-
       }
 
     } finally {
       evalLock.unlock();
     }
 
-    // Execute fire + latency reporting outside lock
+    // --- Fire and publish latency outside lock ---
     if (!snapshotToFire.isEmpty()) {
       fireFunction(snapshotToFire);
       publishAllLatencyModes(snapshotToFire);
@@ -253,7 +277,7 @@ public abstract class Actor extends Service {
       JSONObject dp = (JSONObject) latestAtCall.get(ch);
 
       // --- Value handling ---
-      Object value = dp.has("value") ? dp.get("value") : 0;
+      Object value = dp.has("value") ? dp.get("value") : null;
       snapshot.put(ch, value);
 
       // --- Timestamp handling ---
@@ -261,7 +285,7 @@ public abstract class Actor extends Service {
       if (dp.has("timestamp")) {
         // Parse normally
         LocalDateTime ldt = LocalDateTime.parse(dp.getString("timestamp"), formatter);
-        ts = ldt.atZone(ZoneId.systemDefault()).toInstant();
+        ts = ldt.atZone(ZoneOffset.UTC).toInstant();
       } else {
         // Channel has not yet received any data → default timestamp
         ts = Instant.EPOCH;
@@ -323,7 +347,7 @@ public abstract class Actor extends Service {
     if (t.startsWith("r:"))
       return FiringRule.requireValue(t.substring(2));
 
-    throw new IllegalArgumentException("Unsupported token: " + token);
+    throw new IllegalArgumentException("Unsupported token: %s".formatted(token));
   }
 
   /** Tests whether a given rule condition is satisfied according to delta + latest value. */
@@ -366,16 +390,35 @@ public abstract class Actor extends Service {
   private void publishPerChannelLatency(Map<String, Object> snapshot, Instant benchmarkTs) {
     for (String ch : inputChannels) {
       String timeKey = "%s-timestamp".formatted(ch);
-      Instant ts = (Instant) snapshot.get(timeKey);
+      Object v = snapshot.get(timeKey);
+      if (!(v instanceof Instant ts)) {
+        // No timestamp present for this channel in the snapshot → nothing to do
+        continue;
+      }
+
+      // Guard: datapoint claims to be in the future (clock skew or bad source)
+      if (ts.isAfter(benchmarkTs)) {
+        logger.log(Level.WARNING, "Timestamp from future: {0} > {1}".formatted(ts, benchmarkTs));
+        continue;
+      }
 
       Instant lastPublished = lastTsPublishedByChannel.get(ch);
-      if (lastPublished != null && lastPublished.equals(ts))
-        return; // already published this timestamp
+
+      // Skip if we already published this exact datapoint OR a newer one.
+      // (Older or equal timestamps should not be republished.)
+      if (lastPublished != null && !ts.isAfter(lastPublished)) {
+        continue;  // <-- IMPORTANT: was 'return' before, which aborted the whole method
+      }
 
       double seconds = Duration.between(ts, benchmarkTs).toNanos() / 1_000_000_000d;
 
-      publishResult(eventBus, formatter, seconds, "Latency",
-              List.of("Latency-%s-%s".formatted(ch, id)));
+      publishResult(
+              eventBus,
+              formatter,
+              seconds,
+              "Latency",
+              List.of("Latency-%s.%s".formatted(ch, id))
+      );
 
       lastTsPublishedByChannel.put(ch, ts);
     }
@@ -393,11 +436,16 @@ public abstract class Actor extends Service {
       if (earliest == null || ts.isBefore(earliest)) earliest = ts;
     }
 
+    if (earliest.isAfter(benchmarkTs)){
+      logger.log(Level.WARNING, "Timestamp from future: {0} > {1}".formatted(earliest, benchmarkTs));
+      return;
+    }
+
     if (earliest != null) {
       double seconds = Duration.between(earliest, benchmarkTs).toNanos() / 1_000_000_000d;
 
       publishResult(eventBus, formatter, seconds, "Latency-Global",
-              List.of("Latency-Global-%s".formatted(id)));
+              List.of("Latency-Global.%s".formatted(id)));
     }
   }
 
@@ -428,11 +476,15 @@ public abstract class Actor extends Service {
     for (String ch : participating) {
       String timeKey = "%s-timestamp".formatted(ch);
       Instant ts = (Instant) snapshot.get(timeKey);
+      if (ts.isAfter(benchmarkTs)){
+        logger.log(Level.WARNING, "Timestamp from future: {0} > {1}".formatted(ts, benchmarkTs));
+        continue;
+      }
 
       double seconds = Duration.between(ts, benchmarkTs).toNanos() / 1_000_000_000d;
 
       publishResult(eventBus, formatter, seconds, "Latency-RuleParticipation",
-              List.of("Latency-Rule-%s-%s".formatted(ch, id)));
+              List.of("Latency-Rule-%s.%s".formatted(ch, id)));
     }
   }
 }
