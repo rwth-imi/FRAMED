@@ -6,6 +6,7 @@ import com.framed.core.EventBus;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static com.framed.cdss.utils.CDSSUtils.publishResult;
 import static com.framed.cdss.utils.InterpreterUtils.getInterpreterInputChannelsList;
@@ -21,6 +22,8 @@ public class InterpretationActor extends Actor {
     private final String piLimitChannel;
     private final String hrLimitChannel;
     private final String sfLimitChannel;
+
+    private final ReentrantLock fireLock = new ReentrantLock();
 
     public InterpretationActor(EventBus eventBus,
                                   String id,
@@ -68,11 +71,11 @@ public class InterpretationActor extends Actor {
         this.piLimitChannel = piLimitChannel;
         this.hrLimitChannel = hrLimitChannel;
         this.sfLimitChannel = sfLimitChannel;
-
     }
 
     @Override
     public void fireFunction(Map<String, Object> latestSnapshot) {
+        fireLock.lock();
         if (interpretEtCO2Limit(latestSnapshot.get(etCO2LimitChannel))){
             interpretRRMismatch(latestSnapshot.get(rrMismatchChannel));
         }
@@ -84,6 +87,7 @@ public class InterpretationActor extends Actor {
             interpretHDAryth(latestSnapshot.get(hdArythChannel));
             interpretSFLimit(latestSnapshot.get(sfLimitChannel));
         }
+        fireLock.unlock();
     }
 
     private Boolean interpretEtCO2Limit(Object value) {
@@ -98,8 +102,9 @@ public class InterpretationActor extends Actor {
                 case 2 -> publishResult(eventBus, formatter, "CHECK PATIENT: end tidal CO2 moderately low!", id, etCO2LimitWarningChannel);
                 case 3 -> publishResult(eventBus, formatter, "CHECK PATIENT: end tidal CO2 high!", id, etCO2LimitWarningChannel);
                 default -> {
-                    // no warning
+                    //no warning
                 }
+
             }
         }
         return true;
@@ -114,7 +119,7 @@ public class InterpretationActor extends Actor {
                 case 1 -> publishResult(eventBus, formatter, "CHECK PATIENT: S/F indicates moderate ARDS condition!", id, sfLimitWarningChannel);
                 case 2 -> publishResult(eventBus, formatter, "CHECK PATIENT: S/F indicates mild ARDS condition!", id, sfLimitWarningChannel);
                 default -> {
-                    // no warning
+                    //no warning
                 }
             }
         }
@@ -127,9 +132,8 @@ public class InterpretationActor extends Actor {
                 case 1 -> publishResult(eventBus, formatter, "CHECK PATIENT: possible asystole!", id, hrWarningChannel);
                 case 2 -> publishResult(eventBus, formatter, "CHECK PATIENT: Hear rate too high!", id, hrWarningChannel);
                 default -> {
-                    // no warning
-                }
-            }
+                    //no warning
+                }            }
         }
     }
 
@@ -140,36 +144,47 @@ public class InterpretationActor extends Actor {
                 case 1 ->publishResult(eventBus, formatter, "CHECK PATIENT: possible asystole!", id, hdArythWarningChannel);
                 case 2 ->publishResult(eventBus, formatter, "CHECK PATIENT: possible ventricular fibrillation!", id, hdArythWarningChannel);
                 default -> {
-                    // no warning
-                }
-            }
+                    //no warning
+                }            }
 
         }
     }
 
     private void interpretSpO2Trend(Object value) {
-        if (value instanceof Integer intValue && intValue == 1) {
-            publishResult(eventBus, formatter, "CHECK PATIENT: SpO2 decreasing!", id, List.of("SpO2-Trend-Warning"));
+        if (value instanceof Integer intValue) {
+            List<String> spo2TrendWarningChannel = List.of("SpO2-Trend-Warning");
+            if (intValue == 1) {
+                publishResult(eventBus, formatter, "CHECK PATIENT: SpO2 decreasing!", id, spo2TrendWarningChannel);
+            }
         }
     }
 
     private void interpretSpO2Limit(Object value) {
-        if (value instanceof Integer intValue && intValue == 0) {
-            publishResult(eventBus, formatter, "CHECK PATIENT: SpO2 critically low!", id, List.of("SpO2-Limit-Warning"));
+        if (value instanceof Integer intValue) {
+            List<String> spo2LimitWarningChannel = List.of("SpO2-Limit-Warning");
+            if (intValue == 0){
+                publishResult(eventBus, formatter, "CHECK PATIENT: SpO2 critically low!", id, spo2LimitWarningChannel);
+            }
+
         }
     }
 
     private Boolean interpretPiQuality(Object value) {
-        List<String> piQualityChannel = List.of("PI-Quality-Warning");
         boolean quality = true;
         if (value instanceof Integer intValue) {
-            if (intValue == 0) {
-                publishResult(eventBus, formatter, "CHECK PULSEOXIMETER: PI too low!", id, piQualityChannel);
-                quality = false;
-            } else if (intValue == 2) {
-                publishResult(eventBus, formatter, "CHECK PULSEOXIMETER: PI too high!", id, piQualityChannel);
-                quality = false;
-            }
+            List<String> piQualityChannel = List.of("PI-Quality-Warning");
+            switch (intValue) {
+                case 0 -> {
+                    publishResult(eventBus, formatter, "CHECK PULSEOXIMETER: PI too low!", id, piQualityChannel);
+                    quality = false;
+                }
+                case 2 -> {
+                    publishResult(eventBus, formatter, "CHECK PULSEOXIMETER: PI too high!", id, piQualityChannel);
+                    quality = false;
+                }
+                default -> {
+                    //no warning
+                }            }
         }
         return quality;
     }
@@ -189,8 +204,11 @@ public class InterpretationActor extends Actor {
     }
 
     private void interpretRRMismatch(Object value) {
-        if (value instanceof Integer intValue && intValue == 1){
-            publishResult(eventBus, formatter, "Mismatch between RR Settings and Measurement!", id, List.of("RRMismatchWarning"));
+        if (value instanceof Integer intValue){
+            List<String> rrMismatchWarningChannel = List.of("RRMismatchWarning");
+            if (intValue == 1) {
+                publishResult(eventBus, formatter, "Mismatch between RR Settings and Measurement!", id, rrMismatchWarningChannel);
+            }
         }
     }
 }

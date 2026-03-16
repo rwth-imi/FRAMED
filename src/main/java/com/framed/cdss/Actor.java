@@ -277,7 +277,7 @@ public abstract class Actor extends Service {
       JSONObject dp = (JSONObject) latestAtCall.get(ch);
 
       // --- Value handling ---
-      Object value = dp.has("value") ? dp.get("value") : 0;
+      Object value = dp.has("value") ? dp.get("value") : null;
       snapshot.put(ch, value);
 
       // --- Timestamp handling ---
@@ -417,7 +417,7 @@ public abstract class Actor extends Service {
               formatter,
               seconds,
               "Latency",
-              List.of("Latency-%s-%s".formatted(ch, id))
+              List.of("Latency-%s.%s".formatted(ch, id))
       );
 
       lastTsPublishedByChannel.put(ch, ts);
@@ -445,7 +445,7 @@ public abstract class Actor extends Service {
       double seconds = Duration.between(earliest, benchmarkTs).toNanos() / 1_000_000_000d;
 
       publishResult(eventBus, formatter, seconds, "Latency-Global",
-              List.of("Latency-Global-%s".formatted(id)));
+              List.of("Latency-Global.%s".formatted(id)));
     }
   }
 
@@ -484,7 +484,7 @@ public abstract class Actor extends Service {
       double seconds = Duration.between(ts, benchmarkTs).toNanos() / 1_000_000_000d;
 
       publishResult(eventBus, formatter, seconds, "Latency-RuleParticipation",
-              List.of("Latency-Rule-%s-%s".formatted(ch, id)));
+              List.of("Latency-Rule-%s.%s".formatted(ch, id)));
     }
   }
 }
