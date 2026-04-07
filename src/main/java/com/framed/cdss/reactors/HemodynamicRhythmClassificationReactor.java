@@ -1,6 +1,6 @@
-package com.framed.cdss.actors;
+package com.framed.cdss.reactors;
 
-import com.framed.cdss.Actor;
+import com.framed.cdss.Reactor;
 import com.framed.cdss.FiringRule;
 import com.framed.core.EventBus;
 
@@ -9,12 +9,12 @@ import java.util.Map;
 
 import static com.framed.cdss.utils.CDSSUtils.publishResult;
 
-public class HemodynamicRhythmClassificationActor extends Actor {
+public class HemodynamicRhythmClassificationReactor extends Reactor {
     private final String etCO2TrendChannel;
     private final String hrLimitChannel;
 
     /**
-     * Constructs an {@code Actor} that subscribes to the given {@code inputChannels}, evaluates the provided
+     * Constructs an {@code Reactor} that subscribes to the given {@code inputChannels}, evaluates the provided
      * {@code firingRules}, and optionally exposes {@code outputChannels}.
      *
      * <p>For each input channel, this actor:
@@ -26,14 +26,14 @@ public class HemodynamicRhythmClassificationActor extends Actor {
      * <p>During construction, rules are compiled to internal {@link FiringRule}s and validated for channel existence.
      *
      * @param eventBus       the event bus used to subscribe to input channels and receive messages; must not be {@code null}
-     * @param id             the identifier of the specified Actor. Commonly set in the config.
+     * @param id             the identifier of the specified Reactor. Commonly set in the config.
      * @param etCO2TrendChannel the channel on which the etCO2 trend warning is published
      * @param hrLimitChannel    the channel on which the Heartrate limit warning is published
      * @param outputChannel     the channel on which to publish the arrhythmia warning
      * @throws NullPointerException     if any argument is {@code null}
      * @throws IllegalArgumentException if a rule is empty or references a channel not present in {@code inputChannels}, or contains an invalid token
      */
-    public HemodynamicRhythmClassificationActor(
+    public HemodynamicRhythmClassificationReactor(
             EventBus eventBus,
             String id,
             String etCO2TrendChannel,
@@ -72,6 +72,6 @@ public class HemodynamicRhythmClassificationActor extends Actor {
                 warnValue = 2;
             }
         }
-        publishResult(eventBus, formatter, warnValue, id, outputChannels);
+        publishResult(eventBus, warnValue, id, outputChannels);
     }
 }

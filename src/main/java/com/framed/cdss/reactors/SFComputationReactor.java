@@ -1,6 +1,6 @@
-package com.framed.cdss.actors;
+package com.framed.cdss.reactors;
 
-import com.framed.cdss.Actor;
+import com.framed.cdss.Reactor;
 import com.framed.core.EventBus;
 
 import java.util.List;
@@ -8,12 +8,12 @@ import java.util.Map;
 
 import static com.framed.cdss.utils.CDSSUtils.publishResult;
 
-public class SFComputationActor extends Actor {
+public class SFComputationReactor extends Reactor {
   private final String spo2Channel;
   private final String fio2Channel;
 
 
-  public SFComputationActor(EventBus eventBus, String id, String spo2Channel, String fio2Channel, String outputChannel) {
+  public SFComputationReactor(EventBus eventBus, String id, String spo2Channel, String fio2Channel, String outputChannel) {
     super(
       eventBus,
       id,
@@ -40,7 +40,7 @@ public class SFComputationActor extends Actor {
         && latestValues.get(fio2Channel) instanceof Number fio2
     ){
       float sf = 100 * spo2.floatValue() / fio2.floatValue();
-      publishResult(eventBus, formatter, sf, id, outputChannels);
+      publishResult(eventBus, sf, id, outputChannels);
     }
   }
 }

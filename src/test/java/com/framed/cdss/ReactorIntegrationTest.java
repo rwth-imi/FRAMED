@@ -18,16 +18,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * - Verify snapshot values reflect correct arrival order
  * - Verify no datapoints are skipped in practice
  */
-public class ActorIntegrationTest {
+public class ReactorIntegrationTest {
 
     private InMemoryEventBus bus;
-    private CaptureActor actor;
+    private CaptureActor reactor;
 
     private static final String A = "A";
     private static final String B = "B";
     private static final String C = "C";
 
-    static class CaptureActor extends Actor {
+    static class CaptureActor extends Reactor {
         private final List<Map<String, Object>> snaps = new ArrayList<>();
         CaptureActor(InMemoryEventBus bus, String id, List<Map<String,String>> rules,
                      List<String> inputs, List<String> outputs) {
@@ -50,7 +50,7 @@ public class ActorIntegrationTest {
                 Map.of(C, "*")
         );
 
-        actor = new CaptureActor(bus, "int",
+        reactor = new CaptureActor(bus, "int",
                 rules, List.of(A, B, C), List.of("OUT"));
     }
 
@@ -91,7 +91,7 @@ public class ActorIntegrationTest {
         }
 
         // --- Now verify snapshots ---
-        List<Map<String, Object>> snaps = actor.snapshots();
+        List<Map<String, Object>> snaps = reactor.snapshots();
 
         // Each publish fires exactly once (because rules = "*"), so sizes must match
         assertEquals(steps.size(), snaps.size(),
@@ -130,19 +130,19 @@ public class ActorIntegrationTest {
         List<Map<String, String>> rules = List.of(
                 Map.of(A, "*", B, "*")
         );
-        actor = new CaptureActor(bus, "int2", rules, List.of(A, B, C), List.of("OUT"));
+        reactor = new CaptureActor(bus, "int2", rules, List.of(A, B, C), List.of("OUT"));
 
         ZonedDateTime t = ZonedDateTime.now(ZoneOffset.UTC);
         bus.publish(A, dp(100, t.plusSeconds(1)));
-        assertTrue(actor.snapshots().isEmpty(), "Not enough to satisfy A&B");
+        assertTrue(reactor.snapshots().isEmpty(), "Not enough to satisfy A&B");
 
         bus.publish(B, dp(200, t.plusSeconds(2)));
-        assertEquals(1, actor.snapshots().size(),
+        assertEquals(1, reactor.snapshots().size(),
                 "Now both A and B updated => one fire");
 
         // Next message on C should independently cause a fire due to R2 not present here -> it should NOT fire
         // (because only rule requires A & B; C alone should NOT fire).
         bus.publish(C, dp(300, t.plusSeconds(3)));
-        assertEquals(1, actor.snapshots().size(), "C alone should not satisfy A&B rule");
+        assertEquals(1, reactor.snapshots().size(), "C alone should not satisfy A&B rule");
     }
 }

@@ -1,7 +1,7 @@
 package com.framed.orchestrator;
 
-import com.framed.cdss.Actor;
-import com.framed.cdss.DFCN;
+import com.framed.cdss.Reactor;
+import com.framed.cdss.ADRN;
 import com.framed.core.EventBus;
 import com.framed.core.Service;
 
@@ -97,13 +97,13 @@ public class Manager {
   }
 
   public void validateDFCN() {
-    List<Actor> actorList = new ArrayList<>();
+    List<Reactor> actorList = new ArrayList<>();
     for (Service service: this.instances.values()) {
-      if (service instanceof Actor actor) {
+      if (service instanceof Reactor actor) {
         actorList.add(actor);
       }
     }
-    new DFCN(actorList);
+    new ADRN(actorList);
   }
 
   /**

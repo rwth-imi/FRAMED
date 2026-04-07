@@ -1,6 +1,6 @@
-package com.framed.cdss.actors;
+package com.framed.cdss.reactors;
 
-import com.framed.cdss.Actor;
+import com.framed.cdss.Reactor;
 import com.framed.core.EventBus;
 
 import java.util.ArrayList;
@@ -12,7 +12,7 @@ import static com.framed.cdss.utils.CDSSUtils.publishResult;
 import static com.framed.cdss.utils.InterpreterUtils.getInterpreterInputChannelsList;
 import static com.framed.cdss.utils.InterpreterUtils.getInterpreterInputFiringRules;
 
-public class InterpretationActor extends Actor {
+public class InterpretationReactor extends Reactor {
     private final String rrMismatchChannel;
     private final String dislocationChannel;
     private final String spo2LimitChannel;
@@ -25,7 +25,7 @@ public class InterpretationActor extends Actor {
 
     private final ReentrantLock fireLock = new ReentrantLock();
 
-    public InterpretationActor(EventBus eventBus,
+    public InterpretationReactor(EventBus eventBus,
                                   String id,
                                   String rrMismatchChannel,
                                   String dislocationChannel,
@@ -95,12 +95,12 @@ public class InterpretationActor extends Actor {
         if (value instanceof Integer intValue){
             switch (intValue) {
                 case 0 -> {
-                    publishResult(eventBus, formatter, "CHECK PATIENT: no end tidal CO2 measured!", id, etCO2LimitWarningChannel);
+                    publishResult(eventBus, "CHECK PATIENT: no end tidal CO2 measured!", id, etCO2LimitWarningChannel);
                     return false;
                 }
-                case 1 -> publishResult(eventBus, formatter, "CHECK PATIENT: end tidal CO2 severely low!", id, etCO2LimitWarningChannel);
-                case 2 -> publishResult(eventBus, formatter, "CHECK PATIENT: end tidal CO2 moderately low!", id, etCO2LimitWarningChannel);
-                case 3 -> publishResult(eventBus, formatter, "CHECK PATIENT: end tidal CO2 high!", id, etCO2LimitWarningChannel);
+                case 1 -> publishResult(eventBus, "CHECK PATIENT: end tidal CO2 severely low!", id, etCO2LimitWarningChannel);
+                case 2 -> publishResult(eventBus, "CHECK PATIENT: end tidal CO2 moderately low!", id, etCO2LimitWarningChannel);
+                case 3 -> publishResult(eventBus, "CHECK PATIENT: end tidal CO2 high!", id, etCO2LimitWarningChannel);
                 default -> {
                     //no warning
                 }
@@ -115,9 +115,9 @@ public class InterpretationActor extends Actor {
         List<String> sfLimitWarningChannel = List.of("SF-Limit-Warning");
         if (value instanceof Integer intValue) {
             switch (intValue) {
-                case 0 -> publishResult(eventBus, formatter, "CHECK PATIENT: S/F indicates severe ARDS condition!", id, sfLimitWarningChannel);
-                case 1 -> publishResult(eventBus, formatter, "CHECK PATIENT: S/F indicates moderate ARDS condition!", id, sfLimitWarningChannel);
-                case 2 -> publishResult(eventBus, formatter, "CHECK PATIENT: S/F indicates mild ARDS condition!", id, sfLimitWarningChannel);
+                case 0 -> publishResult(eventBus, "CHECK PATIENT: S/F indicates severe ARDS condition!", id, sfLimitWarningChannel);
+                case 1 -> publishResult(eventBus, "CHECK PATIENT: S/F indicates moderate ARDS condition!", id, sfLimitWarningChannel);
+                case 2 -> publishResult(eventBus, "CHECK PATIENT: S/F indicates mild ARDS condition!", id, sfLimitWarningChannel);
                 default -> {
                     //no warning
                 }
@@ -129,8 +129,8 @@ public class InterpretationActor extends Actor {
         List<String> hrWarningChannel = List.of("HR-Limit-Warning");
         if (value instanceof Integer intValue) {
             switch (intValue){
-                case 1 -> publishResult(eventBus, formatter, "CHECK PATIENT: possible asystole!", id, hrWarningChannel);
-                case 2 -> publishResult(eventBus, formatter, "CHECK PATIENT: Hear rate too high!", id, hrWarningChannel);
+                case 1 -> publishResult(eventBus, "CHECK PATIENT: possible asystole!", id, hrWarningChannel);
+                case 2 -> publishResult(eventBus, "CHECK PATIENT: Hear rate too high!", id, hrWarningChannel);
                 default -> {
                     //no warning
                 }            }
@@ -141,8 +141,8 @@ public class InterpretationActor extends Actor {
         List<String> hdArythWarningChannel = List.of("HD-Aryth-Warning");
         if (value instanceof Integer intValue) {
             switch (intValue){
-                case 1 ->publishResult(eventBus, formatter, "CHECK PATIENT: possible asystole!", id, hdArythWarningChannel);
-                case 2 ->publishResult(eventBus, formatter, "CHECK PATIENT: possible ventricular fibrillation!", id, hdArythWarningChannel);
+                case 1 ->publishResult(eventBus, "CHECK PATIENT: possible asystole!", id, hdArythWarningChannel);
+                case 2 ->publishResult(eventBus, "CHECK PATIENT: possible ventricular fibrillation!", id, hdArythWarningChannel);
                 default -> {
                     //no warning
                 }            }
@@ -154,7 +154,7 @@ public class InterpretationActor extends Actor {
         if (value instanceof Integer intValue) {
             List<String> spo2TrendWarningChannel = List.of("SpO2-Trend-Warning");
             if (intValue == 1) {
-                publishResult(eventBus, formatter, "CHECK PATIENT: SpO2 decreasing!", id, spo2TrendWarningChannel);
+                publishResult(eventBus, "CHECK PATIENT: SpO2 decreasing!", id, spo2TrendWarningChannel);
             }
         }
     }
@@ -163,7 +163,7 @@ public class InterpretationActor extends Actor {
         if (value instanceof Integer intValue) {
             List<String> spo2LimitWarningChannel = List.of("SpO2-Limit-Warning");
             if (intValue == 0){
-                publishResult(eventBus, formatter, "CHECK PATIENT: SpO2 critically low!", id, spo2LimitWarningChannel);
+                publishResult(eventBus, "CHECK PATIENT: SpO2 critically low!", id, spo2LimitWarningChannel);
             }
 
         }
@@ -175,11 +175,11 @@ public class InterpretationActor extends Actor {
             List<String> piQualityChannel = List.of("PI-Quality-Warning");
             switch (intValue) {
                 case 0 -> {
-                    publishResult(eventBus, formatter, "CHECK PULSEOXIMETER: PI too low!", id, piQualityChannel);
+                    publishResult(eventBus, "CHECK PULSEOXIMETER: PI too low!", id, piQualityChannel);
                     quality = false;
                 }
                 case 2 -> {
-                    publishResult(eventBus, formatter, "CHECK PULSEOXIMETER: PI too high!", id, piQualityChannel);
+                    publishResult(eventBus, "CHECK PULSEOXIMETER: PI too high!", id, piQualityChannel);
                     quality = false;
                 }
                 default -> {
@@ -192,9 +192,9 @@ public class InterpretationActor extends Actor {
         if (value instanceof Integer intValue){
             List<String> dislocationWarningChannel = List.of("Dislocation-Warning");
             switch (intValue) {
-                case 1 -> publishResult(eventBus, formatter, "CHECK INTUBATION: possibly esophagus intubated!", id, dislocationWarningChannel);
-                case 2 -> publishResult(eventBus, formatter, "CHECK INTUBATION: possibly only one lung intubated!", id, dislocationWarningChannel);
-                case 3 -> publishResult(eventBus, formatter, "CHECK SpO2: intubation correct but critical SpO2 / FiO2 ratio!", id, dislocationWarningChannel);
+                case 1 -> publishResult(eventBus, "CHECK INTUBATION: possibly esophagus intubated!", id, dislocationWarningChannel);
+                case 2 -> publishResult(eventBus, "CHECK INTUBATION: possibly only one lung intubated!", id, dislocationWarningChannel);
+                case 3 -> publishResult(eventBus, "CHECK SpO2: intubation correct but critical SpO2 / FiO2 ratio!", id, dislocationWarningChannel);
                 case 0 -> {
                     //no warning
                 }
@@ -207,7 +207,7 @@ public class InterpretationActor extends Actor {
         if (value instanceof Integer intValue){
             List<String> rrMismatchWarningChannel = List.of("RRMismatchWarning");
             if (intValue == 1) {
-                publishResult(eventBus, formatter, "Mismatch between RR Settings and Measurement!", id, rrMismatchWarningChannel);
+                publishResult(eventBus, "Mismatch between RR Settings and Measurement!", id, rrMismatchWarningChannel);
             }
         }
     }

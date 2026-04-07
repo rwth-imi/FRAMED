@@ -1,7 +1,5 @@
 package com.framed.cdss.utils;
 
-import com.framed.cdss.actors.RespiratoryRateEstimationActor;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Deque;

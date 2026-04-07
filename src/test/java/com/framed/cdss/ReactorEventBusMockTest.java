@@ -16,17 +16,17 @@ import static org.junit.jupiter.api.Assertions.*;
  * - Verifies that publish calls occur (latency/global/rule-participation),
  *   without asserting the exact envelope (implementation detail of CDSSUtils).
  */
-public class ActorEventBusMockTest {
+public class ReactorEventBusMockTest {
 
     private InMemoryEventBus bus;
-    private TestActor actor;
+    private TestReactor reactor;
     private static final String A = "A";
     private static final String B = "B";
 
-    static class TestActor extends Actor {
+    static class TestReactor extends Reactor {
         private int fireCount = 0;
-        TestActor(InMemoryEventBus bus, String id, List<Map<String,String>> rules,
-                  List<String> inputs, List<String> outputs) {
+        TestReactor(InMemoryEventBus bus, String id, List<Map<String,String>> rules,
+                    List<String> inputs, List<String> outputs) {
             super(bus, id, rules, inputs, outputs);
         }
         @Override public void fireFunction(Map<String, Object> latestSnapshot) { fireCount++; }
@@ -40,7 +40,7 @@ public class ActorEventBusMockTest {
         List<Map<String, String>> rules = List.of(
                 Map.of(A, "*", B, "*")
         );
-        actor = new TestActor(bus, "lat", rules, List.of(A, B), List.of("OUT"));
+        reactor = new TestReactor(bus, "lat", rules, List.of(A, B), List.of("OUT"));
     }
 
     @Test
@@ -50,10 +50,10 @@ public class ActorEventBusMockTest {
 
         // Only when both have new data should the rule fire
         bus.publish(A, dp(1, t0));
-        assertEquals(0, actor.getFireCount());
+        assertEquals(0, reactor.getFireCount());
 
         bus.publish(B, dp(2, t1));
-        assertEquals(1, actor.getFireCount(), "Rule satisfied, one fire expected");
+        assertEquals(1, reactor.getFireCount(), "Rule satisfied, one fire expected");
 
         // We expect some publish calls happened (latency, global, and rule participation)
         assertFalse(bus.getPublished().isEmpty(),

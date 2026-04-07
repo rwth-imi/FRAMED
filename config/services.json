@@ -1,21 +1,9 @@
 {
   "devices": [
     {
-      "class": "com.framed.communicator.driver.protocol.medibus.MedibusProtocol",
-      "id": "Oxylog-3000-Plus-00",
-      "portName": "/dev/ttyUSB0",
-      "baudRate": 19200,
-      "dataBits": 8,
-      "stopBits": 1,
-      "waveFormType": 1,
-      "realTime": true,
-      "slowData": true,
-      "multiplier": "10"
-    },
-    {
       "class": "com.framed.communicator.driver.protocol.replay.ReplayProtocol",
       "id": "Replay",
-      "filePath": "output/streamer/1773241821887_data.jsonl",
+      "filePath": "output/streamer/vc_cmv_ph_11032026.jsonl",
       "devices": ["PC60FW", "Oxylog-3000-Plus-00"]
     }
   ],
@@ -90,12 +78,12 @@
         "CDSS"
       ],
       "path": "output/streamer/",
-      "fileName": "data.jsonl"
+      "fileName": "replay_data.jsonl"
     }
   ],
-  "Actors":  [
+  "Reactors":  [
     {
-      "class": "com.framed.cdss.actors.LimitClassificationActor",
+      "class": "com.framed.cdss.reactors.LimitClassificationReactor",
       "id": "etCO2-Limit-Classifier",
       "firingRules": [
         {
@@ -107,7 +95,7 @@
       "limits": [0,25,30,40]
     },
     {
-      "class": "com.framed.cdss.actors.LimitClassificationActor",
+      "class": "com.framed.cdss.reactors.LimitClassificationReactor",
       "id": "SpO2-Limit-Classifier",
       "firingRules": [
         {
@@ -119,7 +107,7 @@
       "limits": [87, 97, 98]
     },
     {
-      "class": "com.framed.cdss.actors.LimitClassificationActor",
+      "class": "com.framed.cdss.reactors.LimitClassificationReactor",
       "id": "PI-Limit-Classifier",
       "firingRules": [
         {
@@ -131,7 +119,7 @@
       "limits": [0.2, 20]
     },
     {
-      "class": "com.framed.cdss.actors.LimitClassificationActor",
+      "class": "com.framed.cdss.reactors.LimitClassificationReactor",
       "id": "S/F-Limit-Classifier",
       "firingRules": [
         {
@@ -143,7 +131,7 @@
       "limits": [1.48, 2.35, 3.15]
     },
     {
-      "class": "com.framed.cdss.actors.LimitClassificationActor",
+      "class": "com.framed.cdss.reactors.LimitClassificationReactor",
       "id": "HR-Limit-Classifier",
       "firingRules": [
         {
@@ -155,14 +143,14 @@
       "limits": [0, 125]
     },
     {
-      "class": "com.framed.cdss.actors.SFComputationActor",
-      "id": "SF-Computation-Actor",
+      "class": "com.framed.cdss.reactors.SFComputationReactor",
+      "id": "SF-Computation-Reactor",
       "spo2Channel": "Percentage_int.PC60FW.SpO2.parsed",
       "fio2Channel": "Measurement.Oxylog-3000-Plus-00.Inspiratory oxygen fraction, FiO2.parsed",
       "outputChannel": "S/F-Value"
     },
     {
-      "class": "com.framed.cdss.actors.TrendClassificationActor",
+      "class": "com.framed.cdss.reactors.TrendClassificationReactor",
       "id": "spo2-Trend-Classifier",
       "firingRules": [
         {
@@ -177,7 +165,7 @@
       "direction": "DOWN"
     },
     {
-      "class": "com.framed.cdss.actors.TrendClassificationActor",
+      "class": "com.framed.cdss.reactors.TrendClassificationReactor",
       "id": "etCO2-Trend-Classifier",
       "firingRules": [
         {
@@ -192,14 +180,14 @@
       "direction": "DOWN"
     },
     {
-      "class": "com.framed.cdss.actors.HemodynamicRhythmClassificationActor",
+      "class": "com.framed.cdss.reactors.HemodynamicRhythmClassificationReactor",
       "id": "Hemodynamic arrhythmia",
       "etCO2TrendChannel": "etCO2-Trend",
       "hrLimitChannel": "HR-Limit",
       "outputChannel":"HD-aryth"
     },
     {
-      "class": "com.framed.cdss.actors.DislocationClassificationActor",
+      "class": "com.framed.cdss.reactors.DislocationClassificationReactor",
       "id": "Dislocation-Classifier",
       "spo2TrendChannel": "SpO2-Trend",
       "spo2LimitChannel": "SpO2-Limit",
@@ -208,7 +196,7 @@
       "outputChannel": "Dislocation"
     },
     {
-      "class": "com.framed.cdss.actors.RespiratoryRateEstimationActor",
+      "class": "com.framed.cdss.reactors.RespiratoryRateEstimationReactor",
       "id": "RespiratoryRateEstimator",
       "etco2Channel":"RealTime.Oxylog-3000-Plus-00.CO2 concentration, CO2 (mmHg).parsed",
       "outputChannels": [
@@ -226,7 +214,7 @@
       "hampelK": 3
     },
     {
-      "class": "com.framed.cdss.actors.RRMismatchClassificationActor",
+      "class": "com.framed.cdss.reactors.RRMismatchClassificationReactor",
       "id": "RRMismatchClassifier",
       "rrEstimationChannel": "EstimatedRR",
       "rrSettingsChannel": "Settings.Oxylog-3000-Plus-00.Respiratory rate, RR.parsed",
@@ -234,7 +222,7 @@
       "varLimit": 4
     },
     {
-      "class": "com.framed.cdss.actors.InterpretationActor",
+      "class": "com.framed.cdss.reactors.InterpretationReactor",
       "id": "Interpreter",
       "rrMismatchChannel": "RRMismatchClassification",
       "dislocationChannel": "Dislocation",

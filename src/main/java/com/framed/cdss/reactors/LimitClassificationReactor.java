@@ -1,21 +1,19 @@
 
-package com.framed.cdss.actors;
+package com.framed.cdss.reactors;
 
-import com.framed.cdss.Actor;
+import com.framed.cdss.Reactor;
 import com.framed.core.EventBus;
 import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static com.framed.cdss.utils.CDSSUtils.*;
 
 
 /**
- * A specialized {@link Actor} that classifies numeric input values per channel
+ * A specialized {@link Reactor} that classifies numeric input values per channel
  * based on a configured, ascending-sorted list of upper bounds.
  *
  * <p><strong>Classification logic:</strong>
@@ -94,7 +92,7 @@ import static com.framed.cdss.utils.CDSSUtils.*;
  * sized classification bins instead of fixed lower/upper bounds.
  */
 
-public class LimitClassificationActor extends Actor {
+public class LimitClassificationReactor extends Reactor {
 
   /**
    * list of sorted ascending numeric upper bounds.
@@ -109,7 +107,7 @@ public class LimitClassificationActor extends Actor {
    *
    * @param eventBus        the event bus used for input and output messaging
    * @param id              the identifier for this classifier
-   * @param firingRules     firing rules forwarded to {@link Actor}
+   * @param firingRules     firing rules forwarded to {@link Reactor}
    * @param inputChannel   JSON array of input channel names
    * @param outputChannels  JSON array of output channel names
    * @param limits      a JSON object describing upper-bound lists per channel
@@ -129,12 +127,12 @@ public class LimitClassificationActor extends Actor {
    *         if limit channels are not a subset of input channels
    */
 
-  public LimitClassificationActor(EventBus eventBus,
-                                  String id,
-                                  JSONArray firingRules,
-                                  String inputChannel,
-                                  JSONArray outputChannels,
-                                  JSONArray limits) {
+  public LimitClassificationReactor(EventBus eventBus,
+                                    String id,
+                                    JSONArray firingRules,
+                                    String inputChannel,
+                                    JSONArray outputChannels,
+                                    JSONArray limits) {
 
     super(eventBus, id,
             parseFiringRulesJson(firingRules),
@@ -232,7 +230,7 @@ public class LimitClassificationActor extends Actor {
     Map<String, Integer> states = checkLimits(latestSnapshot);
 
     for (String ch : inputChannels) {
-      publishResult(eventBus, formatter, states.get(ch), id, outputChannels);
+      publishResult(eventBus, states.get(ch), id, outputChannels);
     }
   }
 }

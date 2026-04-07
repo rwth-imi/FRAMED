@@ -50,7 +50,7 @@ public class Main {
       }
     }
 
-    // instantiate all configured service, including DFCN actors
+    // instantiate all configured service, including DFCN reactors
     Manager manager = new Manager(servicesConfigs, eventBus);
     for (String key : servicesConfigs.keySet()) {
       manager.instantiate(key);

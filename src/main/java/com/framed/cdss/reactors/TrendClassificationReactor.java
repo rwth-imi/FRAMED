@@ -1,13 +1,12 @@
 
-package com.framed.cdss.actors;
+package com.framed.cdss.reactors;
 
-import com.framed.cdss.Actor;
+import com.framed.cdss.Reactor;
 import com.framed.cdss.utils.SlopeUtils;
 import com.framed.cdss.utils.TrendDirection;
 import com.framed.core.EventBus;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.time.Instant;
 import java.util.*;
@@ -16,7 +15,7 @@ import static com.framed.cdss.utils.CDSSUtils.*;
 import static com.framed.cdss.utils.SlopeUtils.computeSlope;
 
 /**
- * A specialized {@link Actor} that detects a decreasing trend (downward drift)
+ * A specialized {@link Reactor} that detects a decreasing trend (downward drift)
  * in numeric channel values using a sliding window and a slope-based metric.
  *
  * <h2>Trend definition (slope-based)</h2>
@@ -62,7 +61,7 @@ import static com.framed.cdss.utils.SlopeUtils.computeSlope;
  * {@link ClassCastException}.</p>
  *
  */
-public class TrendClassificationActor extends Actor {
+public class TrendClassificationReactor extends Reactor {
 
     private final TrendDirection direction;
     /** Sliding window size per input channel; must be >= 2. */
@@ -92,7 +91,7 @@ public class TrendClassificationActor extends Actor {
      *
      * @param eventBus        the event bus used by this actor; must not be {@code null}
      * @param id              identifier of this classifier (often set in configuration); must not be {@code null}
-     * @param firingRules     firing rules as accepted by {@link Actor}; must not be {@code null}
+     * @param firingRules     firing rules as accepted by {@link Reactor}; must not be {@code null}
      * @param inputChannel   channels observed by this classifier; must not be {@code null}
      * @param outputChannels  channels to publish warning messages to; must not be {@code null}
      * @param windowSize      number of recent samples per channel used for trend detection; must be {@code >= 2}
@@ -102,7 +101,7 @@ public class TrendClassificationActor extends Actor {
      * @throws NullPointerException     if any required argument is {@code null}
      * @throws IllegalArgumentException if {@code windowSize < 2}, {@code delta < 0}, or {@code persistWindows < 1}
      */
-    public TrendClassificationActor(EventBus eventBus,
+    public TrendClassificationReactor(EventBus eventBus,
                                     String id,
                                     JSONArray firingRules,
                                     String inputChannel,
@@ -189,7 +188,7 @@ public class TrendClassificationActor extends Actor {
         if (conditionMet && hits >= persistWindows){
             warnValue = 1;
         }
-        publishResult(eventBus, formatter, warnValue, id, outputChannels);
+        publishResult(eventBus, warnValue, id, outputChannels);
 
 
     }

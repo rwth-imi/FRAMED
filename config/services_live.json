@@ -87,9 +87,9 @@
       "fileName": "data.jsonl"
     }
   ],
-  "Actors":  [
+  "Reactors":  [
     {
-      "class": "com.framed.cdss.actors.LimitClassificationActor",
+      "class": "com.framed.cdss.reactors.LimitClassificationReactor",
       "id": "etCO2-Limit-Classifier",
       "firingRules": [
         {
@@ -103,7 +103,7 @@
       }
     },
     {
-      "class": "com.framed.cdss.actors.LimitClassificationActor",
+      "class": "com.framed.cdss.reactors.LimitClassificationReactor",
       "id": "PulseOxi-Limit-Classifier",
       "firingRules": [
         {
@@ -119,7 +119,7 @@
       }
     },
     {
-      "class": "com.framed.cdss.actors.LimitClassificationActor",
+      "class": "com.framed.cdss.reactors.LimitClassificationReactor",
       "id": "S/F-Limit-Classifier",
       "firingRules": [
         {
@@ -135,7 +135,7 @@
       }
     },
     {
-      "class": "com.framed.cdss.actors.LimitClassificationActor",
+      "class": "com.framed.cdss.reactors.LimitClassificationReactor",
       "id": "HR-Limit-Classifier",
       "firingRules": [
         {
@@ -149,14 +149,14 @@
       }
     },
     {
-      "class": "com.framed.cdss.actors.SFComputationActor",
-      "id": "SF-Computation-Actor",
+      "class": "com.framed.cdss.reactors.SFComputationReactor",
+      "id": "SF-Computation-Reactor",
       "spo2Channel": "Percentage_int.PC60FW.SpO2.parsed",
       "fio2Channel": "Measurement.Oxylog-3000-Plus-00.Inspiratory oxygen fraction, FiO2.parsed",
       "outputChannel": "S/F-Value"
     },
     {
-      "class": "com.framed.cdss.actors.TrendClassificationActor",
+      "class": "com.framed.cdss.reactors.TrendClassificationReactor",
       "id": "spo2-Trend-Classifier",
       "firingRules": [
         {
@@ -177,7 +177,7 @@
       "direction": "DOWN"
     },
     {
-      "class": "com.framed.cdss.actors.TrendClassificationActor",
+      "class": "com.framed.cdss.reactors.TrendClassificationReactor",
       "id": "etCO2-Trend-Classifier",
       "firingRules": [
         {
@@ -198,14 +198,14 @@
       "direction": "DOWN"
     },
     {
-      "class": "com.framed.cdss.actors.HemodynamicRhythmClassificationActor",
+      "class": "com.framed.cdss.reactors.HemodynamicRhythmClassificationReactor",
       "id": "Hemodynamic arrhythmia",
       "etCO2TrendChannel": "etCO2-Trend",
       "hrLimitChannel": "HR-Limit",
       "outputChannel":"HD-aryth"
     },
     {
-      "class": "com.framed.cdss.actors.DislocationClassificationActor",
+      "class": "com.framed.cdss.reactors.DislocationClassificationReactor",
       "id": "Dislocation-Classifier",
       "spo2TrendChannel": "SpO2-Trend",
       "etCO2LimitChannel": "etCO2-Limit",
@@ -213,7 +213,7 @@
       "outputChannel": "Dislocation"
     },
     {
-      "class": "com.framed.cdss.actors.RespiratoryRateEstimationActor",
+      "class": "com.framed.cdss.reactors.RespiratoryRateEstimationReactor",
       "id": "RespiratoryRateEstimator",
       "etco2Channel":"RealTime.Oxylog-3000-Plus-00.CO2 concentration, CO2 (mmHg).parsed",
       "outputChannels": [
@@ -231,7 +231,7 @@
       "hampelK": 3
     },
     {
-      "class": "com.framed.cdss.actors.RRMismatchClassificationActor",
+      "class": "com.framed.cdss.reactors.RRMismatchClassificationReactor",
       "id": "RRMismatchClassifier",
       "rrEstimationChannel": "EstimatedRR",
       "rrSettingsChannel": "Settings.Oxylog-3000-Plus-00.Respiratory rate, RR.parsed",

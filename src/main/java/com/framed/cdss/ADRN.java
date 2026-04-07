@@ -5,26 +5,26 @@ import com.framed.orchestrator.Main;
 import java.util.*;
 import java.util.logging.Logger;
 
-public class DFCN {
+public class ADRN {
   private static final Logger logger = Logger.getLogger(Main.class.getName());
 
-  private final List<Actor> actors;
-  private final List<Actor> leafs = new ArrayList<>();
-  private final List<Actor> sources =  new ArrayList<>();
-  private final Map<Actor, List<Actor>> adj = new HashMap<>();
+  private final List<Reactor> actors;
+  private final List<Reactor> leafs = new ArrayList<>();
+  private final List<Reactor> sources =  new ArrayList<>();
+  private final Map<Reactor, List<Reactor>> adj = new HashMap<>();
 
 
-  public DFCN(List<Actor> actors) throws IllegalArgumentException {
+  public ADRN(List<Reactor> actors) throws IllegalArgumentException {
 
     this.actors = actors;
-    for (Actor actor : actors) {
+    for (Reactor actor : actors) {
       this.adj.putIfAbsent(actor, new ArrayList<>());
     }
     computeEdges();
     if (!isAcyclic()) {
       throw new IllegalArgumentException("Cyclic Graph.");
     } else {
-      logger.info("Acyclic Data Flow Process Network instantiated.");
+      logger.info("Acyclic Deterministic Reactor Network instantiated.");
     }
   }
 
@@ -32,19 +32,19 @@ public class DFCN {
 
   private void computeEdges() {
     // from actor input and output channels, compute the edges of the network.
-    Set<Actor> actorsWithPredecessors = new HashSet<>();
+    Set<Reactor> actorsWithPredecessors = new HashSet<>();
 
-    for (Actor actor : actors) {
+    for (Reactor actor : actors) {
       processActorEdges(actor, actorsWithPredecessors);
     }
 
     identifySources(actorsWithPredecessors);
   }
 
-  private void processActorEdges(Actor actor1, Set<Actor> actorsWithPredecessors) {
+  private void processActorEdges(Reactor actor1, Set<Reactor> actorsWithPredecessors) {
     boolean hasSuccessor = false;
 
-    for (Actor actor2 : actors) {
+    for (Reactor actor2 : actors) {
       if (actor1 == actor2) continue; // no reflexive edges in the network (acyclic condition).
 
       // if there is an output channel of actor1 that is an input channel of actor 2:
@@ -63,17 +63,17 @@ public class DFCN {
     }
   }
 
-  private boolean isSuccessor(Actor actor1, Actor actor2) {
+  private boolean isSuccessor(Reactor actor1, Reactor actor2) {
     // for 2 actors, check whether actor2 is a successor of actor1
     Set<String> commons = new HashSet<>(actor1.getOutputChannels());
     commons.retainAll(actor2.getInputChannels());
     return !commons.isEmpty();
   }
 
-  private void identifySources(Set<Actor> actorsWithPredecessors) {
+  private void identifySources(Set<Reactor> actorsWithPredecessors) {
     // all actors without predecessors are sources.
     // input channels should not be empty, otherwise, those actors are just unreachable!!!
-    for (Actor actor : actors) {
+    for (Reactor actor : actors) {
       if (!actorsWithPredecessors.contains(actor) && !actor.getInputChannels().isEmpty()) {
         this.sources.add(actor);
       }
@@ -85,11 +85,11 @@ public class DFCN {
     // check wether (Actors, Edges) is an acyclic graph
     // Mark all the Actors as not visited and
     // not part of recursion stack
-    List<Actor> visited = new ArrayList<>();
-    List<Actor> recStack = new ArrayList<>();
+    List<Reactor> visited = new ArrayList<>();
+    List<Reactor> recStack = new ArrayList<>();
     // Call the recursive helper function to
     // detect cycle in different DFS trees
-    for (Actor actor: this.actors) {
+    for (Reactor actor: this.actors) {
       if (isCyclicUtil(actor, visited, recStack)){
         return false;
       }
@@ -97,7 +97,7 @@ public class DFCN {
     return true;
   }
 
-  private boolean isCyclicUtil(Actor actor, List<Actor> visited, List<Actor> recStack) {
+  private boolean isCyclicUtil(Reactor actor, List<Reactor> visited, List<Reactor> recStack) {
     // Mark the current node as visited and
     // part of recursion stack
     if (recStack.contains(actor)) {
@@ -112,9 +112,9 @@ public class DFCN {
 
     recStack.add(actor);
 
-    List<Actor> children = this.adj.get(actor);
+    List<Reactor> children = this.adj.get(actor);
 
-    for (Actor c : children)
+    for (Reactor c : children)
       if (isCyclicUtil(c, visited, recStack))
         return true;
 
