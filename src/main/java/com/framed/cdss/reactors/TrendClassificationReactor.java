@@ -188,7 +188,7 @@ public class TrendClassificationReactor extends Reactor {
         if (conditionMet && hits >= persistWindows){
             warnValue = 1;
         }
-        publishResult(eventBus, warnValue, id, outputChannels);
+        publishResult(eventBus, warnValue, id, outputChannels, lastLogicalFireTs);
 
 
     }

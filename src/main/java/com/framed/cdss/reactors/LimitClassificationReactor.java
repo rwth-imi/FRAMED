@@ -230,7 +230,7 @@ public class LimitClassificationReactor extends Reactor {
     Map<String, Integer> states = checkLimits(latestSnapshot);
 
     for (String ch : inputChannels) {
-      publishResult(eventBus, states.get(ch), id, outputChannels);
+      publishResult(eventBus, states.get(ch), id, outputChannels, lastLogicalFireTs);
     }
   }
 }

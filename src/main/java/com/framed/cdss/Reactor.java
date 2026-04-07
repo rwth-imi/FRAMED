@@ -77,9 +77,9 @@ import static com.framed.cdss.utils.CDSSUtils.publishResult;
  */
 public abstract class Reactor extends Service {
   /** Last logical timestamp at which this reactor fired */
-  private volatile Instant lastLogicalFireTs = Instant.EPOCH;
+  protected volatile Instant lastLogicalFireTs = Instant.EPOCH;
 
-  private record Snapshot(Map<String, Object> values, Instant logicalTs) {
+  public record Snapshot(Map<String, Object> values, Instant logicalTs) {
   }
 
   /**
@@ -425,7 +425,8 @@ public abstract class Reactor extends Service {
               eventBus,
               seconds,
               "Latency",
-              List.of("Latency-%s.%s".formatted(ch, id))
+              List.of("Latency-%s.%s".formatted(ch, id)),
+              benchmarkTs
       );
 
       lastTsPublishedByChannel.put(ch, ts);
@@ -452,8 +453,13 @@ public abstract class Reactor extends Service {
     if (earliest != null) {
       double seconds = Duration.between(earliest, benchmarkTs).toNanos() / 1_000_000_000d;
 
-      publishResult(eventBus, seconds, "Latency-Global",
-              List.of("Latency-Global.%s".formatted(id)));
+      publishResult(
+              eventBus,
+              seconds,
+              "Latency-Global",
+              List.of("Latency-Global.%s".formatted(id)),
+              benchmarkTs
+      );
     }
   }
 
@@ -491,8 +497,13 @@ public abstract class Reactor extends Service {
 
       double seconds = Duration.between(ts, benchmarkTs).toNanos() / 1_000_000_000d;
 
-      publishResult(eventBus, seconds, "Latency-RuleParticipation",
-              List.of("Latency-Rule-%s.%s".formatted(ch, id)));
+      publishResult(
+              eventBus,
+              seconds,
+              "Latency-RuleParticipation",
+              List.of("Latency-Rule-%s.%s".formatted(ch, id)),
+              benchmarkTs
+      );
     }
   }
 }

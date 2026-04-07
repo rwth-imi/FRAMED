@@ -40,7 +40,7 @@ public class SFComputationReactor extends Reactor {
         && latestValues.get(fio2Channel) instanceof Number fio2
     ){
       float sf = 100 * spo2.floatValue() / fio2.floatValue();
-      publishResult(eventBus, sf, id, outputChannels);
+      publishResult(eventBus, sf, id, outputChannels, lastLogicalFireTs);
     }
   }
 }

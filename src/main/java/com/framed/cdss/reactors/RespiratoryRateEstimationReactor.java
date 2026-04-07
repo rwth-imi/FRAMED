@@ -374,7 +374,10 @@ public class RespiratoryRateEstimationReactor extends Reactor {
      * <p>If no valid intervals remain after filtering, nothing is published.</p>
      */
     private void computeAndPublishRR() {
-        if (detectedPeaks.size() < 2) return;
+        if (detectedPeaks.size() < 2) {
+            publishResult(eventBus, 0, id, outputChannels, lastLogicalFireTs);
+            return;
+        }
 
         List<Long> intervalsMs = new ArrayList<>();
         Iterator<Instant> it = detectedPeaks.iterator();
@@ -388,13 +391,13 @@ public class RespiratoryRateEstimationReactor extends Reactor {
                 intervalsMs.add(d);
             }
         }
-        if (intervalsMs.isEmpty()) publishResult(eventBus, 0, id, outputChannels);;
+        if (intervalsMs.isEmpty()) publishResult(eventBus, 0, id, outputChannels, lastLogicalFireTs);
 
         intervalsMs.sort(Long::compareTo);
         double medianMs = intervalsMs.get(intervalsMs.size() / 2);
         double rr = 60000.0 / medianMs;
 
-        publishResult(eventBus, rr, id, outputChannels);
+        publishResult(eventBus, rr, id, outputChannels, lastLogicalFireTs);
     }
 
     /**

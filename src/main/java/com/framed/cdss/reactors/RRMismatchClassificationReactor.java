@@ -44,6 +44,6 @@ public class RRMismatchClassificationReactor extends Reactor {
         if (Math.abs(rrEstimation - rrSetting) > varLimit){
             warnValue = 1;
         }
-        publishResult(eventBus, warnValue, id, outputChannels);
+        publishResult(eventBus, warnValue, id, outputChannels, lastLogicalFireTs);
     }
 }
