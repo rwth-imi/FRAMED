@@ -53,7 +53,7 @@ import static com.framed.cdss.utils.SlopeUtils.computeSlope;
  *
  * <h2>Inputs and outputs</h2>
  * <ul>
- *   <li><strong>Input:</strong> {@link #fireFunction(Map)} is invoked with a snapshot {@code channel -> value}.</li>
+ *   <li><strong>Input:</strong> {@link #reactionFunction(Map)} is invoked with a snapshot {@code channel -> value}.</li>
  *   <li><strong>Output:</strong> A warning message is published to each configured output channel and also logged.</li>
  * </ul>
  *
@@ -145,7 +145,7 @@ public class TrendClassificationReactor extends Reactor {
      * @throws ClassCastException if any encountered snapshot value is not numeric
      */
     @Override
-    public void fireFunction(Map<String, Object> latestSnapshot) {
+    public void reactionFunction(Map<String, Object> latestSnapshot) {
         if (latestSnapshot == null || latestSnapshot.isEmpty()) {
             return; // or throw; depending on your system's expectations
         }

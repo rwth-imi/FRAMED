@@ -59,7 +59,7 @@ import static com.framed.cdss.utils.CDSSUtils.*;
  *
  * <p><strong>Input:</strong>
  * The actor listens to a set of input channels and expects incoming snapshots
- * in {@link #fireFunction(Map)} where each channel maps to a numeric value
+ * in {@link #reactionFunction(Map)} where each channel maps to a numeric value
  * (any {@link Number} subtype is accepted).
  *
  * <p><strong>Output:</strong>
@@ -226,7 +226,7 @@ public class LimitClassificationReactor extends Reactor {
    */
 
   @Override
-  public void fireFunction(Map<String, Object> latestSnapshot) {
+  public void reactionFunction(Map<String, Object> latestSnapshot) {
     Map<String, Integer> states = checkLimits(latestSnapshot);
 
     for (String ch : inputChannels) {

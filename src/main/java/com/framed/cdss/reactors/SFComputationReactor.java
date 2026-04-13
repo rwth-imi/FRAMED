@@ -34,7 +34,7 @@ public class SFComputationReactor extends Reactor {
   }
 
   @Override
-  public void fireFunction(Map<String, Object> latestValues) {
+  public void reactionFunction(Map<String, Object> latestValues) {
     if (
       latestValues.get(spo2Channel) instanceof Number spo2
         && latestValues.get(fio2Channel) instanceof Number fio2

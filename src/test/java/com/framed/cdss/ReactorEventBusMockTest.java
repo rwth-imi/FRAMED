@@ -29,7 +29,7 @@ public class ReactorEventBusMockTest {
                     List<String> inputs, List<String> outputs) {
             super(bus, id, rules, inputs, outputs);
         }
-        @Override public void fireFunction(Map<String, Object> latestSnapshot) { fireCount++; }
+        @Override public void reactionFunction(Map<String, Object> latestSnapshot) { fireCount++; }
         int getFireCount() { return fireCount; }
     }
 

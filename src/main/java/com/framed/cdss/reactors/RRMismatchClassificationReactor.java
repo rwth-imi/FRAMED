@@ -37,7 +37,7 @@ public class RRMismatchClassificationReactor extends Reactor {
 
     }
     @Override
-    public void fireFunction(Map<String, Object> latestSnapshot) {
+    public void reactionFunction(Map<String, Object> latestSnapshot) {
         double rrEstimation = ((Number) latestSnapshot.get(rrEstimationChannel)).doubleValue();
         double rrSetting = ((Number) latestSnapshot.get(rrSettingsChannel)).doubleValue();
         int warnValue = 0;

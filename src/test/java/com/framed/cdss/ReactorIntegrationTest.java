@@ -33,7 +33,7 @@ public class ReactorIntegrationTest {
                      List<String> inputs, List<String> outputs) {
             super(bus, id, rules, inputs, outputs);
         }
-        @Override public void fireFunction(Map<String, Object> latestSnapshot) { snaps.add(latestSnapshot); }
+        @Override public void reactionFunction(Map<String, Object> latestSnapshot) { snaps.add(latestSnapshot); }
         List<Map<String,Object>> snapshots() { return snaps; }
     }
 

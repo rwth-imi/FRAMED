@@ -74,7 +74,7 @@ public class InterpretationReactor extends Reactor {
     }
 
     @Override
-    public void fireFunction(Map<String, Object> latestSnapshot) {
+    public void reactionFunction(Map<String, Object> latestSnapshot) {
         fireLock.lock();
         if (interpretEtCO2Limit(latestSnapshot.get(etCO2LimitChannel))){
             interpretRRMismatch(latestSnapshot.get(rrMismatchChannel));
@@ -87,6 +87,7 @@ public class InterpretationReactor extends Reactor {
             interpretHDAryth(latestSnapshot.get(hdArythChannel));
             interpretSFLimit(latestSnapshot.get(sfLimitChannel));
         }
+
         fireLock.unlock();
     }
 

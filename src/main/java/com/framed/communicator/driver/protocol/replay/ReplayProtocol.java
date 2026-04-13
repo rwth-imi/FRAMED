@@ -73,6 +73,7 @@ public class ReplayProtocol extends Protocol {
             }
 
             LOGGER.info("Replay finished successfully.");
+            System.exit(0);
 
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "Replay failed", ex);

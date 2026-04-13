@@ -33,7 +33,7 @@ public class ReactorInstrumentedTest {
         super(bus, id, rules, inputs, outputs);
         }
         @Override
-        public void fireFunction(Map<String, Object> latestSnapshot) {
+        public void reactionFunction(Map<String, Object> latestSnapshot) {
             firedSnapshots.add(latestSnapshot);
         }
         public List<Map<String, Object>> fired() { return firedSnapshots; }

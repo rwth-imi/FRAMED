@@ -65,7 +65,7 @@ public class DislocationClassificationReactor extends Reactor {
     }
 
     @Override
-    public void fireFunction(Map<String, Object> latestSnapshot) {
+    public void reactionFunction(Map<String, Object> latestSnapshot) {
         int warnValue = 0;
         int etCO2State = (int) latestSnapshot.get(etCO2LimitChannel);
         int spo2State = (int) latestSnapshot.get(spo2TrendChannel);

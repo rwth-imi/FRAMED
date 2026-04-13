@@ -36,7 +36,7 @@ public class ReactorMinimalTest {
         }
 
         @Override
-        public void fireFunction(Map<String, Object> latestSnapshot) {
+        public void reactionFunction(Map<String, Object> latestSnapshot) {
             fired.add(latestSnapshot);
         }
 

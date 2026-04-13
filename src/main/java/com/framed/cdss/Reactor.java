@@ -17,7 +17,7 @@ import static com.framed.cdss.utils.CDSSUtils.publishResult;
 /**
  * A reactive multi-input Actor that evaluates a set of firing rules on incoming
  * messages, constructs exactly one consistent snapshot per evaluation cycle,
- * and triggers a user-defined {@link #fireFunction(Map)} once whenever at least
+ * and triggers a user-defined {@link #reactionFunction(Map)} once whenever at least
  * one rule is satisfied.
  *
  * <h1>Core Semantics</h1>
@@ -45,7 +45,7 @@ import static com.framed.cdss.utils.CDSSUtils.publishResult;
  *       <li>all rules are evaluated against a stable snapshot of latest data + seq counters;</li>
  *       <li>every satisfied rule updates its per-channel pointers;</li>
  *       <li>a single snapshot is created;</li>
- *       <li>{@link #fireFunction(Map)} is called once;</li>
+ *       <li>{@link #reactionFunction(Map)} is called once;</li>
  *       <li>latency is published according to all three modes (A, B, C).</li>
  *     </ul>
  *   </li>
@@ -58,7 +58,7 @@ import static com.framed.cdss.utils.CDSSUtils.publishResult;
  *     <li><b>channel-timestamp → Instant</b> parsed from JSON "timestamp"</li>
  * </ul>
  *
- * This snapshot is immutable and provided to {@link #fireFunction(Map)}.
+ * This snapshot is immutable and provided to {@link #reactionFunction(Map)}.
  *
  * <h1>Latency Publishing Modes</h1>
  * After a firing, the Actor publishes:
@@ -73,7 +73,7 @@ import static com.framed.cdss.utils.CDSSUtils.publishResult;
  *
  * <h1>Thread Safety</h1>
  * All rule evaluation and delta accounting is done under a single lock, while
- * {@link #fireFunction(Map)} is executed outside the lock.
+ * {@link #reactionFunction(Map)} is executed outside the lock.
  */
 public abstract class Reactor extends Service {
   /** Last logical timestamp at which this reactor fired */
@@ -157,7 +157,7 @@ public abstract class Reactor extends Service {
    *
    * @param latestSnapshot immutable snapshot of latest channel values and timestamps
    */
-  public abstract void fireFunction(Map<String, Object> latestSnapshot);
+  public abstract void reactionFunction(Map<String, Object> latestSnapshot);
 
   /** @return list of input channels this reactor listens to */
   public List<String> getInputChannels() { return inputChannels; }
@@ -263,7 +263,7 @@ public abstract class Reactor extends Service {
 
     // --- Fire and publish latency outside lock ---
     if (shouldFire && snapshotToFire != null) {
-      fireFunction(snapshotToFire.values);
+      reactionFunction(snapshotToFire.values);
       publishAllLatencyModes(snapshotToFire.values);
     }
 

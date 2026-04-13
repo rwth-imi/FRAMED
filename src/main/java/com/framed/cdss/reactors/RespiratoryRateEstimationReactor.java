@@ -232,7 +232,7 @@ public class RespiratoryRateEstimationReactor extends Reactor {
      *                 Must contain a numeric ETCO2 value at key {@code etco2Channel}. Timestamp is optional.
      */
     @Override
-    public void fireFunction(Map<String, Object> snapshot) {
+    public void reactionFunction(Map<String, Object> snapshot) {
         Object raw = snapshot.get(etco2Channel);
         if (!(raw instanceof Number) && !(raw instanceof String)) return;
 
