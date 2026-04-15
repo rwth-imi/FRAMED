@@ -14,9 +14,12 @@ import java.util.List;
 public class JsonlDispatcher extends Dispatcher {
 
   private final Path path;
+  private final Object writeLock = new Object();
+
 
   public JsonlDispatcher(EventBus eventBus, JSONArray devices, String path, String fileName) {
     super(eventBus, devices);
+
     long timeOnStart = Instant.now().toEpochMilli();
     String file = "%d_%s".formatted(timeOnStart, fileName);
     this.path = Path.of(path).resolve(file);
@@ -24,9 +27,11 @@ public class JsonlDispatcher extends Dispatcher {
 
   @Override
   public void push(DataPoint<?> dataPoint) throws IOException {
-    String dataString = dataPoint.toJsonString();
-    Files.write(path, ("%s\n".formatted(dataString)).getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-  }
+      synchronized (writeLock) {
+        String dataString = dataPoint.toJsonString();
+        Files.write(path, ("%s\n".formatted(dataString)).getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+      }
+    }
 
   @Override
   public void pushBatch(List<DataPoint<?>> batch) {
