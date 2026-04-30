@@ -10,6 +10,9 @@ import java.nio.file.*;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -42,6 +45,12 @@ public class ReplayProtocol extends Protocol {
     }
 
     private void runReplay() {
+        try {
+            Thread.sleep(Duration.ofMinutes(1).toMillis());
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            LOGGER.warning("Exit wait interrupted; exiting immediately.");
+        }
         LOGGER.info("Starting replay for file: %s".formatted(filePath));
 
         try {
@@ -72,7 +81,13 @@ public class ReplayProtocol extends Protocol {
                 publishEvent(ev);
             }
 
-            LOGGER.info("Replay finished successfully.");
+            LOGGER.info("Replay finished successfully. Waiting 60s before exit to allow downstream processing...");
+            try {
+                Thread.sleep(Duration.ofMinutes(1).toMillis());
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                LOGGER.warning("Exit wait interrupted; exiting immediately.");
+            }
             System.exit(0);
 
         } catch (Exception ex) {

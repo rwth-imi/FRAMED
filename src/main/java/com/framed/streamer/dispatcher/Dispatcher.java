@@ -9,28 +9,42 @@ import org.json.JSONObject;
 
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class Dispatcher extends Service {
-  private final List<String> addresses = new ArrayList<>();
-
+  private final Set<String> addresses = ConcurrentHashMap.newKeySet();
 
   public Dispatcher(EventBus eventBus, JSONArray devices) {
     super(eventBus);
+
     for (Object deviceObj : devices) {
-      String deviceID = deviceObj.toString();
+      final String deviceID = deviceObj.toString();
+
       eventBus.register("%s.addresses".formatted(deviceID), msg -> {
-        if (!addresses.contains(msg.toString())) {
-          addresses.add(msg.toString());
-          eventBus.register((String) msg, msg_ -> {
+        final String address = msg.toString();
+
+        // atomic "register once"
+        if (addresses.add(address)) {
+          eventBus.register(address, msg_ -> {
             try {
-              JSONObject body = (JSONObject) msg_;
-              body.put("deviceID", deviceID);
-              DataPoint<?> dp = Parser.parse(body);
-              push(dp);
+              if (!(msg_ instanceof JSONObject body)) return;
+
+              // defensive copy - don't mutate shared JSON
+              JSONObject enriched = new JSONObject(body.toString());
+              enriched.put("deviceID", deviceID);
+
+              DataPoint<?> dp = Parser.parse(enriched);
+
+              // retry loop to avoid loss on transient IO errors
+              pushWithRetry(dp);
+
             } catch (Exception e) {
-              throw new RuntimeException(e);
+              // DO NOT throw out of handler; log and continue
+              // (otherwise you risk losing future events depending on bus/transport)
+              System.err.println("Dispatcher handler failed: " + e.getMessage());
+              e.printStackTrace();
             }
           });
         }
@@ -38,7 +52,20 @@ public abstract class Dispatcher extends Service {
     }
   }
 
-  public abstract void push(DataPoint<?> dataPoint) throws IOException;
+  private void pushWithRetry(DataPoint<?> dp) throws InterruptedException {
+    long backoffMs = 100;
+    while (true) {
+      try {
+        push(dp);
+        return;
+      } catch (IOException ioe) {
+        Thread.sleep(backoffMs);
+        backoffMs = Math.min(backoffMs * 2, 5000);
+      }
+    }
+  }
 
+  public abstract void push(DataPoint<?> dataPoint) throws IOException;
   public abstract void pushBatch(List<DataPoint<?>> batch);
 }
+
