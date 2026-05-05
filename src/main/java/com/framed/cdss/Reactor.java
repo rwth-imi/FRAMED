@@ -143,6 +143,11 @@ public abstract class Reactor extends Service {
     this.inputChannels = List.copyOf(inputChannels);
     this.outputChannels = List.copyOf(outputChannels);
 
+    // initial setting of addresses
+    for (String out : outputChannels) {
+      eventBus.publish("CDSS.addresses", out);
+    }
+
     compileRules();
     initLastConsumedPointers();
 

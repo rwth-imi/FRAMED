@@ -35,9 +35,14 @@ public class SFComputationReactor extends Reactor {
 
   @Override
   public void reactionFunction(Map<String, Object> latestValues) {
+    Object rawSpo2 = latestValues.get(spo2Channel);
+    Object rawFio2 = latestValues.get(fio2Channel);
+    if (rawSpo2 == null || rawFio2 == null) {
+      return;
+    }
     if (
-      latestValues.get(spo2Channel) instanceof Number spo2
-        && latestValues.get(fio2Channel) instanceof Number fio2
+      rawSpo2 instanceof Number spo2
+        &&  rawFio2 instanceof Number fio2
     ){
       float sf = 100 * spo2.floatValue() / fio2.floatValue();
       publishResult(eventBus, sf, id, outputChannels, lastLogicalFireTs);

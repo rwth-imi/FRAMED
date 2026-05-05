@@ -176,9 +176,7 @@ public class LimitClassificationReactor extends Reactor {
    *         if a snapshot value is not numeric
    */
   public Map<String, Integer> checkLimits(Map<String, Object> snapshot) {
-    if (snapshot == null || snapshot.isEmpty()) {
-      throw new IllegalStateException("No snapshot available yet.");
-    }
+
 
     Map<String, Integer> alarmStates = new HashMap<>();
 
@@ -227,6 +225,10 @@ public class LimitClassificationReactor extends Reactor {
 
   @Override
   public void reactionFunction(Map<String, Object> latestSnapshot) {
+    if (latestSnapshot == null || latestSnapshot.isEmpty()) {
+      //throw new IllegalStateException("No snapshot available yet.");
+      return;
+    }
     Map<String, Integer> states = checkLimits(latestSnapshot);
 
     for (String ch : inputChannels) {
