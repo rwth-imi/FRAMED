@@ -62,6 +62,11 @@ public class HemodynamicRhythmClassificationReactor extends Reactor {
 
     @Override
     public void reactionFunction(Map<String, Object> latestSnapshot) {
+        Object rawEtCo2Status = latestSnapshot.get(etCO2TrendChannel);
+        Object rawHrStatus = latestSnapshot.get(hrLimitChannel);
+        if (rawHrStatus == null || rawEtCo2Status == null) {
+            return;
+        }
         int etCO2Status = (int) latestSnapshot.get(etCO2TrendChannel);
         int hrStatus  = (int) latestSnapshot.get(hrLimitChannel);
         int warnValue = 0;

@@ -46,7 +46,7 @@ public class ReplayProtocol extends Protocol {
 
     private void runReplay() {
         try {
-            Thread.sleep(Duration.ofMinutes(1).toMillis());
+            Thread.sleep(Duration.ofSeconds(1).toMillis());
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             LOGGER.warning("Exit wait interrupted; exiting immediately.");
@@ -81,9 +81,9 @@ public class ReplayProtocol extends Protocol {
                 publishEvent(ev);
             }
 
-            LOGGER.info("Replay finished successfully. Waiting 60s before exit to allow downstream processing...");
+            LOGGER.info("Replay finished successfully. Waiting 10s before exit to allow downstream processing...");
             try {
-                Thread.sleep(Duration.ofMinutes(1).toMillis());
+                Thread.sleep(Duration.ofSeconds(10).toMillis());
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
                 LOGGER.warning("Exit wait interrupted; exiting immediately.");

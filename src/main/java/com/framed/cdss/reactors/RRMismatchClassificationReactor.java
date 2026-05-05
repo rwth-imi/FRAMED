@@ -38,8 +38,13 @@ public class RRMismatchClassificationReactor extends Reactor {
     }
     @Override
     public void reactionFunction(Map<String, Object> latestSnapshot) {
-        double rrEstimation = ((Number) latestSnapshot.get(rrEstimationChannel)).doubleValue();
-        double rrSetting = ((Number) latestSnapshot.get(rrSettingsChannel)).doubleValue();
+        Object rawRREstimation = latestSnapshot.get(rrEstimationChannel);
+        Object rawRRSetting = latestSnapshot.get(rrSettingsChannel);
+        if (rawRRSetting == null || rawRREstimation == null){
+            return;
+        }
+        double rrEstimation = ((Number) rawRREstimation).doubleValue();
+        double rrSetting = ((Number) rawRRSetting).doubleValue();
         int warnValue = 0;
         if (Math.abs(rrEstimation - rrSetting) > varLimit){
             warnValue = 1;

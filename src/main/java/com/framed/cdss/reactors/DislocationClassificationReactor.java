@@ -6,6 +6,7 @@ import com.framed.core.EventBus;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.framed.cdss.utils.CDSSUtils.publishResult;
 
@@ -67,9 +68,15 @@ public class DislocationClassificationReactor extends Reactor {
     @Override
     public void reactionFunction(Map<String, Object> latestSnapshot) {
         int warnValue = 0;
-        int etCO2State = (int) latestSnapshot.get(etCO2LimitChannel);
-        int spo2State = (int) latestSnapshot.get(spo2TrendChannel);
-        int sfState = (int) latestSnapshot.get(sfLimitChannel);
+        Object rawEtCO2State = latestSnapshot.get(etCO2LimitChannel);
+        Object rawSpo2State = latestSnapshot.get(spo2TrendChannel);
+        Object rawSfState = latestSnapshot.get(sfLimitChannel);
+        if(rawSfState == null || rawSpo2State == null || rawEtCO2State == null) {
+            return;
+        }
+        int etCO2State = (int) rawEtCO2State;
+        int spo2State = (int) rawSpo2State;
+        int sfState = (int) rawSfState;
         if (spo2State == 1 && sfState >= 1) {
            if (etCO2State == 0){
                warnValue = 1; // possibly esophagus intubated

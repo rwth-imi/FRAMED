@@ -1,5 +1,6 @@
 package com.framed.cdss;
 
+import com.framed.cdss.utils.RuleType;
 import com.framed.core.EventBus;
 import com.framed.core.Service;
 import org.jetbrains.annotations.NotNull;
@@ -220,11 +221,24 @@ public abstract class Reactor extends Service {
           Instant lastTs = lastConsumedTsByRule.get(i).get(ch);
 
           /* A channel is "new" iff its timestamp is strictly newer */
+          /* A channel is "new" iff its timestamp is strictly newer */
           boolean isNew = ts != null && ts.isAfter(lastTs);
 
-          if (!testCondition(cond, isNew, latest)) {
-            satisfied = false;
-            break;
+// FIX: AT_LEAST(N) must use sequence deltas, not timestamp newness
+          if (cond.type() == RuleType.AT_LEAST) {
+            long curSeq = seqAtCall.getOrDefault(ch, 0L);
+            long lastSeq = lastConsumedSeqByRule.get(i).getOrDefault(ch, 0L);
+            long delta = curSeq - lastSeq;
+
+            if (delta < cond.n()) {   // <-- correct AT_LEAST(N)
+              satisfied = false;
+              break;
+            }
+          } else {
+            if (!testCondition(cond, isNew, latest)) {
+              satisfied = false;
+              break;
+            }
           }
         }
 
@@ -243,15 +257,24 @@ public abstract class Reactor extends Service {
           snapshotToFire = snap;
           shouldFire = true;
 
-          // advance per-rule per-channel timestamps
+          // advance per-rule per-channel timestamps + sequence pointers
           for (int ruleIndex : satisfiedRules) {
-            Map<String, Instant> lastPtr = lastConsumedTsByRule.get(ruleIndex);
+            Map<String, Instant> lastPtrTs = lastConsumedTsByRule.get(ruleIndex);
+            Map<String, Long> lastPtrSeq = lastConsumedSeqByRule.get(ruleIndex);
             Map<String, FiringRule> rule = compiledRules.get(ruleIndex);
 
             for (String ch : rule.keySet()) {
+              // Timestamp pointer (UNCHANGED)
               Instant ts = extractTimestamp(latestAtCall.get(ch));
-              if (ts != null && ts.isAfter(lastPtr.get(ch))) {
-                lastPtr.put(ch, ts);
+              if (ts != null && ts.isAfter(lastPtrTs.get(ch))) {
+                lastPtrTs.put(ch, ts);
+              }
+
+              // Sequence pointer (NEW, needed for AT_LEAST semantics)
+              long curSeq = seqAtCall.getOrDefault(ch, 0L);
+              long lastSeq = lastPtrSeq.getOrDefault(ch, 0L);
+              if (curSeq > lastSeq) {
+                lastPtrSeq.put(ch, curSeq);
               }
             }
           }
@@ -333,11 +356,14 @@ public abstract class Reactor extends Service {
   /** Initializes per-rule per-channel last-consumed pointers to zero. */
   private void initLastConsumedPointers() {
     for (int i = 0; i < firingRules.size(); i++) {
-      Map<String, Instant> ptr = new HashMap<>();
+      Map<String, Instant> ptrTs = new HashMap<>();
+      Map<String, Long> ptrSeq = new HashMap<>();
       for (String ch : inputChannels) {
-        ptr.put(ch, Instant.EPOCH);
+        ptrTs.put(ch, Instant.EPOCH);
+        ptrSeq.put(ch, 0L);
       }
-      lastConsumedTsByRule.add(ptr);
+      lastConsumedTsByRule.add(ptrTs);
+      lastConsumedSeqByRule.add(ptrSeq);
     }
   }
 
@@ -444,7 +470,11 @@ public abstract class Reactor extends Service {
 
     for (String ch : inputChannels) {
       Instant ts = (Instant) snapshot.get("%s-timestamp".formatted(ch));
-      if (earliest == null || ts.isBefore(earliest)) earliest = ts;
+      if (ts != null) {
+        if (earliest == null || ts.isBefore(earliest)) {
+          earliest = ts;
+        }
+      }
     }
 
     if (earliest.isAfter(benchmarkTs)){
