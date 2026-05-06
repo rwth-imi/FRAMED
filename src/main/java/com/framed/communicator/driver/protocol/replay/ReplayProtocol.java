@@ -84,9 +84,7 @@ public class ReplayProtocol extends Protocol {
 
             LOGGER.info("Loaded %d events. Starting real-time replay.".formatted(events.size()));
 
-            int cnt = 0;
             for (ReplayEvent ev : events) {
-                cnt++;
                 // Compute real-time delay
                 Duration offset = Duration.between(firstEventTs, ev.timestamp);
                 Instant targetTime = replayStartRealTime.plus(offset);
@@ -95,9 +93,6 @@ public class ReplayProtocol extends Protocol {
                 if (delayMs > 0) Thread.sleep(delayMs);
 
                 publishEvent(ev);
-                if (cnt > 100) {
-                    break;
-                }
             }
 
             LOGGER.info("Replay finished successfully. Waiting 5s before exit to allow downstream processing...");
