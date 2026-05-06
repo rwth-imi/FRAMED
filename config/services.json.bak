@@ -3,7 +3,7 @@
     {
       "class": "com.framed.communicator.driver.protocol.replay.ReplayProtocol",
       "id": "Replay",
-      "filePath": "/home/nils/Documents/Entwicklung/safety-box/replay/p10/p10-VC1-clean-1.jsonl",
+      "filePath": "/home/nils/Documents/Entwicklung/safety-box/replay/p01/p01-PC2-clean-CO2_4.jsonl",
       "devices": [
         "PC60FW",
         "Oxylog-3000-Plus-00"
@@ -39,7 +39,7 @@
         "CDSS"
       ],
       "path": "output/evaluation_deterministic/",
-      "fileName": "p10-VC1-clean-1_replay.jsonl"
+      "fileName": "p01-PC2-clean-CO2_4_replay.jsonl"
     }
   ],
   "Reactors": [

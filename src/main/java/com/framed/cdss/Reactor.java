@@ -421,9 +421,9 @@ public abstract class Reactor extends Service {
   private void publishAllLatencyModes(Map<String, Object> snapshot) {
     Instant now = Instant.now();
 
-    publishPerChannelLatency(snapshot, now);
+    //publishPerChannelLatency(snapshot, now);
     publishGlobalLatency(snapshot, now);
-    publishRuleParticipationLatency(snapshot, now);
+    //publishRuleParticipationLatency(snapshot, now);
   }
 
   /**

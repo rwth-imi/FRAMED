@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPLAY_ROOT="/home/nils/Documents/Entwicklung/safety-box/fix-replay"
+REPLAY_ROOT="/home/nils/Documents/Entwicklung/safety-box/replay"
 CONFIG="config/services.json"
 
 # Backup original config
@@ -28,7 +28,7 @@ for file in "${FILES[@]}"; do
     --arg outFile "$out_file" \
     '
     # Update ReplayProtocol input file
-    (.devices[] | select(.id=="Replay") | .filePath) = $replayPath
+    (.Devices[] | select(.id=="Replay") | .filePath) = $replayPath
     |
     # Update JsonlDispatcher output filename
     (.Dispatchers[] | select(.id=="Json-Lines") | .fileName) = $outFile

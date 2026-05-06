@@ -10,9 +10,6 @@ import java.nio.file.*;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -46,7 +43,7 @@ public class ReplayProtocol extends Protocol {
 
     private void runReplay() {
         try {
-            Thread.sleep(Duration.ofSeconds(1).toMillis());
+            Thread.sleep(Duration.ofSeconds(10).toMillis());
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             LOGGER.warning("Exit wait interrupted; exiting immediately.");
@@ -61,6 +58,24 @@ public class ReplayProtocol extends Protocol {
                 return;
             }
 
+            // register all addresses
+            // 1) Prime
+            Map<String, Set<String>> addrsByDevice = new HashMap<>();
+            for (ReplayEvent ev : events) {
+                String address = "%s.%s.%s.parsed".formatted(ev.className, ev.deviceID, ev.channelID);
+                addrsByDevice.computeIfAbsent(ev.deviceID, d -> new HashSet<>()).add(address);
+            }
+
+            for (var e : addrsByDevice.entrySet()) {
+                String device = e.getKey();
+                for (String addr : e.getValue()) {
+                    eventBus.publish("%s.addresses".formatted(device), addr);
+                }
+            }
+
+            // 2) Give dispatcher time to subscribe
+            Thread.sleep(100); // cheap and effective
+
             // Sort globally by timestamp
             events.sort(Comparator.comparing(e -> e.timestamp));
 
@@ -69,8 +84,9 @@ public class ReplayProtocol extends Protocol {
 
             LOGGER.info("Loaded %d events. Starting real-time replay.".formatted(events.size()));
 
+            int cnt = 0;
             for (ReplayEvent ev : events) {
-
+                cnt++;
                 // Compute real-time delay
                 Duration offset = Duration.between(firstEventTs, ev.timestamp);
                 Instant targetTime = replayStartRealTime.plus(offset);
@@ -79,11 +95,14 @@ public class ReplayProtocol extends Protocol {
                 if (delayMs > 0) Thread.sleep(delayMs);
 
                 publishEvent(ev);
+                if (cnt > 100) {
+                    break;
+                }
             }
 
-            LOGGER.info("Replay finished successfully. Waiting 10s before exit to allow downstream processing...");
+            LOGGER.info("Replay finished successfully. Waiting 5s before exit to allow downstream processing...");
             try {
-                Thread.sleep(Duration.ofSeconds(10).toMillis());
+                Thread.sleep(Duration.ofSeconds(5).toMillis());
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
                 LOGGER.warning("Exit wait interrupted; exiting immediately.");
