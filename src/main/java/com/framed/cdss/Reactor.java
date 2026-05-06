@@ -286,8 +286,10 @@ public abstract class Reactor extends Service {
               }
             }
           }
-          reactionFunction(snapshotToFire.values);
-          publishAllLatencyModes(snapshotToFire.values);
+          if (atomic) {
+            reactionFunction(snapshotToFire.values);
+            publishAllLatencyModes(snapshotToFire.values);
+          }
         }
       }
     } finally {
@@ -295,10 +297,10 @@ public abstract class Reactor extends Service {
     }
 
     // --- Fire and publish latency outside lock ---
-    //if (shouldFire && snapshotToFire != null) {
-     // reactionFunction(snapshotToFire.values);
-      //publishAllLatencyModes(snapshotToFire.values);
-    //}
+    if (!atomic && shouldFire && snapshotToFire != null) {
+      reactionFunction(snapshotToFire.values);
+      publishAllLatencyModes(snapshotToFire.values);
+    }
 
   }
 
