@@ -13,7 +13,13 @@ public class SFComputationReactor extends Reactor {
   private final String fio2Channel;
 
 
-  public SFComputationReactor(EventBus eventBus, String id, String spo2Channel, String fio2Channel, String outputChannel) {
+  public SFComputationReactor(
+          EventBus eventBus,
+          String id,
+          String spo2Channel,
+          String fio2Channel,
+          String outputChannel,
+          boolean atomic) {
     super(
       eventBus,
       id,
@@ -27,7 +33,8 @@ public class SFComputationReactor extends Reactor {
       ),
       List.of(
         outputChannel
-      )
+      ),
+      atomic
     );
     this.spo2Channel = spo2Channel;
     this.fio2Channel = fio2Channel;

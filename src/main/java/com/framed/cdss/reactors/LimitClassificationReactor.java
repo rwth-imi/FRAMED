@@ -132,12 +132,14 @@ public class LimitClassificationReactor extends Reactor {
                                     JSONArray firingRules,
                                     String inputChannel,
                                     JSONArray outputChannels,
-                                    JSONArray limits) {
+                                    JSONArray limits,
+                                    boolean atomic) {
 
     super(eventBus, id,
             parseFiringRulesJson(firingRules),
             List.of(inputChannel),
-            parseChannelListJson(outputChannels));
+            parseChannelListJson(outputChannels),
+            atomic);
 
     this.limits = parseLimitsJson(limits);
   }

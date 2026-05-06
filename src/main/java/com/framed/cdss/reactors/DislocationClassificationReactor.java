@@ -42,7 +42,8 @@ public class DislocationClassificationReactor extends Reactor {
             String spo2TrendChannel,
             String etCO2LimitChannel,
             String sfLimitChannel,
-            String outputChannel
+            String outputChannel,
+            boolean atomic
             ) {
         super(
             eventBus,
@@ -58,7 +59,8 @@ public class DislocationClassificationReactor extends Reactor {
             ),
             List.of(
                     outputChannel
-            )
+            ),
+            atomic
         );
         this.etCO2LimitChannel = etCO2LimitChannel;
         this.spo2TrendChannel = spo2TrendChannel;

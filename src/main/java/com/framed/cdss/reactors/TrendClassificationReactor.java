@@ -109,10 +109,17 @@ public class TrendClassificationReactor extends Reactor {
                                     int windowSize,
                                     int persistWindows,
                                     int delta,
-                                    String direction
+                                    String direction,
+                                    boolean atomic
                            ) {
 
-        super(eventBus, id, parseFiringRulesJson(firingRules), List.of(inputChannel), parseChannelListJson(outputChannels));
+        super(
+                eventBus,
+                id,
+                parseFiringRulesJson(firingRules),
+                List.of(inputChannel),
+                parseChannelListJson(outputChannels),
+                atomic);
 
         this.windowSize = windowSize;
         this.persistWindows = persistWindows;

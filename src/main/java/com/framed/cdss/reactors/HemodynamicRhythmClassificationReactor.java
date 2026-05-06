@@ -38,7 +38,8 @@ public class HemodynamicRhythmClassificationReactor extends Reactor {
             String id,
             String etCO2TrendChannel,
             String hrLimitChannel,
-            String outputChannel
+            String outputChannel,
+            boolean atomic
             ) {
         super(
                 eventBus,
@@ -53,7 +54,8 @@ public class HemodynamicRhythmClassificationReactor extends Reactor {
                 ),
                 List.of(
                         outputChannel
-                )
+                ),
+                atomic
         );
         this.hrLimitChannel = hrLimitChannel;
         this.etCO2TrendChannel = etCO2TrendChannel;

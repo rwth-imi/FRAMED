@@ -196,9 +196,16 @@ public class RespiratoryRateEstimationReactor extends Reactor {
             double emaAlpha,
             boolean useHampel,
             int hampelWindow,
-            double hampelK
+            double hampelK,
+            boolean atomic
     ) {
-        super(eventBus, id, List.of(Map.of(etco2Channel, "*")), List.of(etco2Channel), parseChannelListJson(outputChannels));
+        super(
+                eventBus,
+                id,
+                List.of(Map.of(etco2Channel, "*")),
+                List.of(etco2Channel),
+                parseChannelListJson(outputChannels),
+                atomic);
         this.etco2Channel = etco2Channel;
         if (windowSize < 3) throw new IllegalArgumentException("windowSize must be >= 3");
         this.windowSize = windowSize;

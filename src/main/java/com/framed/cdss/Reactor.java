@@ -77,6 +77,7 @@ import static com.framed.cdss.utils.CDSSUtils.publishResult;
  * {@link #reactionFunction(Map)} is executed outside the lock.
  */
 public abstract class Reactor extends Service {
+  private final boolean atomic;
   /** Last logical timestamp at which this reactor fired */
   protected volatile Instant lastLogicalFireTs = Instant.EPOCH;
 
@@ -135,10 +136,12 @@ public abstract class Reactor extends Service {
                     String id,
                     List<Map<String, String>> firingRules,
                     List<String> inputChannels,
-                    List<String> outputChannels) {
+                    List<String> outputChannels,
+                    boolean atomic) {
 
     super(eventBus);
     this.id = id;
+    this.atomic = atomic;
     this.firingRules = firingRules;
     this.inputChannels = List.copyOf(inputChannels);
     this.outputChannels = List.copyOf(outputChannels);

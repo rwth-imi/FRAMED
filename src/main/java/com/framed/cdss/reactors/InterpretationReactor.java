@@ -35,7 +35,8 @@ public class InterpretationReactor extends Reactor {
                                   String hdArythChannel,
                                   String piLimitChannel,
                                   String hrLimitChannel,
-                                  String sfLimitChannel) {
+                                  String sfLimitChannel,
+                                  boolean atomic) {
 
         super(eventBus,
                 id,
@@ -60,7 +61,8 @@ public class InterpretationReactor extends Reactor {
                         piLimitChannel,
                         hrLimitChannel,
                         sfLimitChannel),
-                new ArrayList<>());
+                new ArrayList<>(),
+                atomic);
 
         this.rrMismatchChannel = rrMismatchChannel;
         this.dislocationChannel = dislocationChannel;

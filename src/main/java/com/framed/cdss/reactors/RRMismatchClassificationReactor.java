@@ -16,7 +16,14 @@ public class RRMismatchClassificationReactor extends Reactor {
     private final String rrEstimationChannel;
     private final String rrSettingsChannel;
 
-    public RRMismatchClassificationReactor(EventBus eventBus, String id, String rrEstimationChannel, String rrSettingsChannel, JSONArray outputChannels, int varLimit){
+    public RRMismatchClassificationReactor(
+            EventBus eventBus,
+            String id,
+            String rrEstimationChannel,
+            String rrSettingsChannel,
+            JSONArray outputChannels,
+            int varLimit,
+            boolean atomic){
         super(
                 eventBus,
                 id,
@@ -29,7 +36,8 @@ public class RRMismatchClassificationReactor extends Reactor {
                         )
                 ),
                 List.of(rrEstimationChannel, rrSettingsChannel),
-                parseChannelListJson(outputChannels)
+                parseChannelListJson(outputChannels),
+                atomic
         );
         this.varLimit = varLimit;
         this.rrEstimationChannel = rrEstimationChannel;

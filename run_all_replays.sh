@@ -12,36 +12,63 @@ mapfile -t FILES < <(find "$REPLAY_ROOT" -type f -name "*.jsonl" | sort)
 
 echo "Found ${#FILES[@]} replay files"
 
-for file in "${FILES[@]}"; do
-  # Extract filename only
-  base_file="$(basename "$file")"           # data_07.jsonl
-  base_name="${base_file%.jsonl}"           # data_07
-  out_file="${base_name}_replay.jsonl"      # data_07_replay.jsonl
+run_pass () {
+  local atomic_value="$1"         # true/false
+  local out_dir="$2"              # output/evaluation_atomic/ or output/evaluation_non_atomic/
 
-  echo "======================================"
-  echo "Running replay for: $file"
-  echo "Output file: $out_file"
-  echo "======================================"
+  echo
+  echo "######################################"
+  echo "Starting pass: atomic=${atomic_value}"
+  echo "Output path:  ${out_dir}"
+  echo "######################################"
+  echo
 
-  jq \
-    --arg replayPath "$file" \
-    --arg outFile "$out_file" \
-    '
-    # Update ReplayProtocol input file
-    (.Devices[] | select(.id=="Replay") | .filePath) = $replayPath
-    |
-    # Update JsonlDispatcher output filename
-    (.Dispatchers[] | select(.id=="Json-Lines") | .fileName) = $outFile
-    ' \
-    "$CONFIG.bak" > "$CONFIG"
+  mkdir -p "$out_dir"
 
-  mvn -q exec:java
+  for file in "${FILES[@]}"; do
+    base_file="$(basename "$file")"           # data_07.jsonl
+    base_name="${base_file%.jsonl}"           # data_07
+    out_file="${base_name}_replay.jsonl"      # data_07_replay.jsonl
 
-  echo "Finished replay for: $file"
-done
+    echo "======================================"
+    echo "Replay input : $file"
+    echo "Replay output: ${out_dir}${out_file}"
+    echo "atomic       : ${atomic_value}"
+    echo "======================================"
+
+    jq \
+      --arg replayPath "$file" \
+      --arg outFile "$out_file" \
+      --arg outDir "$out_dir" \
+      --argjson atomic "$atomic_value" \
+      '
+      # Update ReplayProtocol input file
+      (.Devices[] | select(.id=="Replay") | .filePath) = $replayPath
+      |
+      # Force atomic setting for ALL reactors
+      (.Reactors[] |= (.atomic = $atomic))
+      |
+      # Update JsonlDispatcher output path + filename
+      (.Dispatchers[] | select(.id=="Json-Lines") | .path) = $outDir
+      |
+      (.Dispatchers[] | select(.id=="Json-Lines") | .fileName) = $outFile
+      ' \
+      "$CONFIG.bak" > "$CONFIG"
+
+    mvn -q exec:java
+
+    echo "Finished replay for: $file"
+  done
+}
+
+# Pass 1: atomic=true
+run_pass true "output/evaluation_atomic/"
+
+# Pass 2: atomic=false
+run_pass false "output/evaluation_non_atomic/"
 
 # Restore original config
 mv "$CONFIG.bak" "$CONFIG"
 
-echo "All replays completed successfully."
-``
+echo
+echo "All replays completed successfully (atomic + non-atomic)."
