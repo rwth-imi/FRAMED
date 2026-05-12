@@ -1,5 +1,7 @@
 package com.framed.core;
 
+import com.framed.core.utils.DispatchMode;
+
 import java.util.function.Consumer;
 
 /**
@@ -22,6 +24,8 @@ public interface EventBus {
    * @param handler  a {@link Consumer} that processes incoming messages
    */
   void register(String address, Consumer<Object> handler);
+
+  void register(String address, Consumer<Object> handler, DispatchMode perHandlerMode);
 
   /**
    * Sends a message to a single handler registered for the given address.

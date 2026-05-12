@@ -3,6 +3,7 @@ package com.framed.cdss;
 import com.framed.cdss.utils.RuleType;
 import com.framed.core.EventBus;
 import com.framed.core.Service;
+import com.framed.core.utils.DispatchMode;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
@@ -157,7 +158,8 @@ public abstract class Reactor extends Service {
     for (String ch : this.inputChannels) {
       channelSeq.put(ch, 0L);
       latestByChannel.put(ch, new JSONObject());
-      this.eventBus.register(ch, msg -> onMessage(ch, msg));
+      DispatchMode mode = atomic ? DispatchMode.PER_HANDLER : DispatchMode.PARALLEL;
+      this.eventBus.register(ch, msg -> onMessage(ch, msg), mode);
     }
   }
 
@@ -426,9 +428,9 @@ public abstract class Reactor extends Service {
   private void publishAllLatencyModes(Map<String, Object> snapshot) {
     Instant now = Instant.now();
 
-    //publishPerChannelLatency(snapshot, now);
+    publishPerChannelLatency(snapshot, now);
     publishGlobalLatency(snapshot, now);
-    //publishRuleParticipationLatency(snapshot, now);
+    publishRuleParticipationLatency(snapshot, now);
   }
 
   /**
