@@ -1,7 +1,5 @@
 
-<img src="images/logo.drawio.png" alt="Logo" width="120" style="float: right; margin-left: 20px;">
-
-A **F**ramework for **R**ealtime **A**bstraction of **M**edical **E**vent **D**ata
+<img src="images/logo.png" alt="Logo" style="float: right; margin-left: 20px;">
 
 ## What is FRAMED?
 FRAMED is a service oriented software framework to acquire and integrate data from multiple sources.
@@ -192,8 +190,8 @@ The services.jons file is configured:
       "bucket": "safety-box",
       "id": "InfluxDB",
       "url": "http://localhost:8086",
-      "token": "ThoKiNpWG1QpK8NjBayxWiXq2vwj4L7q-0NvisFVpp-af9tt1qh8ohL00V_pRDksSKTt7hqLkOKRQ6GKxFmKzg==",
-      "org": "IMI-MSE",
+      "token": "your token here",
+      "org": "your org here",
       "devices":
       [
         "Oxylog-3000-Plus-00",
@@ -288,6 +286,21 @@ the Free Software Foundation, version 2.
     You should have received a copy of the GNU General Public License along
     with this program; if not, write to the Free Software Foundation, Inc.,
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+## Cite As
+
+Freyer N, Röhrig R, Lipprandt M. An Open-Source Abstraction Framework for Biosignal and Medical Device Data. Stud Health Technol Inform. 2026 May 21;336:1808-1809. doi: 10.3233/SHTI260543. PMID: 42175214.
+
+```
+@article{freyer2026open,
+  title={An Open-Source Abstraction Framework for Biosignal and Medical Device Data},
+  author={Freyer, Nils and R{\"o}hrig, Rainer and Lipprandt, Myriam},
+  journal={Studies in health technology and informatics},
+  volume={336},
+  pages={1808--1809},
+  year={2026}
+}
+```
 
 ## Project status 
 Running. ✅
