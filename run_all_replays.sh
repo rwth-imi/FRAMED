@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPLAY_ROOT="/home/nils/Documents/Entwicklung/safety-box/replay"
+REPLAY_ROOT="/path/to/your/replays"
 CONFIG="config/services.json"
 
 # Backup original config
