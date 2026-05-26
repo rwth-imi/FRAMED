@@ -158,8 +158,7 @@ public abstract class Reactor extends Service {
     for (String ch : this.inputChannels) {
       channelSeq.put(ch, 0L);
       latestByChannel.put(ch, new JSONObject());
-      DispatchMode mode = atomic ? DispatchMode.PER_HANDLER : DispatchMode.PARALLEL;
-      this.eventBus.register(ch, msg -> onMessage(ch, msg), mode);
+      this.eventBus.register(ch, msg -> onMessage(ch, msg));
     }
   }
 
