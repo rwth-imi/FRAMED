@@ -1,6 +1,6 @@
-package com.framed.cdss.actors;
+package com.framed.cdss.reactors;
 
-import com.framed.cdss.Actor;
+import com.framed.cdss.Reactor;
 import com.framed.cdss.utils.SlopeUtils;
 import com.framed.core.EventBus;
 import org.json.JSONArray;
@@ -15,7 +15,7 @@ import static com.framed.cdss.utils.SlopeUtils.computeSlope;
 
 /**
  * <p>
- * Actor for estimating respiratory rate (RR) from a continuous EtCO₂ waveform
+ * Reactor for estimating respiratory rate (RR) from a continuous EtCO₂ waveform
  * using a robust slope‑based breath detection algorithm. This component consumes
  * streaming etCO2 waveform samples and publishes a continuously updated respiratory
  * rate (in breaths/min) to a designated output channel.
@@ -23,9 +23,9 @@ import static com.framed.cdss.utils.SlopeUtils.computeSlope;
  *
  * <h2>Triggering</h2>
  * <p>
- * This actor is invoked for every new value on the configured
+ * This reactor is invoked for every new value on the configured
  * <strong>ETCO2_WAVE</strong> input channel. Messages are handled in a
- * non‑consuming manner, i.e., other actors may also subscribe to the same input.
+ * non‑consuming manner, i.e., other reactors may also subscribe to the same input.
  * </p>
  *
  * <h2>Input</h2>
@@ -111,7 +111,7 @@ import static com.framed.cdss.utils.SlopeUtils.computeSlope;
  *
  * <h2>Thread Safety</h2>
  * <p>
- * This actor is designed to run within the actor framework's single‑threaded
+ * This reactor is designed to run within the actor framework's single‑threaded
  * dispatch model. Internal data structures (sliding windows, peak buffers) are
  * not thread‑safe for concurrent external access.
  * </p>
@@ -127,10 +127,10 @@ import static com.framed.cdss.utils.SlopeUtils.computeSlope;
  * <ul>
  *     <li>Slope‑based breath detection literature</li>
  *     <li>Hampel filter for robust outlier detection</li>
- *     <li>Actor/event‑driven CDSS architecture</li>
+ *     <li>Reactor/event‑driven CDSS architecture</li>
  * </ul>
  */
-public class RespiratoryRateEstimationActor extends Actor {
+public class RespiratoryRateEstimationReactor extends Reactor {
 
     // ---- Channels ----
     private final String etco2Channel;
@@ -181,7 +181,7 @@ public class RespiratoryRateEstimationActor extends Actor {
      *
      * @throws IllegalArgumentException if {@code windowSize < 3}.
      */
-    public RespiratoryRateEstimationActor(
+    public RespiratoryRateEstimationReactor(
             EventBus eventBus,
             String id,
             String etco2Channel,
@@ -196,9 +196,16 @@ public class RespiratoryRateEstimationActor extends Actor {
             double emaAlpha,
             boolean useHampel,
             int hampelWindow,
-            double hampelK
+            double hampelK,
+            boolean atomic
     ) {
-        super(eventBus, id, List.of(Map.of(etco2Channel, "*")), List.of(etco2Channel), parseChannelListJson(outputChannels));
+        super(
+                eventBus,
+                id,
+                List.of(Map.of(etco2Channel, "*")),
+                List.of(etco2Channel),
+                parseChannelListJson(outputChannels),
+                atomic);
         this.etco2Channel = etco2Channel;
         if (windowSize < 3) throw new IllegalArgumentException("windowSize must be >= 3");
         this.windowSize = windowSize;
@@ -232,7 +239,7 @@ public class RespiratoryRateEstimationActor extends Actor {
      *                 Must contain a numeric ETCO2 value at key {@code etco2Channel}. Timestamp is optional.
      */
     @Override
-    public void fireFunction(Map<String, Object> snapshot) {
+    public void reactionFunction(Map<String, Object> snapshot) {
         Object raw = snapshot.get(etco2Channel);
         if (!(raw instanceof Number) && !(raw instanceof String)) return;
 
@@ -374,7 +381,10 @@ public class RespiratoryRateEstimationActor extends Actor {
      * <p>If no valid intervals remain after filtering, nothing is published.</p>
      */
     private void computeAndPublishRR() {
-        if (detectedPeaks.size() < 2) return;
+        if (detectedPeaks.size() < 2) {
+            publishResult(eventBus, 0, id, outputChannels, lastLogicalFireTs);
+            return;
+        }
 
         List<Long> intervalsMs = new ArrayList<>();
         Iterator<Instant> it = detectedPeaks.iterator();
@@ -388,13 +398,13 @@ public class RespiratoryRateEstimationActor extends Actor {
                 intervalsMs.add(d);
             }
         }
-        if (intervalsMs.isEmpty()) publishResult(eventBus, formatter, 0, id, outputChannels);;
+        if (intervalsMs.isEmpty()) publishResult(eventBus, 0, id, outputChannels, lastLogicalFireTs);
 
         intervalsMs.sort(Long::compareTo);
         double medianMs = intervalsMs.get(intervalsMs.size() / 2);
         double rr = 60000.0 / medianMs;
 
-        publishResult(eventBus, formatter, rr, id, outputChannels);
+        publishResult(eventBus, rr, id, outputChannels, lastLogicalFireTs);
     }
 
     /**

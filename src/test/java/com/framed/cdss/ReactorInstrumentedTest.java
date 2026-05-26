@@ -1,7 +1,6 @@
 package com.framed.cdss;
 
 import com.framed.utils.InMemoryEventBus;
-import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -16,17 +15,17 @@ import static org.junit.jupiter.api.Assertions.*;
  * Instrumented tests: verify per-rule independence and that
  * secondary satisfied rules do not cause multiple fires per evaluation.
  */
-public class ActorInstrumentedTest {
+public class ReactorInstrumentedTest {
 
     private InMemoryEventBus bus;
-    private RecordingActor actor;
+    private RecordingReactor reactor;
 
     private static final String A = "A";
     private static final String B = "B";
 
-    static class RecordingActor extends Actor {
+    static class RecordingReactor extends Reactor {
         private final List<Map<String, Object>> firedSnapshots = new ArrayList<>();
-        RecordingActor(InMemoryEventBus bus,
+        RecordingReactor(InMemoryEventBus bus,
                        String id,
                        List<Map<String, String>> rules,
                        List<String> inputs,
@@ -34,7 +33,7 @@ public class ActorInstrumentedTest {
         super(bus, id, rules, inputs, outputs);
         }
         @Override
-        public void fireFunction(Map<String, Object> latestSnapshot) {
+        public void reactionFunction(Map<String, Object> latestSnapshot) {
             firedSnapshots.add(latestSnapshot);
         }
         public List<Map<String, Object>> fired() { return firedSnapshots; }
@@ -49,7 +48,7 @@ public class ActorInstrumentedTest {
                 Map.of(A, "*"),
                 Map.of(A, "2")
         );
-        actor = new RecordingActor(bus, "inst", rules, List.of(A, B), List.of("OUT"));
+        reactor = new RecordingReactor(bus, "inst", rules, List.of(A, B), List.of("OUT"));
     }
 
     @Test
@@ -63,11 +62,11 @@ public class ActorInstrumentedTest {
         bus.publish(A, dp(2, t1)); // R0 satisfied (delta(A)=1 since last R0)
         bus.publish(A, dp(3, t2)); // R0 satisfied; R1 may also be satisfied (delta(A) >= 2) but we only fire once
 
-        List<Map<String, Object>> fired = actor.fired();
+        List<Map<String, Object>> fired = reactor.fired();
         assertEquals(3, fired.size(), "One fire per incoming event since R0 is always satisfied");
 
         // Verify secondary stricter rule (R1) does not cause extra fire in the same evaluation
-        // (we rely on Actor's 'single snapshot per evaluation' policy)
+        // (we rely on Reactor's 'single snapshot per evaluation' policy)
         Map<String, Object> lastSnap = fired.get(fired.size()-1);
         assertEquals(3, lastSnap.get(A));
     }
@@ -76,9 +75,9 @@ public class ActorInstrumentedTest {
     void noFireWithoutNewData() {
         ZonedDateTime t0 = ZonedDateTime.now(ZoneOffset.UTC);
         bus.publish(A, dp(10, t0));
-        int n = actor.fired().size();
+        int n = reactor.fired().size();
 
         // No new messages
-        assertEquals(n, actor.fired().size(), "No fire when no new data arrived");
+        assertEquals(n, reactor.fired().size(), "No fire when no new data arrived");
     }
 }

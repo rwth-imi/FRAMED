@@ -50,11 +50,27 @@ public class Main {
       }
     }
 
-    // instantiate all configured service, including DFCN actors
+    // instantiate all configured service, including DFCN reactors
     Manager manager = new Manager(servicesConfigs, eventBus);
-    for (String key : servicesConfigs.keySet()) {
-      manager.instantiate(key);
+    if (servicesConfigs.has("Dispatchers")) {
+      manager.instantiate("Dispatchers");
     }
+    if (servicesConfigs.has("Devices")) {
+      manager.instantiate("Devices");
+    }
+    if (servicesConfigs.has("Writers")) {
+      manager.instantiate("Writers");
+    }
+    if (servicesConfigs.has("Parsers")) {
+      manager.instantiate("Parsers");
+    }
+    if (servicesConfigs.has("Reactors")) {
+      manager.instantiate("Reactors");
+    }
+
+    //for (String key : servicesConfigs.keySet()) {
+    //  manager.instantiate(key);
+    //}
 
     // validate the DFCN properties by successfully instantiating the DAG:
     manager.validateDFCN();

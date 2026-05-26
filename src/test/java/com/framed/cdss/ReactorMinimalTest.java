@@ -15,28 +15,28 @@ import static org.junit.jupiter.api.Assertions.*;
  * Minimal tests: one concrete Actor capturing snapshots;
  * verifies one-fire-per-evaluation and snapshot correctness.
  */
-public class ActorMinimalTest {
+public class ReactorMinimalTest {
 
     private InMemoryEventBus bus;
-    private TestActor actor;
+    private TestReactor reactor;
 
     private static final String CH_A = "A";
     private static final String CH_B = "B";
 
     /** Minimal concrete actor that just records fired snapshots. */
-    static class TestActor extends Actor {
+    static class TestReactor extends Reactor {
         private final List<Map<String, Object>> fired = new ArrayList<>();
 
-        TestActor(InMemoryEventBus bus,
-                  String id,
-                  List<Map<String, String>> rules,
-                  List<String> inputs,
-                  List<String> outputs) {
+        TestReactor(InMemoryEventBus bus,
+                    String id,
+                    List<Map<String, String>> rules,
+                    List<String> inputs,
+                    List<String> outputs) {
             super(bus, id, rules, inputs, outputs);
         }
 
         @Override
-        public void fireFunction(Map<String, Object> latestSnapshot) {
+        public void reactionFunction(Map<String, Object> latestSnapshot) {
             fired.add(latestSnapshot);
         }
 
@@ -55,7 +55,7 @@ public class ActorMinimalTest {
                 Map.of(CH_B, "*")
         );
 
-        actor = new TestActor(
+        reactor = new TestReactor(
                 bus,
                 "test-actor",
                 rules,
@@ -75,7 +75,7 @@ public class ActorMinimalTest {
         bus.publish(CH_B, dp(20, t1));
         bus.publish(CH_A, dp(11, t2));
 
-        List<Map<String, Object>> fired = actor.getFired();
+        List<Map<String, Object>> fired = reactor.getFired();
         assertEquals(3, fired.size(), "Expected one fire per incoming message");
 
         // Check snapshot 1 (after first publish on A)
@@ -99,7 +99,7 @@ public class ActorMinimalTest {
     @Test
     void snapshotIsImmutable() {
         bus.publish(CH_A, dp(1, ZonedDateTime.now(ZoneOffset.UTC)));
-        Map<String, Object> snap = actor.getFired().get(0);
+        Map<String, Object> snap = reactor.getFired().get(0);
 
         assertThrows(UnsupportedOperationException.class, () -> snap.put("x", 1));
     }

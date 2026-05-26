@@ -38,7 +38,7 @@
         "PC60FW",
         "CDSS"
       ],
-      "path": "output/evaluation_non_atomic_parallel/",
+      "path": "output/evaluation_deterministic/",
       "fileName": "p01-PC1-clean-CO2_3_replay.jsonl"
     }
   ],
@@ -61,7 +61,7 @@
         30,
         40
       ],
-      "atomic": false
+      "atomic": true
     },
     {
       "class": "com.framed.cdss.reactors.LimitClassificationReactor",
@@ -80,7 +80,7 @@
         97,
         98
       ],
-      "atomic": false
+      "atomic": true
     },
     {
       "class": "com.framed.cdss.reactors.LimitClassificationReactor",
@@ -98,7 +98,7 @@
         0.2,
         20
       ],
-      "atomic": false
+      "atomic": true
     },
     {
       "class": "com.framed.cdss.reactors.LimitClassificationReactor",
@@ -117,7 +117,7 @@
         2.35,
         3.15
       ],
-      "atomic": false
+      "atomic": true
     },
     {
       "class": "com.framed.cdss.reactors.LimitClassificationReactor",
@@ -135,7 +135,7 @@
         0,
         125
       ],
-      "atomic": false
+      "atomic": true
     },
     {
       "class": "com.framed.cdss.reactors.SFComputationReactor",
@@ -143,7 +143,7 @@
       "spo2Channel": "Percentage_int.PC60FW.SpO2.parsed",
       "fio2Channel": "Measurement.Oxylog-3000-Plus-00.Inspiratory oxygen fraction, FiO2.parsed",
       "outputChannel": "S/F-Value",
-      "atomic": false
+      "atomic": true
     },
     {
       "class": "com.framed.cdss.reactors.TrendClassificationReactor",
@@ -161,7 +161,7 @@
       "persistWindows": 1,
       "delta": 3,
       "direction": "DOWN",
-      "atomic": false
+      "atomic": true
     },
     {
       "class": "com.framed.cdss.reactors.TrendClassificationReactor",
@@ -179,7 +179,7 @@
       "persistWindows": 1,
       "delta": 4,
       "direction": "DOWN",
-      "atomic": false
+      "atomic": true
     },
     {
       "class": "com.framed.cdss.reactors.HemodynamicRhythmClassificationReactor",
@@ -187,7 +187,7 @@
       "etCO2TrendChannel": "etCO2-Trend",
       "hrLimitChannel": "HR-Limit",
       "outputChannel": "HD-aryth",
-      "atomic": false
+      "atomic": true
     },
     {
       "class": "com.framed.cdss.reactors.DislocationClassificationReactor",
@@ -197,7 +197,7 @@
       "etCO2LimitChannel": "etCO2-Limit",
       "sfLimitChannel": "S/F-Limit",
       "outputChannel": "Dislocation",
-      "atomic": false
+      "atomic": true
     },
     {
       "class": "com.framed.cdss.reactors.RespiratoryRateEstimationReactor",
@@ -216,7 +216,7 @@
       "useHampel": true,
       "hampelWindow": 5,
       "hampelK": 3,
-      "atomic": false
+      "atomic": true
     },
     {
       "class": "com.framed.cdss.reactors.RRMismatchClassificationReactor",
@@ -227,7 +227,7 @@
         "RRMismatchClassification"
       ],
       "varLimit": 4,
-      "atomic": false
+      "atomic": true
     },
     {
       "class": "com.framed.cdss.reactors.InterpretationReactor",
@@ -241,7 +241,7 @@
       "piLimitChannel": "PI-Limit",
       "hrLimitChannel": "HR-Limit",
       "sfLimitChannel": "S/F-Limit",
-      "atomic": false
+      "atomic": true
     }
   ]
 }

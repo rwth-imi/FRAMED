@@ -3,6 +3,7 @@ package com.framed.cdss;
 import com.framed.cdss.utils.RuleType;
 import com.framed.core.EventBus;
 import com.framed.core.Service;
+import com.framed.core.utils.DispatchMode;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
@@ -12,12 +13,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
+import static com.framed.cdss.utils.CDSSUtils.extractTimestamp;
 import static com.framed.cdss.utils.CDSSUtils.publishResult;
 
 /**
  * A reactive multi-input Actor that evaluates a set of firing rules on incoming
  * messages, constructs exactly one consistent snapshot per evaluation cycle,
- * and triggers a user-defined {@link #fireFunction(Map)} once whenever at least
+ * and triggers a user-defined {@link #reactionFunction(Map)} once whenever at least
  * one rule is satisfied.
  *
  * <h1>Core Semantics</h1>
@@ -25,7 +27,7 @@ import static com.framed.cdss.utils.CDSSUtils.publishResult;
  *   <li>Each input channel maintains:
  *     <ul>
  *       <li>a monotonic absolute sequence counter (never reset), and</li>
- *       <li>a latest JSON message value.</li>
+ *       <li>the latest JSON message value.</li>
  *     </ul>
  *   </li>
  *
@@ -45,7 +47,7 @@ import static com.framed.cdss.utils.CDSSUtils.publishResult;
  *       <li>all rules are evaluated against a stable snapshot of latest data + seq counters;</li>
  *       <li>every satisfied rule updates its per-channel pointers;</li>
  *       <li>a single snapshot is created;</li>
- *       <li>{@link #fireFunction(Map)} is called once;</li>
+ *       <li>{@link #reactionFunction(Map)} is called once;</li>
  *       <li>latency is published according to all three modes (A, B, C).</li>
  *     </ul>
  *   </li>
@@ -58,7 +60,7 @@ import static com.framed.cdss.utils.CDSSUtils.publishResult;
  *     <li><b>channel-timestamp → Instant</b> parsed from JSON "timestamp"</li>
  * </ul>
  *
- * This snapshot is immutable and provided to {@link #fireFunction(Map)}.
+ * This snapshot is immutable and provided to {@link #reactionFunction(Map)}.
  *
  * <h1>Latency Publishing Modes</h1>
  * After a firing, the Actor publishes:
@@ -73,9 +75,21 @@ import static com.framed.cdss.utils.CDSSUtils.publishResult;
  *
  * <h1>Thread Safety</h1>
  * All rule evaluation and delta accounting is done under a single lock, while
- * {@link #fireFunction(Map)} is executed outside the lock.
+ * {@link #reactionFunction(Map)} is executed outside the lock.
  */
-public abstract class Actor extends Service {
+public abstract class Reactor extends Service {
+  private final boolean atomic;
+  /** Last logical timestamp at which this reactor fired */
+  protected volatile Instant lastLogicalFireTs = Instant.EPOCH;
+
+  public record Snapshot(Map<String, Object> values, Instant logicalTs) {
+  }
+
+  /**
+   * Per-rule, per-channel last consumed logical timestamp.
+   * lastConsumedTsByRule.get(ruleIndex).get(channel)
+   */
+  private final List<Map<String, Instant>> lastConsumedTsByRule = new ArrayList<>();
 
   /** Raw firing rule definitions. */
   private final List<Map<String, String>> firingRules;
@@ -83,10 +97,10 @@ public abstract class Actor extends Service {
   /** Actor instance identifier (used in latency tags, classification IDs, etc.). */
   protected final String id;
 
-  /** Input channels this actor listens to. */
+  /** Input channels this reactor listens to. */
   protected final List<String> inputChannels;
 
-  /** Output channels this actor may publish to. */
+  /** Output channels this reactor may publish to. */
   protected final List<String> outputChannels;
 
   /** Tracks timestamps previously published for latency reporting. */
@@ -114,22 +128,29 @@ public abstract class Actor extends Service {
    * Constructs a rule-based Actor.
    *
    * @param eventBus        the event bus providing input messages and publishing outputs
-   * @param id              actor identifier
+   * @param id              reactor identifier
    * @param firingRules     list of rules (channel → token)
-   * @param inputChannels   list of channels this actor subscribes to
-   * @param outputChannels  list of channels this actor may publish to
+   * @param inputChannels   list of channels this reactor subscribes to
+   * @param outputChannels  list of channels this reactor may publish to
    */
-  protected Actor(EventBus eventBus,
-                  String id,
-                  List<Map<String, String>> firingRules,
-                  List<String> inputChannels,
-                  List<String> outputChannels) {
+  protected Reactor(EventBus eventBus,
+                    String id,
+                    List<Map<String, String>> firingRules,
+                    List<String> inputChannels,
+                    List<String> outputChannels,
+                    boolean atomic) {
 
     super(eventBus);
     this.id = id;
+    this.atomic = atomic;
     this.firingRules = firingRules;
     this.inputChannels = List.copyOf(inputChannels);
     this.outputChannels = List.copyOf(outputChannels);
+
+    // initial setting of addresses
+    for (String out : outputChannels) {
+      eventBus.publish("CDSS.addresses", out);
+    }
 
     compileRules();
     initLastConsumedPointers();
@@ -146,12 +167,12 @@ public abstract class Actor extends Service {
    *
    * @param latestSnapshot immutable snapshot of latest channel values and timestamps
    */
-  public abstract void fireFunction(Map<String, Object> latestSnapshot);
+  public abstract void reactionFunction(Map<String, Object> latestSnapshot);
 
-  /** @return list of input channels this actor listens to */
+  /** @return list of input channels this reactor listens to */
   public List<String> getInputChannels() { return inputChannels; }
 
-  /** @return list of output channels this actor may publish to */
+  /** @return list of output channels this reactor may publish to */
   public List<String> getOutputChannels() { return outputChannels; }
 
   /**
@@ -168,21 +189,17 @@ public abstract class Actor extends Service {
     evaluateRules();
   }
 
-  /**
+    /**
    * Main evaluation procedure. Produces exactly one snapshot + one fire
    * per evaluation cycle, regardless of how many rules were satisfied.
-   */
-  /**
-   * Main evaluation procedure. Produces exactly one snapshot + one fire
-   * per evaluation cycle, regardless of how many rules were satisfied.
-   *
    * Corrected to:
    *   • Only treat a channel as "new" if its sequence number actually advanced.
    *   • Update lastConsumedSeqByRule only for channels with real deltas.
    *   • Preserve true AND semantics for multi-input rules.
    */
   private void evaluateRules() {
-    Map<String, Object> snapshotToFire = new HashMap<>();
+    Snapshot snapshotToFire = null;
+    boolean shouldFire = false;
 
     evalLock.lock();
     try {
@@ -200,7 +217,6 @@ public abstract class Actor extends Service {
 
       for (int i = 0; i < compiledRules.size(); i++) {
         Map<String, FiringRule> rule = compiledRules.get(i);
-        Map<String, Long> lastPtr = lastConsumedSeqByRule.get(i);
 
         boolean satisfied = true;
 
@@ -209,15 +225,29 @@ public abstract class Actor extends Service {
           String ch = e.getKey();
           FiringRule cond = e.getValue();
 
-          long cur = seqAtCall.get(ch);
-          long last = lastPtr.get(ch);
-          long delta = cur - last;
-
           Object latest = latestAtCall.get(ch);
+          Instant ts = extractTimestamp(latest);
+          Instant lastTs = lastConsumedTsByRule.get(i).get(ch);
 
-          if (!testCondition(cond, delta, latest)) {
-            satisfied = false;
-            break;
+          /* A channel is "new" iff its timestamp is strictly newer */
+          /* A channel is "new" iff its timestamp is strictly newer */
+          boolean isNew = ts != null && ts.isAfter(lastTs);
+
+// FIX: AT_LEAST(N) must use sequence deltas, not timestamp newness
+          if (cond.type() == RuleType.AT_LEAST) {
+            long curSeq = seqAtCall.getOrDefault(ch, 0L);
+            long lastSeq = lastConsumedSeqByRule.get(i).getOrDefault(ch, 0L);
+            long delta = curSeq - lastSeq;
+
+            if (delta < cond.n()) {   // <-- correct AT_LEAST(N)
+              satisfied = false;
+              break;
+            }
+          } else {
+            if (!testCondition(cond, isNew, latest)) {
+              satisfied = false;
+              break;
+            }
           }
         }
 
@@ -226,39 +256,53 @@ public abstract class Actor extends Service {
         }
       }
 
-      // --- Build snapshot AND advance pointers if any rule fired ---
+      // after evaluating satisfiedRules
       if (!satisfiedRules.isEmpty()) {
-        snapshotToFire = buildSnapshotFrom(latestAtCall);
+        Snapshot snap = buildSnapshotFrom(latestAtCall);
 
-        // For each satisfied rule:
-        for (int ruleIndex : satisfiedRules) {
-          Map<String, Long> lastPtr = lastConsumedSeqByRule.get(ruleIndex);
+        // LIFO logical-time gate
+        if (snap.logicalTs.isAfter(lastLogicalFireTs)) {
+          lastLogicalFireTs = snap.logicalTs;
+          snapshotToFire = snap;
+          shouldFire = true;
 
-          Map<String, FiringRule> rule = compiledRules.get(ruleIndex);
+          // advance per-rule per-channel timestamps + sequence pointers
+          for (int ruleIndex : satisfiedRules) {
+            Map<String, Instant> lastPtrTs = lastConsumedTsByRule.get(ruleIndex);
+            Map<String, Long> lastPtrSeq = lastConsumedSeqByRule.get(ruleIndex);
+            Map<String, FiringRule> rule = compiledRules.get(ruleIndex);
 
-          // Only advance pointers for channels that actually had new data
-          for (var e : rule.entrySet()) {
-            String ch = e.getKey();
-            long cur = seqAtCall.get(ch);
-            long last = lastPtr.get(ch);
+            for (String ch : rule.keySet()) {
+              // Timestamp pointer (UNCHANGED)
+              Instant ts = extractTimestamp(latestAtCall.get(ch));
+              if (ts != null && ts.isAfter(lastPtrTs.get(ch))) {
+                lastPtrTs.put(ch, ts);
+              }
 
-            if (cur > last) {
-              lastPtr.put(ch, cur);   // correct per-channel pointer update
+              // Sequence pointer (NEW, needed for AT_LEAST semantics)
+              long curSeq = seqAtCall.getOrDefault(ch, 0L);
+              long lastSeq = lastPtrSeq.getOrDefault(ch, 0L);
+              if (curSeq > lastSeq) {
+                lastPtrSeq.put(ch, curSeq);
+              }
             }
-            // If cur == last → no update (keeps delta=0 on next round)
+          }
+          if (atomic) {
+            reactionFunction(snapshotToFire.values);
+            publishAllLatencyModes(snapshotToFire.values);
           }
         }
       }
-
     } finally {
       evalLock.unlock();
     }
 
     // --- Fire and publish latency outside lock ---
-    if (!snapshotToFire.isEmpty()) {
-      fireFunction(snapshotToFire);
-      publishAllLatencyModes(snapshotToFire);
+    if (!atomic && shouldFire && snapshotToFire != null) {
+      reactionFunction(snapshotToFire.values);
+      publishAllLatencyModes(snapshotToFire.values);
     }
+
   }
 
   /**
@@ -270,31 +314,30 @@ public abstract class Actor extends Service {
    * </ul>
    */
   @NotNull
-  private Map<String, Object> buildSnapshotFrom(Map<String, Object> latestAtCall) {
+  private Snapshot buildSnapshotFrom(Map<String, Object> latestAtCall) {
     Map<String, Object> snapshot = new LinkedHashMap<>();
+    Instant maxTs = Instant.EPOCH;
 
     for (String ch : inputChannels) {
       JSONObject dp = (JSONObject) latestAtCall.get(ch);
 
-      // --- Value handling ---
       Object value = dp.has("value") ? dp.get("value") : null;
       snapshot.put(ch, value);
 
-      // --- Timestamp handling ---
-      Instant ts;
       if (dp.has("timestamp")) {
-        // Parse normally
-        LocalDateTime ldt = LocalDateTime.parse(dp.getString("timestamp"), formatter);
-        ts = ldt.atZone(ZoneOffset.UTC).toInstant();
-      } else {
-        // Channel has not yet received any data → default timestamp
-        ts = Instant.EPOCH;
-      }
+        Instant ts = LocalDateTime
+                .parse(dp.getString("timestamp"), formatter)
+                .atZone(ZoneOffset.UTC)
+                .toInstant();
 
-      snapshot.put("%s-timestamp".formatted(ch), ts);
+        snapshot.put("%s-timestamp".formatted(ch), ts);
+        if (ts.isAfter(maxTs)) {
+          maxTs = ts;
+        }
+      }
     }
 
-    return Collections.unmodifiableMap(snapshot);
+    return new Snapshot(Collections.unmodifiableMap(snapshot), maxTs);
   }
 
   /** Compiles rule tokens ("*", "N", "r:v") into structured FiringRule objects. */
@@ -324,9 +367,14 @@ public abstract class Actor extends Service {
   /** Initializes per-rule per-channel last-consumed pointers to zero. */
   private void initLastConsumedPointers() {
     for (int i = 0; i < firingRules.size(); i++) {
-      Map<String, Long> ptr = new HashMap<>();
-      for (String ch : inputChannels) ptr.put(ch, 0L);
-      lastConsumedSeqByRule.add(ptr);
+      Map<String, Instant> ptrTs = new HashMap<>();
+      Map<String, Long> ptrSeq = new HashMap<>();
+      for (String ch : inputChannels) {
+        ptrTs.put(ch, Instant.EPOCH);
+        ptrSeq.put(ch, 0L);
+      }
+      lastConsumedTsByRule.add(ptrTs);
+      lastConsumedSeqByRule.add(ptrSeq);
     }
   }
 
@@ -340,7 +388,7 @@ public abstract class Actor extends Service {
     if (t.matches("\\d+")) {
       long n = Long.parseLong(t);
       if (n <= 0)
-        throw new IllegalArgumentException("Numeric condition must be >= 1, was: " + t);
+        throw new IllegalArgumentException("Numeric condition must be >= 1, was: %s".formatted(t));
       return FiringRule.atLeast(n);
     }
 
@@ -351,11 +399,11 @@ public abstract class Actor extends Service {
   }
 
   /** Tests whether a given rule condition is satisfied according to delta + latest value. */
-  private boolean testCondition(FiringRule cond, long delta, Object latest) {
+  private boolean testCondition(FiringRule cond, boolean isNew, Object latest) {
     return switch (cond.type()) {
-      case ANY -> delta >= 1;
-      case AT_LEAST -> delta >= cond.n();
-      case REQUIRE_VALUE -> delta >= 1 && valueMatchesExpected(latest, cond.value());
+      case ANY -> isNew;
+      case AT_LEAST -> isNew; // AT_LEAST(N) collapses to timestamp ordering in LIFO mode
+      case REQUIRE_VALUE -> isNew && valueMatchesExpected(latest, cond.value());
     };
   }
 
@@ -414,10 +462,10 @@ public abstract class Actor extends Service {
 
       publishResult(
               eventBus,
-              formatter,
               seconds,
               "Latency",
-              List.of("Latency-%s.%s".formatted(ch, id))
+              List.of("Latency-%s.%s".formatted(ch, id)),
+              benchmarkTs
       );
 
       lastTsPublishedByChannel.put(ch, ts);
@@ -433,7 +481,11 @@ public abstract class Actor extends Service {
 
     for (String ch : inputChannels) {
       Instant ts = (Instant) snapshot.get("%s-timestamp".formatted(ch));
-      if (earliest == null || ts.isBefore(earliest)) earliest = ts;
+      if (ts != null) {
+        if (earliest == null || ts.isBefore(earliest)) {
+          earliest = ts;
+        }
+      }
     }
 
     if (earliest.isAfter(benchmarkTs)){
@@ -444,8 +496,13 @@ public abstract class Actor extends Service {
     if (earliest != null) {
       double seconds = Duration.between(earliest, benchmarkTs).toNanos() / 1_000_000_000d;
 
-      publishResult(eventBus, formatter, seconds, "Latency-Global",
-              List.of("Latency-Global.%s".formatted(id)));
+      publishResult(
+              eventBus,
+              seconds,
+              "Latency-Global",
+              List.of("Latency-Global.%s".formatted(id)),
+              benchmarkTs
+      );
     }
   }
 
@@ -483,8 +540,13 @@ public abstract class Actor extends Service {
 
       double seconds = Duration.between(ts, benchmarkTs).toNanos() / 1_000_000_000d;
 
-      publishResult(eventBus, formatter, seconds, "Latency-RuleParticipation",
-              List.of("Latency-Rule-%s.%s".formatted(ch, id)));
+      publishResult(
+              eventBus,
+              seconds,
+              "Latency-RuleParticipation",
+              List.of("Latency-Rule-%s.%s".formatted(ch, id)),
+              benchmarkTs
+      );
     }
   }
 }

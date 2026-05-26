@@ -42,6 +42,12 @@ public class ReplayProtocol extends Protocol {
     }
 
     private void runReplay() {
+        try {
+            Thread.sleep(Duration.ofSeconds(10).toMillis());
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            LOGGER.warning("Exit wait interrupted; exiting immediately.");
+        }
         LOGGER.info("Starting replay for file: %s".formatted(filePath));
 
         try {
@@ -52,6 +58,24 @@ public class ReplayProtocol extends Protocol {
                 return;
             }
 
+            // register all addresses
+            // 1) Prime
+            Map<String, Set<String>> addrsByDevice = new HashMap<>();
+            for (ReplayEvent ev : events) {
+                String address = "%s.%s.%s.parsed".formatted(ev.className, ev.deviceID, ev.channelID);
+                addrsByDevice.computeIfAbsent(ev.deviceID, d -> new HashSet<>()).add(address);
+            }
+
+            for (var e : addrsByDevice.entrySet()) {
+                String device = e.getKey();
+                for (String addr : e.getValue()) {
+                    eventBus.publish("%s.addresses".formatted(device), addr);
+                }
+            }
+
+            // 2) Give dispatcher time to subscribe
+            Thread.sleep(100); // cheap and effective
+
             // Sort globally by timestamp
             events.sort(Comparator.comparing(e -> e.timestamp));
 
@@ -61,7 +85,6 @@ public class ReplayProtocol extends Protocol {
             LOGGER.info("Loaded %d events. Starting real-time replay.".formatted(events.size()));
 
             for (ReplayEvent ev : events) {
-
                 // Compute real-time delay
                 Duration offset = Duration.between(firstEventTs, ev.timestamp);
                 Instant targetTime = replayStartRealTime.plus(offset);
@@ -72,7 +95,14 @@ public class ReplayProtocol extends Protocol {
                 publishEvent(ev);
             }
 
-            LOGGER.info("Replay finished successfully.");
+            LOGGER.info("Replay finished successfully. Waiting 5s before exit to allow downstream processing...");
+            try {
+                Thread.sleep(Duration.ofSeconds(5).toMillis());
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                LOGGER.warning("Exit wait interrupted; exiting immediately.");
+            }
+            System.exit(0);
 
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "Replay failed", ex);

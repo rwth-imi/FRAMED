@@ -1,21 +1,19 @@
 
-package com.framed.cdss.actors;
+package com.framed.cdss.reactors;
 
-import com.framed.cdss.Actor;
+import com.framed.cdss.Reactor;
 import com.framed.core.EventBus;
 import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static com.framed.cdss.utils.CDSSUtils.*;
 
 
 /**
- * A specialized {@link Actor} that classifies numeric input values per channel
+ * A specialized {@link Reactor} that classifies numeric input values per channel
  * based on a configured, ascending-sorted list of upper bounds.
  *
  * <p><strong>Classification logic:</strong>
@@ -61,7 +59,7 @@ import static com.framed.cdss.utils.CDSSUtils.*;
  *
  * <p><strong>Input:</strong>
  * The actor listens to a set of input channels and expects incoming snapshots
- * in {@link #fireFunction(Map)} where each channel maps to a numeric value
+ * in {@link #reactionFunction(Map)} where each channel maps to a numeric value
  * (any {@link Number} subtype is accepted).
  *
  * <p><strong>Output:</strong>
@@ -94,7 +92,7 @@ import static com.framed.cdss.utils.CDSSUtils.*;
  * sized classification bins instead of fixed lower/upper bounds.
  */
 
-public class LimitClassificationActor extends Actor {
+public class LimitClassificationReactor extends Reactor {
 
   /**
    * list of sorted ascending numeric upper bounds.
@@ -109,7 +107,7 @@ public class LimitClassificationActor extends Actor {
    *
    * @param eventBus        the event bus used for input and output messaging
    * @param id              the identifier for this classifier
-   * @param firingRules     firing rules forwarded to {@link Actor}
+   * @param firingRules     firing rules forwarded to {@link Reactor}
    * @param inputChannel   JSON array of input channel names
    * @param outputChannels  JSON array of output channel names
    * @param limits      a JSON object describing upper-bound lists per channel
@@ -129,17 +127,19 @@ public class LimitClassificationActor extends Actor {
    *         if limit channels are not a subset of input channels
    */
 
-  public LimitClassificationActor(EventBus eventBus,
-                                  String id,
-                                  JSONArray firingRules,
-                                  String inputChannel,
-                                  JSONArray outputChannels,
-                                  JSONArray limits) {
+  public LimitClassificationReactor(EventBus eventBus,
+                                    String id,
+                                    JSONArray firingRules,
+                                    String inputChannel,
+                                    JSONArray outputChannels,
+                                    JSONArray limits,
+                                    boolean atomic) {
 
     super(eventBus, id,
             parseFiringRulesJson(firingRules),
             List.of(inputChannel),
-            parseChannelListJson(outputChannels));
+            parseChannelListJson(outputChannels),
+            atomic);
 
     this.limits = parseLimitsJson(limits);
   }
@@ -178,9 +178,7 @@ public class LimitClassificationActor extends Actor {
    *         if a snapshot value is not numeric
    */
   public Map<String, Integer> checkLimits(Map<String, Object> snapshot) {
-    if (snapshot == null || snapshot.isEmpty()) {
-      throw new IllegalStateException("No snapshot available yet.");
-    }
+
 
     Map<String, Integer> alarmStates = new HashMap<>();
 
@@ -228,11 +226,15 @@ public class LimitClassificationActor extends Actor {
    */
 
   @Override
-  public void fireFunction(Map<String, Object> latestSnapshot) {
+  public void reactionFunction(Map<String, Object> latestSnapshot) {
+    if (latestSnapshot == null || latestSnapshot.isEmpty()) {
+      //throw new IllegalStateException("No snapshot available yet.");
+      return;
+    }
     Map<String, Integer> states = checkLimits(latestSnapshot);
 
     for (String ch : inputChannels) {
-      publishResult(eventBus, formatter, states.get(ch), id, outputChannels);
+      publishResult(eventBus, states.get(ch), id, outputChannels, lastLogicalFireTs);
     }
   }
 }

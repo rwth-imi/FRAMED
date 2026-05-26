@@ -4,10 +4,13 @@ import com.framed.core.EventBus;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
+
+import static com.framed.core.utils.Timer.formatter;
 
 public class CDSSUtils {
 
@@ -80,16 +83,37 @@ public class CDSSUtils {
         return result;
     }
 
-    public static void publishResult(EventBus eventBus, DateTimeFormatter formatter, Object warnValue, String id, List<String> outputChannels) {
+    public static void publishResult(
+            EventBus eventBus,
+            Object value,
+            String id,
+            List<String> outputChannels,
+            Instant timestamp
+    ) {
         JSONObject result = new JSONObject();
-        result.put("timestamp", ZonedDateTime.now(ZoneOffset.UTC).format(formatter));
+
+        result.put(
+                "timestamp",
+                timestamp.atZone(ZoneOffset.UTC).format(formatter)
+        );
+
         result.put("className", id);
-        result.put("value", warnValue);
+        result.put("value", value);
+
         for (String out : outputChannels) {
             result.put("channelID", out);
             eventBus.publish("CDSS.addresses", out);
             eventBus.publish(out, result);
         }
+    }
+
+
+    public static Instant extractTimestamp(Object latest) {
+        if (!(latest instanceof JSONObject dp)) return null;
+        if (!dp.has("timestamp")) return null;
+        return LocalDateTime.parse(dp.getString("timestamp"), formatter)
+                .atZone(ZoneOffset.UTC)
+                .toInstant();
     }
 
 
