@@ -62,10 +62,10 @@ run_pass () {
 }
 
 # Pass 1: atomic=true
-run_pass true "output/evaluation_atomic/"
+#run_pass true "output/evaluation_atomic/"
 
 # Pass 2: atomic=false
-run_pass false "output/evaluation_non_atomic/"
+run_pass false "output/evaluation_non_atomic_parallel/"
 
 # Restore original config
 mv "$CONFIG.bak" "$CONFIG"
