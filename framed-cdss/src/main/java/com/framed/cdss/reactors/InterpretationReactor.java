@@ -1,0 +1,217 @@
+package com.framed.cdss.reactors;
+
+import com.framed.arn.Reactor;
+import com.framed.core.EventBus;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
+
+import static com.framed.arn.RuleUtils.publishResult;
+import static com.framed.cdss.utils.InterpreterUtils.getInterpreterInputChannelsList;
+import static com.framed.cdss.utils.InterpreterUtils.getInterpreterInputFiringRules;
+
+public class InterpretationReactor extends Reactor {
+    private final String rrMismatchChannel;
+    private final String dislocationChannel;
+    private final String spo2LimitChannel;
+    private final String spo2TrendChannel;
+    private final String etCO2LimitChannel;
+    private final String hdArythChannel;
+    private final String piLimitChannel;
+    private final String hrLimitChannel;
+    private final String sfLimitChannel;
+
+    private final ReentrantLock fireLock = new ReentrantLock();
+
+    public InterpretationReactor(EventBus eventBus,
+                                  String id,
+                                  String rrMismatchChannel,
+                                  String dislocationChannel,
+                                  String spo2LimitChannel,
+                                  String spo2TrendChannel,
+                                  String etCO2LimitChannel,
+                                  String hdArythChannel,
+                                  String piLimitChannel,
+                                  String hrLimitChannel,
+                                  String sfLimitChannel,
+                                  boolean atomic) {
+
+        super(eventBus,
+                id,
+                getInterpreterInputFiringRules(
+                        rrMismatchChannel,
+                        dislocationChannel,
+                        spo2LimitChannel,
+                        spo2TrendChannel,
+                        etCO2LimitChannel,
+                        hdArythChannel,
+                        piLimitChannel,
+                        hrLimitChannel,
+                        sfLimitChannel
+                ),
+                getInterpreterInputChannelsList(
+                        rrMismatchChannel,
+                        dislocationChannel,
+                        spo2LimitChannel,
+                        spo2TrendChannel,
+                        etCO2LimitChannel,
+                        hdArythChannel,
+                        piLimitChannel,
+                        hrLimitChannel,
+                        sfLimitChannel),
+                new ArrayList<>(),
+                atomic);
+
+        this.rrMismatchChannel = rrMismatchChannel;
+        this.dislocationChannel = dislocationChannel;
+        this.spo2LimitChannel = spo2LimitChannel;
+        this.spo2TrendChannel = spo2TrendChannel;
+        this.etCO2LimitChannel = etCO2LimitChannel;
+        this.hdArythChannel = hdArythChannel;
+        this.piLimitChannel = piLimitChannel;
+        this.hrLimitChannel = hrLimitChannel;
+        this.sfLimitChannel = sfLimitChannel;
+    }
+
+    @Override
+    public void reactionFunction(Map<String, Object> latestSnapshot) {
+        fireLock.lock();
+        if (interpretEtCO2Limit(latestSnapshot.get(etCO2LimitChannel))){
+            interpretRRMismatch(latestSnapshot.get(rrMismatchChannel));
+        }
+        if (interpretPiQuality(latestSnapshot.get(piLimitChannel))){
+            interpretDislocation(latestSnapshot.get(dislocationChannel));
+            interpretSpO2Limit(latestSnapshot.get(spo2LimitChannel));
+            interpretSpO2Trend(latestSnapshot.get(spo2TrendChannel));
+            interpretHRLimit(latestSnapshot.get(hrLimitChannel));
+            interpretHDAryth(latestSnapshot.get(hdArythChannel));
+            interpretSFLimit(latestSnapshot.get(sfLimitChannel));
+        }
+
+        fireLock.unlock();
+    }
+
+    private Boolean interpretEtCO2Limit(Object value) {
+        List<String> etCO2LimitWarningChannel = List.of("etCO2-Limit-Warning");
+        if (value instanceof Integer intValue){
+            switch (intValue) {
+                case 0 -> {
+                    publishResult(eventBus, "CHECK PATIENT: no end tidal CO2 measured!", id, etCO2LimitWarningChannel, lastLogicalFireTs);
+                    return false;
+                }
+                case 1 -> publishResult(eventBus, "CHECK PATIENT: end tidal CO2 severely low!", id, etCO2LimitWarningChannel, lastLogicalFireTs);
+                case 2 -> publishResult(eventBus, "CHECK PATIENT: end tidal CO2 moderately low!", id, etCO2LimitWarningChannel, lastLogicalFireTs);
+                case 3 -> publishResult(eventBus, "CHECK PATIENT: end tidal CO2 high!", id, etCO2LimitWarningChannel, lastLogicalFireTs);
+                default -> {
+                    //no warning
+                }
+
+            }
+        }
+        return true;
+    }
+
+
+    private void interpretSFLimit(Object value) {
+        List<String> sfLimitWarningChannel = List.of("SF-Limit-Warning");
+        if (value instanceof Integer intValue) {
+            switch (intValue) {
+                case 0 -> publishResult(eventBus, "CHECK PATIENT: S/F indicates severe ARDS condition!", id, sfLimitWarningChannel, lastLogicalFireTs);
+                case 1 -> publishResult(eventBus, "CHECK PATIENT: S/F indicates moderate ARDS condition!", id, sfLimitWarningChannel, lastLogicalFireTs);
+                case 2 -> publishResult(eventBus, "CHECK PATIENT: S/F indicates mild ARDS condition!", id, sfLimitWarningChannel, lastLogicalFireTs);
+                default -> {
+                    //no warning
+                }
+            }
+        }
+    }
+
+    private void interpretHRLimit(Object value) {
+        List<String> hrWarningChannel = List.of("HR-Limit-Warning");
+        if (value instanceof Integer intValue) {
+            switch (intValue){
+                case 1 -> publishResult(eventBus, "CHECK PATIENT: possible asystole!", id, hrWarningChannel, lastLogicalFireTs);
+                case 2 -> publishResult(eventBus, "CHECK PATIENT: Hear rate too high!", id, hrWarningChannel, lastLogicalFireTs);
+                default -> {
+                    //no warning
+                }            }
+        }
+    }
+
+    private void interpretHDAryth(Object value) {
+        List<String> hdArythWarningChannel = List.of("HD-Aryth-Warning");
+        if (value instanceof Integer intValue) {
+            switch (intValue){
+                case 1 ->publishResult(eventBus, "CHECK PATIENT: possible asystole!", id, hdArythWarningChannel, lastLogicalFireTs);
+                case 2 ->publishResult(eventBus, "CHECK PATIENT: possible ventricular fibrillation!", id, hdArythWarningChannel, lastLogicalFireTs);
+                default -> {
+                    //no warning
+                }            }
+
+        }
+    }
+
+    private void interpretSpO2Trend(Object value) {
+        if (value instanceof Integer intValue) {
+            List<String> spo2TrendWarningChannel = List.of("SpO2-Trend-Warning");
+            if (intValue == 1) {
+                publishResult(eventBus, "CHECK PATIENT: SpO2 decreasing!", id, spo2TrendWarningChannel, lastLogicalFireTs);
+            }
+        }
+    }
+
+    private void interpretSpO2Limit(Object value) {
+        if (value instanceof Integer intValue) {
+            List<String> spo2LimitWarningChannel = List.of("SpO2-Limit-Warning");
+            if (intValue == 0){
+                publishResult(eventBus, "CHECK PATIENT: SpO2 critically low!", id, spo2LimitWarningChannel, lastLogicalFireTs);
+            }
+
+        }
+    }
+
+    private Boolean interpretPiQuality(Object value) {
+        boolean quality = true;
+        if (value instanceof Integer intValue) {
+            List<String> piQualityChannel = List.of("PI-Quality-Warning");
+            switch (intValue) {
+                case 0 -> {
+                    publishResult(eventBus, "CHECK PULSEOXIMETER: PI too low!", id, piQualityChannel, lastLogicalFireTs);
+                    quality = false;
+                }
+                case 2 -> {
+                    publishResult(eventBus, "CHECK PULSEOXIMETER: PI too high!", id, piQualityChannel, lastLogicalFireTs);
+                    quality = false;
+                }
+                default -> {
+                    //no warning
+                }            }
+        }
+        return quality;
+    }
+    private void interpretDislocation(Object value) {
+        if (value instanceof Integer intValue){
+            List<String> dislocationWarningChannel = List.of("Dislocation-Warning");
+            switch (intValue) {
+                case 1 -> publishResult(eventBus, "CHECK INTUBATION: possibly esophagus intubated!", id, dislocationWarningChannel, lastLogicalFireTs);
+                case 2 -> publishResult(eventBus, "CHECK INTUBATION: possibly only one lung intubated!", id, dislocationWarningChannel, lastLogicalFireTs);
+                case 3 -> publishResult(eventBus, "CHECK SpO2: intubation correct but critical SpO2 / FiO2 ratio!", id, dislocationWarningChannel, lastLogicalFireTs);
+                case 0 -> {
+                    //no warning
+                }
+                default -> throw new IllegalStateException("Unexpected value: %s".formatted(value));
+            }
+        }
+    }
+
+    private void interpretRRMismatch(Object value) {
+        if (value instanceof Integer intValue){
+            List<String> rrMismatchWarningChannel = List.of("RRMismatchWarning");
+            if (intValue == 1) {
+                publishResult(eventBus, "Mismatch between RR Settings and Measurement!", id, rrMismatchWarningChannel, lastLogicalFireTs);
+            }
+        }
+    }
+}
