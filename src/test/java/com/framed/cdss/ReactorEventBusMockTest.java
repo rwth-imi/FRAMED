@@ -27,7 +27,7 @@ public class ReactorEventBusMockTest {
         private int fireCount = 0;
         TestReactor(InMemoryEventBus bus, String id, List<Map<String,String>> rules,
                     List<String> inputs, List<String> outputs) {
-            super(bus, id, rules, inputs, outputs);
+            super(bus, id, rules, inputs, outputs, true);
         }
         @Override public void reactionFunction(Map<String, Object> latestSnapshot) { fireCount++; }
         int getFireCount() { return fireCount; }

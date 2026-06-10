@@ -31,7 +31,7 @@ public class ReactorIntegrationTest {
         private final List<Map<String, Object>> snaps = new ArrayList<>();
         CaptureActor(InMemoryEventBus bus, String id, List<Map<String,String>> rules,
                      List<String> inputs, List<String> outputs) {
-            super(bus, id, rules, inputs, outputs);
+            super(bus, id, rules, inputs, outputs, true);
         }
         @Override public void reactionFunction(Map<String, Object> latestSnapshot) { snaps.add(latestSnapshot); }
         List<Map<String,Object>> snapshots() { return snaps; }
@@ -55,7 +55,7 @@ public class ReactorIntegrationTest {
     }
 
     @Test
-    void allDatapointsUsedInCorrectOrder_randomized() throws Exception {
+    void allDatapointsUsedInCorrectOrder_randomized() {
 
         // Make the test long enough to actually verify temporal behavior
         final int N = 1000;  // or 1000 if you want more stress
@@ -68,26 +68,17 @@ public class ReactorIntegrationTest {
         List<Step> steps = new ArrayList<>(N);
         Random rnd = new Random();
 
-        // --- Generate and publish approx. 100 per second ---
+        // Use a fixed past base so timestamps are second-precise, monotonically
+        // increasing, and never hit the LIFO logical-time gate.
+        ZonedDateTime base = ZonedDateTime.of(2024, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+
         for (int i = 0; i < N; i++) {
-
-            // Pick a random channel
             String ch = channels.get(rnd.nextInt(channels.size()));
-
-            // Random value (for test clarity we keep it bounded)
             int val = rnd.nextInt(1000);
+            ZonedDateTime ts = base.plusSeconds(i);
 
-            // Real timestamp
-            ZonedDateTime ts = ZonedDateTime.now(ZoneOffset.UTC);
-
-            Step s = new Step(ch, val, ts);
-            steps.add(s);
-
-            // Publish the datapoint
+            steps.add(new Step(ch, val, ts));
             bus.publish(ch, dp(val, ts));
-
-            // Sleep for roughly 100 per second (10ms)
-            Thread.sleep(10);
         }
 
         // --- Now verify snapshots ---
@@ -97,9 +88,9 @@ public class ReactorIntegrationTest {
         assertEquals(steps.size(), snaps.size(),
                 "Actor should fire once per incoming datapoint");
 
-        // For value‑tracking across channels
-        Map<String, Integer> lastSeenValue = new HashMap<>();
-        for (String ch : channels) lastSeenValue.put(ch, 0);
+        // For value-tracking across channels; null = channel has not yet received data
+        Map<String, Object> lastSeenValue = new HashMap<>();
+        for (String ch : channels) lastSeenValue.put(ch, null);
 
         for (int i = 0; i < steps.size(); i++) {
             Step s = steps.get(i);
@@ -109,17 +100,13 @@ public class ReactorIntegrationTest {
             assertEquals(s.val(), snap.get(s.ch()),
                     "Snapshot should reflect the new value for channel %s".formatted(s.ch()));
 
-            // Non-updated channels: must reflect whatever lastSeenValue recorded
+            // Non-updated channels must reflect whatever was last seen (null if never received data)
             for (String ch : channels) {
-                int expected = lastSeenValue.get(ch);
-                if (ch.equals(s.ch())) {
-                    expected = s.val(); // update happens here
-                }
+                Object expected = ch.equals(s.ch()) ? s.val() : lastSeenValue.get(ch);
                 assertEquals(expected, snap.get(ch),
                         "Snapshot should reflect correct value for channel %s at step %d".formatted(ch, i));
             }
 
-            // Update lastSeen for next iteration
             lastSeenValue.put(s.ch(), s.val());
         }
     }

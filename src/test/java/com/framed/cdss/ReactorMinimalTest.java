@@ -32,7 +32,7 @@ public class ReactorMinimalTest {
                     List<Map<String, String>> rules,
                     List<String> inputs,
                     List<String> outputs) {
-            super(bus, id, rules, inputs, outputs);
+            super(bus, id, rules, inputs, outputs, true);
         }
 
         @Override
@@ -81,9 +81,9 @@ public class ReactorMinimalTest {
         // Check snapshot 1 (after first publish on A)
         Map<String, Object> s0 = fired.get(0);
         assertEquals(10, s0.get(CH_A));
-        assertEquals(0, s0.get(CH_B)); // initial value for B is 0 per Actor
+        assertNull(s0.get(CH_B)); // B has no data yet — initial value is null
         assertNotNull(s0.get("%s-timestamp".formatted(CH_A)));
-        assertNotNull(s0.get("%s-timestamp".formatted(CH_B)));
+        assertNull(s0.get("%s-timestamp".formatted(CH_B))); // B has no timestamp yet
 
         // Check snapshot 2 (after publish on B)
         Map<String, Object> s1 = fired.get(1);

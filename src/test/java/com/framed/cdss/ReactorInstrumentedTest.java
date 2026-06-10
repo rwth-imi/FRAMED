@@ -30,7 +30,7 @@ public class ReactorInstrumentedTest {
                        List<Map<String, String>> rules,
                        List<String> inputs,
                        List<String> outputs) {
-        super(bus, id, rules, inputs, outputs);
+        super(bus, id, rules, inputs, outputs, true);
         }
         @Override
         public void reactionFunction(Map<String, Object> latestSnapshot) {

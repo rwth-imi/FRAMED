@@ -1,6 +1,8 @@
 package com.framed.utils;
 
 import com.framed.core.EventBus;
+import com.framed.core.utils.DispatchMode;
+import jdk.jshell.spi.ExecutionControl;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,10 +20,17 @@ public class InMemoryEventBus implements EventBus {
     public record Published(String channel, Object message) {}
 
     @Override
-    public void register(String channel, Consumer<Object> handler) {
-        subscribers.computeIfAbsent(channel, k -> Collections.synchronizedList(new ArrayList<>()))
+    public void register(String address, Consumer<Object> handler) {
+        subscribers.computeIfAbsent(address, k -> Collections.synchronizedList(new ArrayList<>()))
                 .add(handler);
     }
+
+    @Override
+    public void register(String address, Consumer<Object> handler, DispatchMode perHandlerMode) {
+        System.out.println("Not implemented");
+        register(address, handler);
+    }
+
 
     @Override
     public void send(String address, Object message) {

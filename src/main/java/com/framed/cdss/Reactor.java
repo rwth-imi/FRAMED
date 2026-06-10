@@ -137,6 +137,23 @@ public abstract class Reactor extends Service {
                     String id,
                     List<Map<String, String>> firingRules,
                     List<String> inputChannels,
+                    List<String> outputChannels) {
+    this(eventBus, id, firingRules, inputChannels, outputChannels, true);
+  }
+
+  /**
+   * Constructs a rule-based Actor.
+   *
+   * @param eventBus        the event bus providing input messages and publishing outputs
+   * @param id              reactor identifier
+   * @param firingRules     list of rules (channel → token)
+   * @param inputChannels   list of channels this reactor subscribes to
+   * @param outputChannels  list of channels this reactor may publish to
+   */
+  protected Reactor(EventBus eventBus,
+                    String id,
+                    List<Map<String, String>> firingRules,
+                    List<String> inputChannels,
                     List<String> outputChannels,
                     boolean atomic) {
 
