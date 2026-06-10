@@ -99,7 +99,6 @@
         <configuration>
           <release>21</release>
           <compilerArgs>
-            <arg>--enable-preview</arg>
             <arg>-parameters</arg>
           </compilerArgs>
         </configuration>
