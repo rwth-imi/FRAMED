@@ -29,6 +29,7 @@
     <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
     <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
     <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
+    <maven-jar-plugin.version>3.4.1</maven-jar-plugin.version>
 
     <junit-jupiter.version>5.9.1</junit-jupiter.version>
     <json.version>20250517</json.version>
@@ -112,6 +113,21 @@
           <!-- Keep the main jar modular (module-info) but run tests on the classpath to
                avoid JPMS test-readability friction; tests use white-box access to internals. -->
           <useModulePath>false</useModulePath>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>${maven-javadoc-plugin.version}</version>
+        <configuration>
+          <!-- Published API: document protected+public members, not private internals. -->
+          <show>protected</show>
+          <nohelp>true</nohelp>
+          <!-- Exclude module-info so the aggregate report treats every module as unnamed;
+               javadoc cannot aggregate a mix of named (framed-core) and unnamed modules. -->
+          <sourceFileExcludes>
+            <sourceFileExclude>**/module-info.java</sourceFileExclude>
+          </sourceFileExcludes>
         </configuration>
       </plugin>
     </plugins>
