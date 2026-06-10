@@ -1,22 +1,53 @@
 package com.framed.cdss;
 
-import com.framed.orchestrator.Main;
+import com.framed.core.Service;
+import com.framed.core.spi.DeploymentValidator;
 
 import java.util.*;
 import java.util.logging.Logger;
 
-public class ADRN {
-  private static final Logger logger = Logger.getLogger(Main.class.getName());
+/**
+ * Acyclic Deterministic Reactor Network validator. Registered as a {@link DeploymentValidator}
+ * so the orchestrator can run it after deployment without depending on this (domain) class.
+ */
+public class ADRN implements DeploymentValidator {
+  private static final Logger logger = Logger.getLogger(ADRN.class.getName());
 
-  private final List<Reactor> actors;
+  private List<Reactor> actors = new ArrayList<>();
   private final List<Reactor> leafs = new ArrayList<>();
   private final List<Reactor> sources =  new ArrayList<>();
   private final Map<Reactor, List<Reactor>> adj = new HashMap<>();
 
+  /** No-argument constructor used by {@link java.util.ServiceLoader}. */
+  public ADRN() {
+  }
 
   public ADRN(List<Reactor> actors) throws IllegalArgumentException {
+    check(actors);
+  }
 
+  /**
+   * Filters the deployed services down to {@link Reactor}s and validates that they form an
+   * acyclic network. No-op when no reactors are present.
+   */
+  @Override
+  public void validate(Collection<Service> services) {
+    List<Reactor> reactors = new ArrayList<>();
+    for (Service service : services) {
+      if (service instanceof Reactor reactor) {
+        reactors.add(reactor);
+      }
+    }
+    if (!reactors.isEmpty()) {
+      check(reactors);
+    }
+  }
+
+  private void check(List<Reactor> actors) throws IllegalArgumentException {
     this.actors = actors;
+    this.adj.clear();
+    this.leafs.clear();
+    this.sources.clear();
     for (Reactor actor : actors) {
       this.adj.putIfAbsent(actor, new ArrayList<>());
     }

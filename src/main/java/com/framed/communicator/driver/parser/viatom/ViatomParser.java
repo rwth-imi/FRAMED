@@ -33,7 +33,7 @@ public class ViatomParser extends Parser<Object> {
       parsedResult.put("channelID", key);
       parsedResult.put("value", value);
       parsedResult.put("className", className);
-      eventBus.publish("%s.addresses".formatted(deviceName), address);
+      announceAddress(deviceName, address);
       eventBus.publish(address, parsedResult);
     }
   }

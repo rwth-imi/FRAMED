@@ -1,18 +1,16 @@
 package com.framed.orchestrator;
 
-import com.framed.cdss.Reactor;
-import com.framed.cdss.ADRN;
 import com.framed.core.EventBus;
 import com.framed.core.Service;
+import com.framed.core.spi.DeploymentValidator;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.logging.Logger;
 
 
@@ -96,14 +94,16 @@ public class Manager {
     }
   }
 
-  public void validateDFCN() {
-    List<Reactor> actorList = new ArrayList<>();
-    for (Service service: this.instances.values()) {
-      if (service instanceof Reactor actor) {
-        actorList.add(actor);
-      }
+  /**
+   * Runs all {@link DeploymentValidator}s discovered on the classpath against the set of
+   * instantiated services. Domain modules contribute validators via {@link ServiceLoader}
+   * (e.g. the CDSS module's acyclic-reactor-network check), keeping the orchestrator free of
+   * any domain dependency.
+   */
+  public void validate() {
+    for (DeploymentValidator validator : ServiceLoader.load(DeploymentValidator.class)) {
+      validator.validate(this.instances.values());
     }
-    new ADRN(actorList);
   }
 
   /**

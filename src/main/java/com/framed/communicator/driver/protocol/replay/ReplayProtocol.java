@@ -69,7 +69,7 @@ public class ReplayProtocol extends Protocol {
             for (var e : addrsByDevice.entrySet()) {
                 String device = e.getKey();
                 for (String addr : e.getValue()) {
-                    eventBus.publish("%s.addresses".formatted(device), addr);
+                    announceAddress(device, addr);
                 }
             }
 
@@ -130,7 +130,7 @@ public class ReplayProtocol extends Protocol {
             parsedResult.put("className", ev.className);
 
             // Exactly like your real driver:
-            eventBus.publish("%s.addresses".formatted(deviceName), address);
+            announceAddress(deviceName, address);
             eventBus.publish(address, parsedResult);
 
         } catch (Exception e) {

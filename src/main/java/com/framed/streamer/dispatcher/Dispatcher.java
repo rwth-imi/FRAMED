@@ -80,7 +80,7 @@ public abstract class Dispatcher extends Service {
       final String deviceID = deviceObj.toString();
 
       // Register device's "addresses" channel
-      eventBus.register("%s.addresses".formatted(deviceID), msg -> {
+      eventBus.register(addressRegistry(deviceID), msg -> {
         if (!running) return;
 
         final String address = String.valueOf(msg);

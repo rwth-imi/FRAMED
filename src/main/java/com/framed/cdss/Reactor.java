@@ -79,6 +79,14 @@ import static com.framed.cdss.utils.CDSSUtils.publishResult;
  */
 public abstract class Reactor extends Service {
   private final boolean atomic;
+
+  /**
+   * Producer group under which this reactor announces its output channels (see
+   * {@link Service#announceAddress(String, String)}). Defaults to {@code "CDSS"} so that
+   * sinks listing the {@code "CDSS"} device discover all reactor outputs; can be made a
+   * constructor parameter to support multiple reactor groups.
+   */
+  protected final String addressGroup = "CDSS";
   /** Last logical timestamp at which this reactor fired */
   protected volatile Instant lastLogicalFireTs = Instant.EPOCH;
 
@@ -166,7 +174,7 @@ public abstract class Reactor extends Service {
 
     // initial setting of addresses
     for (String out : outputChannels) {
-      eventBus.publish("CDSS.addresses", out);
+      announceAddress(addressGroup, out);
     }
 
     compileRules();

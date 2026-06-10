@@ -1,6 +1,7 @@
 package com.framed.cdss.utils;
 
 import com.framed.core.EventBus;
+import com.framed.core.Service;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -102,7 +103,7 @@ public class CDSSUtils {
 
         for (String out : outputChannels) {
             result.put("channelID", out);
-            eventBus.publish("CDSS.addresses", out);
+            eventBus.publish(Service.addressRegistry("CDSS"), out);
             eventBus.publish(out, result);
         }
     }

@@ -7,7 +7,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
-import java.text.MessageFormat;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.logging.Level;
@@ -184,7 +183,7 @@ public class MedibusSlowParser extends Parser<byte[]> {
     result.put("timestamp", timestamp.format(formatter));
     result.put("className", className);
     String address = "%s.%s.%s.parsed".formatted(className, deviceName, channelID);
-    eventBus.publish(MessageFormat.format("{0}.addresses", deviceName), address);
+    announceAddress(deviceName, address);
     eventBus.publish(address, result);
   }
 }

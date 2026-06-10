@@ -21,7 +21,7 @@ public class MedibusParsedWriter extends Writer<JSONObject> {
     super(path, eventBus);
     for (Object device : devices) {
       String deviceName = (String) device;
-      eventBus.register(deviceName + ".addresses", msg -> {
+      eventBus.register(addressRegistry(deviceName), msg -> {
         if (!addresses.contains(msg.toString())) {
           addresses.add(msg.toString());
           eventBus.register(

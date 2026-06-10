@@ -16,6 +16,17 @@ import java.util.logging.Logger;
 public abstract class Service {
 
   /**
+   * Topic suffix for the producer&rarr;sink address-discovery protocol.
+   *
+   * <p>A producing service announces each of its output channel names on the topic
+   * {@code "<group>" + ADDRESS_REGISTRY_SUFFIX} (see {@link #announceAddress(String, String)}).
+   * Sinks such as dispatchers and writers subscribe to that same topic (using
+   * {@link #addressRegistry(String)}) to dynamically discover and bind the channels a
+   * producer emits. The {@code group} is typically a device name or a logical producer id.</p>
+   */
+  public static final String ADDRESS_REGISTRY_SUFFIX = ".addresses";
+
+  /**
    * The event bus used for communication between components.
    */
   protected EventBus eventBus;
@@ -36,6 +47,27 @@ public abstract class Service {
   protected Service(EventBus eventBus) {
     this.eventBus = eventBus;
     this.logger = Logger.getLogger(getClass().getName());
+  }
+
+  /**
+   * Returns the address-discovery topic for the given producer {@code group}.
+   *
+   * @param group device name or logical producer id
+   * @return the topic sinks subscribe to in order to discover {@code group}'s output channels
+   */
+  public static String addressRegistry(String group) {
+    return group + ADDRESS_REGISTRY_SUFFIX;
+  }
+
+  /**
+   * Announces that {@code address} is an output channel of the producer {@code group}, so that
+   * sinks subscribed to {@link #addressRegistry(String)} can discover and bind it.
+   *
+   * @param group   device name or logical producer id this service emits under
+   * @param address the output channel name being announced
+   */
+  protected void announceAddress(String group, String address) {
+    eventBus.publish(addressRegistry(group), address);
   }
 
   /**

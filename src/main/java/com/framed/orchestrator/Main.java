@@ -72,8 +72,8 @@ public class Main {
     //  manager.instantiate(key);
     //}
 
-    // validate the DFCN properties by successfully instantiating the DAG:
-    manager.validateDFCN();
+    // run all registered deployment validators (e.g. the CDSS acyclic-reactor-network check):
+    manager.validate();
 
 
       // Add shutdown hook to stop all services cleanly
