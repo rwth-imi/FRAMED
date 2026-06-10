@@ -38,13 +38,18 @@ jobs:
           java -version
           mvn -v
 
-      # Builds every module and runs all module tests (verify spans the full reactor).
+      # Builds every module, runs all tests, and installs the modules to the local repo
+      # (so the dependency-graph step below can resolve the sibling SNAPSHOT artifacts).
       - name: Build & test with Maven
-        run: mvn -B verify --file pom.xml
+        run: mvn -B install --file pom.xml
 
       # Submit the dependency graph only on pushes to the default branch.
       # v5 adds multi-module support; older versions crash on a parent (packaging=pom)
       # reactor with "Cannot read properties of undefined (reading 'forEach')".
+      # ignore-maven-wrapper: the repo's ./mvnw is broken (missing
+      # .mvn/wrapper/maven-wrapper.properties), so force the action to use system Maven.
       - name: Update dependency graph
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         uses: advanced-security/maven-dependency-submission-action@b275d12641ac2d2108b2cbb7598b154ad2f2cee8 # v5.0.0
+        with:
+          ignore-maven-wrapper: 'true'
