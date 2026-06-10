@@ -18,13 +18,6 @@ together over an **event bus**, either declaratively from a JSON config or progr
 The architecture is highly modular and runs on a single edge device or across a distributed
 setup; communication between services flows asynchronously over a `SocketEventBus`.
 
-**Two audiences:**
-
-- **Building an application on FRAMED?** This README is your guide — start at
-  [Mental model](#mental-model) below.
-- **Looking at the clinical decision-support case study?** It ships in this repository: see
-  the runnable configurations in [`config/`](config/) and the paper under [Cite As](#cite-as).
-
 ## Documentation
 
 - This guide (below) — using FRAMED as a framework.
