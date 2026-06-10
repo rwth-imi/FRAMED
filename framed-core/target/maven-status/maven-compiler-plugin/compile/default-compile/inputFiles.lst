@@ -20,7 +20,6 @@
 /home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-core/src/main/java/com/framed/core/remote/Peer.java
 /home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-core/src/main/java/com/framed/orchestrator/Manager.java
 /home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-core/src/main/java/com/framed/core/EventBus.java
-/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-core/src/main/java/module-info.java
 /home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-core/src/main/java/com/framed/core/utils/Timer.java
 /home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-core/src/main/java/com/framed/io/dispatch/NamedThreadFactory.java
 /home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-core/src/main/java/com/framed/io/dispatch/DataPoint.java

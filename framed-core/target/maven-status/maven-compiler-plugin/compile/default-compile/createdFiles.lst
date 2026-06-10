@@ -9,7 +9,6 @@ com/framed/core/spi/DeploymentValidator.class
 com/framed/core/remote/TCPTransport.class
 com/framed/orchestrator/ConfigLoader.class
 com/framed/io/dispatch/DataPointParser.class
-module-info.class
 com/framed/core/EventBus.class
 com/framed/io/dispatch/DataPoint.class
 com/framed/orchestrator/Factory.class
