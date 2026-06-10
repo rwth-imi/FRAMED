@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPLAY_ROOT="/path/to/your/replays"
+REPLAY_ROOT="/home/nils/Documents/Entwicklung/safety-box/replay"
 CONFIG="config/services.json"
+
+# Build the executable fat-jar once (code is constant across the loop; only config changes).
+echo "Building framed-app fat-jar..."
+mvn -q -DskipTests clean package
+JAR="$(ls framed-app/target/framed-app-*-fat.jar | head -n1)"
+if [[ ! -f "$JAR" ]]; then
+  echo "ERROR: fat-jar not found under framed-app/target/" >&2
+  exit 1
+fi
+echo "Using jar: $JAR"
 
 # Backup original config
 cp "$CONFIG" "$CONFIG.bak"
@@ -55,7 +65,8 @@ run_pass () {
       ' \
       "$CONFIG.bak" > "$CONFIG"
 
-    mvn -q exec:java
+    # Run from the repo root so Main resolves config/ and output/ relative paths.
+    java -jar "$JAR"
 
     echo "Finished replay for: $file"
   done

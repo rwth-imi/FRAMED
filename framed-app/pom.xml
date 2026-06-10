@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.framed</groupId>
+    <artifactId>framed-parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>framed-app</artifactId>
+
+  <name>FRAMED App</name>
+  <description>Runnable assembly: aggregates all FRAMED modules into an executable fat-jar
+    and provides the launch configuration (the CDSS / medical-device case study).</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.framed</groupId>
+      <artifactId>framed-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.framed</groupId>
+      <artifactId>framed-communicator</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.framed</groupId>
+      <artifactId>framed-streamer</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.framed</groupId>
+      <artifactId>framed-cdss</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>${maven-shade-plugin.version}</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <!-- The fat-jar is a classpath artifact, not a module: drop module descriptors. -->
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>module-info.class</exclude>
+                    <exclude>META-INF/versions/*/module-info.class</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+              <transformers>
+                <transformer
+                  implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <manifestEntries>
+                    <Main-Class>${launcher.class}</Main-Class>
+                  </manifestEntries>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+              </transformers>
+              <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-fat.jar
+              </outputFile>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>${exec-maven-plugin.version}</version>
+        <configuration>
+          <mainClass>${launcher.class}</mainClass>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

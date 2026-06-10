@@ -5,122 +5,116 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.framed</groupId>
-  <artifactId>service</artifactId>
+  <artifactId>framed-parent</artifactId>
   <version>1.0.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <name>FRAMED (parent)</name>
+  <description>Service-oriented framework for acquiring and integrating data from multiple sources.</description>
+
+  <modules>
+    <module>framed-core</module>
+    <module>framed-communicator</module>
+    <module>framed-streamer</module>
+    <module>framed-cdss</module>
+    <module>framed-app</module>
+  </modules>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>21</maven.compiler.release>
 
-    <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
+    <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
     <maven-shade-plugin.version>3.2.4</maven-shade-plugin.version>
-    <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
+    <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
     <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
+    <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
 
     <junit-jupiter.version>5.9.1</junit-jupiter.version>
+    <json.version>20250517</json.version>
+    <influxdb.version>7.4.0</influxdb.version>
+    <jserialcomm.version>2.10.4</jserialcomm.version>
 
     <launcher.class>com.framed.orchestrator.Main</launcher.class>
   </properties>
 
-  <dependencies>
-    <dependency>
-      <groupId>org.json</groupId>
-      <artifactId>json</artifactId>
-      <version>20250517</version>
-    </dependency>
-    <!-- Source: https://mvnrepository.com/artifact/com.influxdb/influxdb-client-java -->
-    <dependency>
-      <groupId>com.influxdb</groupId>
-      <artifactId>influxdb-client-java</artifactId>
-      <version>7.4.0</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-api</artifactId>
-      <version>${junit-jupiter.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
-      <version>${junit-jupiter.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.fazecast</groupId>
-      <artifactId>jSerialComm</artifactId>
-      <version>2.10.4</version>
-    </dependency>
-  </dependencies>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.framed</groupId>
+        <artifactId>framed-core</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.framed</groupId>
+        <artifactId>framed-communicator</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.framed</groupId>
+        <artifactId>framed-streamer</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.framed</groupId>
+        <artifactId>framed-cdss</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.json</groupId>
+        <artifactId>json</artifactId>
+        <version>${json.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.influxdb</groupId>
+        <artifactId>influxdb-client-java</artifactId>
+        <version>${influxdb.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fazecast</groupId>
+        <artifactId>jSerialComm</artifactId>
+        <version>${jserialcomm.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-api</artifactId>
+        <version>${junit-jupiter.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter-engine</artifactId>
+        <version>${junit-jupiter.version}</version>
+        <scope>test</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <build>
     <plugins>
       <plugin>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>${maven-shade-plugin.version}</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-            <configuration>
-              <transformers>
-                <transformer
-                  implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <manifestEntries>
-                    <Main-Class>${launcher.class}</Main-Class>
-                  </manifestEntries>
-                </transformer>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-              </transformers>
-              <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-fat.jar
-              </outputFile>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>${maven-surefire-plugin.version}</version>
-      </plugin>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>${exec-maven-plugin.version}</version>
-        <configuration>
-          <mainClass>${launcher.class}</mainClass>
-        </configuration>
-      </plugin>
-      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.11.0</version>
+        <version>${maven-compiler-plugin.version}</version>
         <configuration>
-          <release>21</release>
+          <release>${maven.compiler.release}</release>
           <compilerArgs>
-            <arg>--enable-preview</arg>
             <arg>-parameters</arg>
           </compilerArgs>
         </configuration>
       </plugin>
-    </plugins>
-  </build>
-
-  <reporting>
-    <plugins>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-javadoc-plugin</artifactId>
-        <version>3.12.0</version>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${maven-surefire-plugin.version}</version>
         <configuration>
-          <show>private</show>
-          <nohelp>true</nohelp>
-          <stylesheetfile>./betterjdocs.css</stylesheetfile>
+          <!-- Keep the main jar modular (module-info) but run tests on the classpath to
+               avoid JPMS test-readability friction; tests use white-box access to internals. -->
+          <useModulePath>false</useModulePath>
         </configuration>
       </plugin>
     </plugins>
-  </reporting>
-
+  </build>
 
 </project>

@@ -1,0 +1,14 @@
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-cdss/src/main/java/com/framed/cdss/reactors/TrendClassificationReactor.java
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-cdss/src/main/java/com/framed/cdss/reactors/RespiratoryRateEstimationReactor.java
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-cdss/src/main/java/com/framed/cdss/utils/TrendDirection.java
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-cdss/src/main/java/com/framed/cdss/reactors/LimitClassificationReactor.java
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-cdss/src/main/java/com/framed/cdss/reactors/RRMismatchClassificationReactor.java
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-cdss/src/main/java/com/framed/cdss/utils/InterpreterUtils.java
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-cdss/src/main/java/com/framed/cdss/reactors/SFComputationReactor.java
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-cdss/src/main/java/com/framed/cdss/utils/SlopeUtils.java
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-cdss/src/main/java/com/framed/cdss/Bounds.java
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-cdss/src/main/java/com/framed/cdss/reactors/DislocationClassificationReactor.java
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-cdss/src/main/java/com/framed/cdss/reactors/HemodynamicRhythmClassificationReactor.java
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-cdss/src/main/java/com/framed/cdss/utils/CDSSUtils.java
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-cdss/src/main/java/com/framed/cdss/reactors/InterpretationReactor.java
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-cdss/src/main/java/com/framed/cdss/utils/TrendMode.java

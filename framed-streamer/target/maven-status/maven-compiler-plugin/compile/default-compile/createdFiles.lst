@@ -1,0 +1,3 @@
+com/framed/streamer/dispatcher/InfluxDispatcher.class
+com/framed/streamer/dispatcher/FfillDispatcher.class
+com/framed/streamer/dispatcher/JsonlDispatcher.class
