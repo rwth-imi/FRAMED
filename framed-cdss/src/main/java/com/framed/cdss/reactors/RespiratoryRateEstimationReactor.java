@@ -111,7 +111,7 @@ import static com.framed.cdss.utils.SlopeUtils.computeSlope;
  *
  * <h2>Thread Safety</h2>
  * <p>
- * This reactor is designed to run within the actor framework's single‑threaded
+ * This reactor is designed to run within the reactor framework's single‑threaded
  * dispatch model. Internal data structures (sliding windows, peak buffers) are
  * not thread‑safe for concurrent external access.
  * </p>
@@ -161,13 +161,13 @@ public class RespiratoryRateEstimationReactor extends Reactor {
     private final Deque<Double> hampelBuf = new ArrayDeque<>();
 
     /**
-     * Creates a respiratory rate estimator actor that detects breaths from an EtCO₂ waveform
+     * Creates a respiratory rate estimator reactor that detects breaths from an EtCO₂ waveform
      * using a robust slope-based algorithm with optional smoothing and outlier suppression.
      *
      * @param eventBus             Event bus for subscribing and publishing messages.
-     * @param id                   Unique actor identifier.
+     * @param id                   Unique reactor identifier.
      * @param etco2Channel         Input channel name carrying ETCO2_WAVE samples.
-     * @param outputChannels      List of channels this actor is permitted to publish to.
+     * @param outputChannels      List of channels this reactor is permitted to publish to.
      * @param windowSize           Sliding window size (in samples) for slope regression; must be {@code >= 3}.
      * @param riseSlopeMin         Positive slope threshold (mmHg/s) to "arm" detection on the expiratory upstroke.
      * @param fallSlopeMin         Magnitude of negative slope threshold (mmHg/s) required to confirm a breath (falling limb).
@@ -253,7 +253,7 @@ public class RespiratoryRateEstimationReactor extends Reactor {
 
         // Timestamp from snapshot if present; fallback to now
         Instant ts = (Instant) snapshot.getOrDefault("%s-timestamp".formatted(etco2Channel), Instant.now());
-        // If your base Actor provides access to original message JSON including timestamp,
+        // If your base Reactor provides access to original message JSON including timestamp,
         // adapt here to read it; otherwise Instant.now() is acceptable if upstream time is monotonic.
 
         double v = etco2;

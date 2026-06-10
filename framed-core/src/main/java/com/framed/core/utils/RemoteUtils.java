@@ -9,11 +9,22 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
+/**
+ * Utility methods for parsing and dispatching JSON-encoded remote messages to registered
+ * handlers. Used by transport-backed event bus implementations to decode incoming wire
+ * messages and route their payloads to the appropriate consumers.
+ */
 public class RemoteUtils {
   private RemoteUtils() {
     throw new IllegalStateException("Utility class");
   }
 
+  /**
+   * Parses a JSON-encoded remote message into a {@link RemoteMessage}.
+   *
+   * @param jsonStr the JSON string containing {@code address}, {@code payload} and {@code type}
+   * @return the decoded remote message
+   */
   public static RemoteMessage parseMessage(String jsonStr) {
     JSONObject json = new JSONObject(jsonStr);
     String address = json.getString("address");
@@ -26,7 +37,8 @@ public class RemoteUtils {
    * Parses a JSON message and submits it to registered handlers, creating a thread per handler.
    *
    * @param jsonStr    the JSON string representing the message to parse and dispatch
-   * @param workerPool the workerPool of the Transport
+   * @param handlers   map of address to the handlers registered for that address
+   * @param workerPool the worker pool of the transport used to run each handler invocation
    */
   public static void parseAndDispatchAsync(String jsonStr, Map<String, List<Consumer<Object>>> handlers, ExecutorService workerPool) {
     RemoteMessage result = RemoteUtils.parseMessage(jsonStr);
@@ -46,7 +58,13 @@ public class RemoteUtils {
   /**
    * Parses a JSON message and submits it to registered handlers.
    *
-   * @param jsonStr the JSON string representing the message to parse and dispatch
+   * <p>Each handler is dispatched on its own dedicated single-thread executor (created on
+   * demand and cached in {@code handlerExecutors}), preserving per-handler FIFO ordering.</p>
+   *
+   * @param jsonStr          the JSON string representing the message to parse and dispatch
+   * @param handlers         map of address to the handlers registered for that address
+   * @param handlerExecutors map of handler to its dedicated single-thread executor, populated
+   *                         on demand for handlers that do not yet have one
    */
   public static void parseAndDispatch(String jsonStr,
                                       Map<String, List<Consumer<Object>>> handlers,

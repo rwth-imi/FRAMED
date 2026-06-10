@@ -8,18 +8,20 @@ import java.time.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
 
 import static com.framed.arn.RuleUtils.extractTimestamp;
 import static com.framed.arn.RuleUtils.publishResult;
 
 /**
- * A reactive multi-input Actor that evaluates a set of firing rules on incoming
- * messages, constructs exactly one consistent snapshot per evaluation cycle,
- * and triggers a user-defined {@link #reactionFunction(Map)} once whenever at least
- * one rule is satisfied.
+ * A reactive multi-input {@link Service} that evaluates a set of firing rules on incoming
+ * messages, constructs exactly one consistent snapshot per evaluation cycle, and triggers a
+ * user-defined {@link #reactionFunction(Map)} once whenever at least one rule is satisfied.
  *
- * <h1>Core Semantics</h1>
+ * <p>Concrete reactors extend this class, supply their firing rules and input/output channels
+ * via the constructor, and implement {@link #reactionFunction(Map)} to compute and publish
+ * derived results (typically via {@link RuleUtils#publishResult}).</p>
+ *
+ * <h2>Core semantics</h2>
  * <ul>
  *   <li>Each input channel maintains:
  *     <ul>
@@ -45,12 +47,12 @@ import static com.framed.arn.RuleUtils.publishResult;
  *       <li>every satisfied rule updates its per-channel pointers;</li>
  *       <li>a single snapshot is created;</li>
  *       <li>{@link #reactionFunction(Map)} is called once;</li>
- *       <li>latency is published according to all three modes (A, B, C).</li>
+ *       <li>latency is published according to all three modes (A, B, C2).</li>
  *     </ul>
  *   </li>
  * </ul>
  *
- * <h1>Snapshot Semantics</h1>
+ * <h2>Snapshot semantics</h2>
  * The snapshot contains:
  * <ul>
  *     <li><b>channel → value</b> extracted from the JSON field "value"</li>
@@ -59,8 +61,8 @@ import static com.framed.arn.RuleUtils.publishResult;
  *
  * This snapshot is immutable and provided to {@link #reactionFunction(Map)}.
  *
- * <h1>Latency Publishing Modes</h1>
- * After a firing, the Actor publishes:
+ * <h2>Latency publishing modes</h2>
+ * After a firing, the reactor publishes:
  * <ol>
  *   <li><b>(A) Per-channel latency</b>: For every input channel.</li>
  *   <li><b>(B) One global latency</b>: Based on the earliest channel timestamp.</li>
@@ -70,7 +72,7 @@ import static com.framed.arn.RuleUtils.publishResult;
  *
  * The latency messages are deduplicated per timestamp to avoid double publications.
  *
- * <h1>Thread Safety</h1>
+ * <h2>Thread safety</h2>
  * All rule evaluation and delta accounting is done under a single lock, while
  * {@link #reactionFunction(Map)} is executed outside the lock.
  */
@@ -84,9 +86,15 @@ public abstract class Reactor extends Service {
    * constructor parameter to support multiple reactor groups.
    */
   protected final String addressGroup = "CDSS";
-  /** Last logical timestamp at which this reactor fired */
+  /** Last logical timestamp at which this reactor fired. */
   protected volatile Instant lastLogicalFireTs = Instant.EPOCH;
 
+  /**
+   * An immutable evaluation snapshot handed to {@link #reactionFunction(Map)}.
+   *
+   * @param values   channel → latest value, plus {@code "<channel>-timestamp"} → {@link Instant}
+   * @param logicalTs the latest (maximum) channel timestamp in this snapshot
+   */
   public record Snapshot(Map<String, Object> values, Instant logicalTs) {
   }
 
@@ -147,13 +155,16 @@ public abstract class Reactor extends Service {
   }
 
   /**
-   * Constructs a rule-based Actor.
+   * Constructs a rule-based reactor.
    *
    * @param eventBus        the event bus providing input messages and publishing outputs
    * @param id              reactor identifier
    * @param firingRules     list of rules (channel → token)
    * @param inputChannels   list of channels this reactor subscribes to
    * @param outputChannels  list of channels this reactor may publish to
+   * @param atomic          if {@code true}, {@link #reactionFunction(Map)} and latency
+   *                        publishing run inside the evaluation lock (serialized); if
+   *                        {@code false}, they run after the lock is released
    */
   protected Reactor(EventBus eventBus,
                     String id,
@@ -191,10 +202,18 @@ public abstract class Reactor extends Service {
    */
   public abstract void reactionFunction(Map<String, Object> latestSnapshot);
 
-  /** @return list of input channels this reactor listens to */
+  /**
+   * Returns the input channels this reactor listens to.
+   *
+   * @return the immutable list of input channel names
+   */
   public List<String> getInputChannels() { return inputChannels; }
 
-  /** @return list of output channels this reactor may publish to */
+  /**
+   * Returns the output channels this reactor may publish to.
+   *
+   * @return the immutable list of output channel names
+   */
   public List<String> getOutputChannels() { return outputChannels; }
 
   /**
@@ -428,7 +447,14 @@ public abstract class Reactor extends Service {
     };
   }
 
-  /** Default equality check for "r:v". */
+  /**
+   * Default equality check for the {@code "r:v"} (REQUIRE_VALUE) token: compares the latest
+   * value's string form against the expected value. Override to customize matching.
+   *
+   * @param actual   the latest value received on the channel
+   * @param expected the expected value string from the rule token
+   * @return {@code true} if the value matches
+   */
   protected boolean valueMatchesExpected(Object actual, String expected) {
     return Objects.equals(Objects.toString(actual, null), expected);
   }
@@ -467,7 +493,7 @@ public abstract class Reactor extends Service {
 
       // Guard: datapoint claims to be in the future (clock skew or bad source)
       if (ts.isAfter(benchmarkTs)) {
-        logger.log(Level.WARNING, "Timestamp from future: {0} > {1}".formatted(ts, benchmarkTs));
+        logger.warning("Timestamp from future: %s > %s".formatted(ts, benchmarkTs));
         continue;
       }
 
@@ -509,22 +535,25 @@ public abstract class Reactor extends Service {
       }
     }
 
-    if (earliest.isAfter(benchmarkTs)){
-      logger.log(Level.WARNING, "Timestamp from future: {0} > {1}".formatted(earliest, benchmarkTs));
+    // No channel in the snapshot carried a timestamp → nothing to publish.
+    if (earliest == null) {
       return;
     }
 
-    if (earliest != null) {
-      double seconds = Duration.between(earliest, benchmarkTs).toNanos() / 1_000_000_000d;
-
-      publishResult(
-              eventBus,
-              seconds,
-              "Latency-Global",
-              List.of("Latency-Global.%s".formatted(id)),
-              benchmarkTs
-      );
+    if (earliest.isAfter(benchmarkTs)) {
+      logger.warning("Timestamp from future: %s > %s".formatted(earliest, benchmarkTs));
+      return;
     }
+
+    double seconds = Duration.between(earliest, benchmarkTs).toNanos() / 1_000_000_000d;
+
+    publishResult(
+            eventBus,
+            seconds,
+            "Latency-Global",
+            List.of("Latency-Global.%s".formatted(id)),
+            benchmarkTs
+    );
   }
 
   /**
@@ -555,7 +584,7 @@ public abstract class Reactor extends Service {
       String timeKey = "%s-timestamp".formatted(ch);
       Instant ts = (Instant) snapshot.get(timeKey);
       if (ts.isAfter(benchmarkTs)){
-        logger.log(Level.WARNING, "Timestamp from future: {0} > {1}".formatted(ts, benchmarkTs));
+        logger.warning("Timestamp from future: %s > %s".formatted(ts, benchmarkTs));
         continue;
       }
 

@@ -35,6 +35,11 @@ public abstract class Service {
    * Logger instance for this service, initialized with the class name.
    */
   protected final Logger logger;
+
+  /**
+   * Shared timestamp formatter (see {@link Timer#formatter}) available to all services for
+   * consistent serialization and parsing of timestamps.
+   */
   protected static final DateTimeFormatter formatter = Timer.formatter;
 
 

@@ -59,6 +59,16 @@ public abstract class Dispatcher extends Service {
 
   private volatile boolean running = true;
 
+  /**
+   * Creates a dispatcher bound to the given event bus and set of devices.
+   *
+   * <p>Starts a dedicated single-thread push worker and, for each device, subscribes to that
+   * device's address-discovery topic so that channels announced by the device are dynamically
+   * registered and forwarded to {@link #push(DataPoint)}.</p>
+   *
+   * @param eventBus the event bus used to receive announced addresses and incoming messages
+   * @param devices  the device identifiers whose announced channels this dispatcher binds to
+   */
   protected Dispatcher(EventBus eventBus, JSONArray devices) {
     super(eventBus);
 
@@ -173,6 +183,11 @@ public abstract class Dispatcher extends Service {
   /**
    * Called when handler fails before enqueueing (e.g., parse error).
    * Override to write dead-letter files, metrics, etc.
+   *
+   * @param deviceID the identifier of the device whose message failed to be handled
+   * @param address  the channel address the failing message arrived on
+   * @param rawMsg   the raw, unparsed message payload
+   * @param e        the exception raised while handling the message
    */
   protected void onHandlerError(String deviceID, String address, Object rawMsg, Exception e) {
     System.err.println("Dispatcher handler failed device=" + deviceID + " address=" + address + ": " + e.getMessage());
@@ -182,6 +197,9 @@ public abstract class Dispatcher extends Service {
   /**
    * Called when datapoint cannot be queued or pushed.
    * Override for dead-letter storage / metrics.
+   *
+   * @param dp    the datapoint that could not be queued or pushed
+   * @param cause the reason the datapoint was dropped
    */
   protected void onDrop(DataPoint<?> dp, Throwable cause) {
     System.err.println("Dispatcher dropped datapoint: " + cause);
@@ -190,6 +208,9 @@ public abstract class Dispatcher extends Service {
   /**
    * Optional: call this when stopping your service to stop worker thread.
    * (Drop-in: doesn't require changes elsewhere, but recommended to call.)
+   *
+   * @param drainTimeout maximum time to wait for queued pushes to drain before forcing
+   *                     shutdown; if {@code null}, termination is not awaited
    */
   public void shutdown(Duration drainTimeout) {
     running = false;
@@ -210,8 +231,22 @@ public abstract class Dispatcher extends Service {
     shutdown(null);
   }
 
+  /**
+   * Pushes a single datapoint to the underlying sink.
+   *
+   * <p>Invoked on the dispatcher's worker thread. Implementations may throw {@link IOException}
+   * to signal a transient failure, which triggers retry with exponential backoff.</p>
+   *
+   * @param dataPoint the datapoint to push
+   * @throws IOException if the push fails due to a transient IO error and should be retried
+   */
   public abstract void push(DataPoint<?> dataPoint) throws IOException;
 
+  /**
+   * Pushes a batch of datapoints to the underlying sink.
+   *
+   * @param batch the datapoints to push
+   */
   public abstract void pushBatch(java.util.List<DataPoint<?>> batch);
 
 

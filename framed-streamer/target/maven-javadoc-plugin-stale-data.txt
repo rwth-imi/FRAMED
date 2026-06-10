@@ -1,0 +1,74 @@
+-J-Duser.language=
+-J-Duser.country=
+@options
+@packages
+-classpath
+'/home/nils/.m2/repository/com/framed/framed-core/1.0.0-SNAPSHOT/framed-core-1.0.0-SNAPSHOT.jar:/home/nils/.m2/repository/org/json/json/20250517/json-20250517.jar:/home/nils/.m2/repository/com/influxdb/influxdb-client-java/7.4.0/influxdb-client-java-7.4.0.jar:/home/nils/.m2/repository/com/influxdb/influxdb-client-core/7.4.0/influxdb-client-core-7.4.0.jar:/home/nils/.m2/repository/com/influxdb/influxdb-client-utils/7.4.0/influxdb-client-utils-7.4.0.jar:/home/nils/.m2/repository/com/squareup/okio/okio/3.16.0/okio-3.16.0.jar:/home/nils/.m2/repository/com/squareup/okio/okio-jvm/3.16.0/okio-jvm-3.16.0.jar:/home/nils/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib/2.2.0/kotlin-stdlib-2.2.0.jar:/home/nils/.m2/repository/org/jetbrains/annotations/13.0/annotations-13.0.jar:/home/nils/.m2/repository/com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.jar:/home/nils/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.21/kotlin-stdlib-jdk8-1.8.21.jar:/home/nils/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.21/kotlin-stdlib-jdk7-1.8.21.jar:/home/nils/.m2/repository/com/squareup/retrofit2/retrofit/2.11.0/retrofit-2.11.0.jar:/home/nils/.m2/repository/com/squareup/okhttp3/logging-interceptor/4.12.0/logging-interceptor-4.12.0.jar:/home/nils/.m2/repository/org/apache/commons/commons-csv/1.14.1/commons-csv-1.14.1.jar:/home/nils/.m2/repository/commons-io/commons-io/2.20.0/commons-io-2.20.0.jar:/home/nils/.m2/repository/commons-codec/commons-codec/1.19.0/commons-codec-1.19.0.jar:/home/nils/.m2/repository/com/google/code/gson/gson/2.12.1/gson-2.12.1.jar:/home/nils/.m2/repository/com/google/errorprone/error_prone_annotations/2.36.0/error_prone_annotations-2.36.0.jar:/home/nils/.m2/repository/io/reactivex/rxjava3/rxjava/3.1.10/rxjava-3.1.10.jar:/home/nils/.m2/repository/org/reactivestreams/reactive-streams/1.0.4/reactive-streams-1.0.4.jar:/home/nils/.m2/repository/com/squareup/retrofit2/adapter-rxjava3/2.11.0/adapter-rxjava3-2.11.0.jar:/home/nils/.m2/repository/com/squareup/retrofit2/converter-scalars/2.11.0/converter-scalars-2.11.0.jar:/home/nils/.m2/repository/com/squareup/retrofit2/converter-gson/2.11.0/converter-gson-2.11.0.jar:/home/nils/.m2/repository/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2.jar'
+-encoding
+'UTF-8'
+-protected
+--release
+21
+-sourcepath
+'/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/src/main/java'
+-author
+-bottom
+'Copyright &#169; 2026. All rights reserved.'
+-charset
+'UTF-8'
+-d
+'/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs'
+-docencoding
+'UTF-8'
+-doctitle
+'FRAMED Streamer 1.0.0-SNAPSHOT API'
+-use
+-version
+-windowtitle
+'FRAMED Streamer 1.0.0-SNAPSHOT API'
+com.framed.streamer.dispatcher
+/home/nils/.m2/repository/com/framed/framed-core/1.0.0-SNAPSHOT/framed-core-1.0.0-SNAPSHOT.jar = 1781094885092
+/home/nils/.m2/repository/org/json/json/20250517/json-20250517.jar = 1747486280000
+/home/nils/.m2/repository/com/influxdb/influxdb-client-java/7.4.0/influxdb-client-java-7.4.0.jar = 1763475341000
+/home/nils/.m2/repository/com/influxdb/influxdb-client-core/7.4.0/influxdb-client-core-7.4.0.jar = 1763475341000
+/home/nils/.m2/repository/com/influxdb/influxdb-client-utils/7.4.0/influxdb-client-utils-7.4.0.jar = 1763475342000
+/home/nils/.m2/repository/com/squareup/okio/okio/3.16.0/okio-3.16.0.jar = 1753825683000
+/home/nils/.m2/repository/com/squareup/okio/okio-jvm/3.16.0/okio-jvm-3.16.0.jar = 1753825680000
+/home/nils/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib/2.2.0/kotlin-stdlib-2.2.0.jar = 1750659440000
+/home/nils/.m2/repository/org/jetbrains/annotations/13.0/annotations-13.0.jar = 1387282242000
+/home/nils/.m2/repository/com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.jar = 1697509437000
+/home/nils/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.21/kotlin-stdlib-jdk8-1.8.21.jar = 1682396738000
+/home/nils/.m2/repository/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.21/kotlin-stdlib-jdk7-1.8.21.jar = 1682396736000
+/home/nils/.m2/repository/com/squareup/retrofit2/retrofit/2.11.0/retrofit-2.11.0.jar = 1711655923000
+/home/nils/.m2/repository/com/squareup/okhttp3/logging-interceptor/4.12.0/logging-interceptor-4.12.0.jar = 1697509451000
+/home/nils/.m2/repository/org/apache/commons/commons-csv/1.14.1/commons-csv-1.14.1.jar = 1753621800000
+/home/nils/.m2/repository/commons-io/commons-io/2.20.0/commons-io-2.20.0.jar = 1752528590000
+/home/nils/.m2/repository/commons-codec/commons-codec/1.19.0/commons-codec-1.19.0.jar = 1752945592000
+/home/nils/.m2/repository/com/google/code/gson/gson/2.12.1/gson-2.12.1.jar = 1738277615000
+/home/nils/.m2/repository/com/google/errorprone/error_prone_annotations/2.36.0/error_prone_annotations-2.36.0.jar = 1731976966000
+/home/nils/.m2/repository/io/reactivex/rxjava3/rxjava/3.1.10/rxjava-3.1.10.jar = 1738231350318
+/home/nils/.m2/repository/org/reactivestreams/reactive-streams/1.0.4/reactive-streams-1.0.4.jar = 1738231347166
+/home/nils/.m2/repository/com/squareup/retrofit2/adapter-rxjava3/2.11.0/adapter-rxjava3-2.11.0.jar = 1711655958000
+/home/nils/.m2/repository/com/squareup/retrofit2/converter-scalars/2.11.0/converter-scalars-2.11.0.jar = 1711656013000
+/home/nils/.m2/repository/com/squareup/retrofit2/converter-gson/2.11.0/converter-gson-2.11.0.jar = 1711655967000
+/home/nils/.m2/repository/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2.jar = 1738231353989
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/src/main/java = 1781093282476
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/link.svg = 1781097797441
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/copy.svg = 1781097797441
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/member-search-index.js = 1781097797430
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/search-page.js = 1781097797442
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/overview-tree.html = 1781097797414
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/index.html = 1781097797436
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/allpackages-index.html = 1781097797429
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/search.html = 1781097797436
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/package-search-index.js = 1781097797430
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/script.js = 1781097797440
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/search.js = 1781097797441
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/help-doc.html = 1781097797439
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/tag-search-index.js = 1781097797430
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/allclasses-index.html = 1781097797428
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/module-search-index.js = 1781097797429
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/element-list = 1781097797396
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/index-all.html = 1781097797435
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/type-search-index.js = 1781097797430
+/home/nils/Documents/Entwicklung/safety-box/FRAMED/framed-streamer/target/reports/apidocs/stylesheet.css = 1781097797440

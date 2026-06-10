@@ -22,6 +22,13 @@ public class ARN implements DeploymentValidator {
   public ARN() {
   }
 
+  /**
+   * Creates a validator over the given reactors and immediately checks that they form an
+   * acyclic network.
+   *
+   * @param actors the reactors to validate
+   * @throws IllegalArgumentException if the reactors form a cyclic network
+   */
   public ARN(List<Reactor> actors) throws IllegalArgumentException {
     check(actors);
   }
@@ -113,8 +120,8 @@ public class ARN implements DeploymentValidator {
 
 
   private boolean isAcyclic(){
-    // check wether (Actors, Edges) is an acyclic graph
-    // Mark all the Actors as not visited and
+    // check whether (Reactors, Edges) is an acyclic graph
+    // Mark all the reactors as not visited and
     // not part of recursion stack
     List<Reactor> visited = new ArrayList<>();
     List<Reactor> recStack = new ArrayList<>();

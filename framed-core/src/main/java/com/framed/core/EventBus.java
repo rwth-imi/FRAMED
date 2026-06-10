@@ -25,6 +25,13 @@ public interface EventBus {
    */
   void register(String address, Consumer<Object> handler);
 
+  /**
+   * Registers a handler for the specified address using a specific dispatch strategy.
+   *
+   * @param address        the address to listen on
+   * @param handler        a {@link Consumer} that processes incoming messages
+   * @param perHandlerMode the {@link DispatchMode} controlling on which thread this handler runs
+   */
   void register(String address, Consumer<Object> handler, DispatchMode perHandlerMode);
 
   /**

@@ -34,6 +34,11 @@ import java.util.concurrent.*;
  */
 public class Timer {
 
+  /**
+   * Shared formatter for timestamps in the pattern {@code yyyy-MM-dd'T'HH:mm:ss.SSSSSS}
+   * (ISO-like, microsecond precision), used across the framework for serializing and
+   * parsing datapoint timestamps.
+   */
   public static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS");
 
   /**

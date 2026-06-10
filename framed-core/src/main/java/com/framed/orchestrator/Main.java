@@ -9,9 +9,29 @@ import java.util.concurrent.CountDownLatch;
 import java.util.logging.Logger;
 
 
+/**
+ * Config-driven launcher for a FRAMED deployment.
+ *
+ * <p>On startup it reads {@code config/services.json} and {@code config/communication.json},
+ * builds the {@link Transport} and {@link SocketEventBus} described by the communication
+ * config, connects any configured peers, then instantiates the configured services
+ * (dispatchers, devices, writers, parsers and reactors) via the {@code Manager}. After
+ * instantiation it runs all registered deployment validators, installs a shutdown hook to
+ * stop the event bus and managed services cleanly, and blocks the main thread until the
+ * process is terminated.</p>
+ */
 public class Main {
   private static final Logger logger = Logger.getLogger(Main.class.getName());
 
+  /** This class is not meant to be instantiated; it only exposes {@link #main(String[])}. */
+  private Main() {}
+
+  /**
+   * Loads the configuration, builds the runtime, instantiates services and blocks until shutdown.
+   *
+   * @param args command-line arguments (currently unused)
+   * @throws IOException if the configuration files cannot be read
+   */
   public static void main(String[] args) throws IOException {
     // start all configured device protocol handlers
     JSONObject servicesConfigs;

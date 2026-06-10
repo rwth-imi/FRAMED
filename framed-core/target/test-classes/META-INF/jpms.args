@@ -1,0 +1,4 @@
+--patch-module
+com.framed.core=_
+--add-reads
+com.framed.core=ALL-UNNAMED
