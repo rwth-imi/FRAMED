@@ -1,0 +1,41 @@
+/*
+ * FRAMED Javadoc theme.
+ * Layered on top of the standard javadoc stylesheet via maven-javadoc-plugin
+ * <addStylesheets>, so it only overrides accents and adds the logo banner — the
+ * stdlib stylesheet keeps owning layout (robust across JDK versions).
+ */
+
+:root {
+  --framed-accent: #1f6feb;
+  --framed-dark:   #0d1117;
+}
+
+/* Logo banner injected on every page via the plugin <top> option. */
+.framed-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 18px;
+  margin: 0 0 4px 0;
+  background: var(--framed-dark);
+  border-bottom: 3px solid var(--framed-accent);
+}
+.framed-banner .framed-logo {
+  height: 40px;
+  width: auto;
+}
+.framed-banner .framed-title {
+  color: #ffffff;
+  font: 600 1.15rem/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  letter-spacing: 0.5px;
+}
+
+/* Accent the page titles and links to match the brand colour. */
+.title,
+h1.title {
+  color: var(--framed-accent);
+}
+a:link,
+a:visited {
+  color: var(--framed-accent);
+}
