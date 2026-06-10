@@ -37,7 +37,7 @@ public class SocketEventBusTest {
   }
 
   @Test
-  public void testPublishMessageToPeer() {
+  public void testPublishMessageToPeer() throws InterruptedException {
     AtomicReference<Object> received1 = new AtomicReference<>();
     AtomicReference<Object> received2 = new AtomicReference<>();
 
@@ -51,6 +51,13 @@ public class SocketEventBusTest {
 
     assertEquals("Broadcasting", received1.get());
     assertEquals("Broadcasting", received2.get());
+
+    // Peer publish is submitted to a thread pool; wait up to 1s for it to land.
+    long deadline = System.currentTimeMillis() + 1_000;
+    while (!mockTransport.getSentMessages().contains("PUBLISH:broadcast:Broadcasting")
+           && System.currentTimeMillis() < deadline) {
+      Thread.sleep(10);
+    }
     assertTrue(mockTransport.getSentMessages().contains("PUBLISH:broadcast:Broadcasting"));
   }
 
