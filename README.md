@@ -1,7 +1,15 @@
 
 <img src="images/logo.png" alt="Logo" style="float: right; margin-left: 20px;">
+<br style="clear: both"/>
 
-# FRAMED
+
+
+
+
+[![Java CI with Maven](https://github.com/rwth-imi/FRAMED/actions/workflows/maven.yml/badge.svg)](https://github.com/rwth-imi/FRAMED/actions/workflows/maven.yml)
+![Version](https://img.shields.io/badge/version-1.0.0--SNAPSHOT-blue)
+![Java](https://img.shields.io/badge/Java-21-orange)
+![License](https://img.shields.io/badge/license-GPL--2.0-blue)
 
 FRAMED is a service-oriented software framework for acquiring, transforming, and reacting to
 data streams from multiple sources — medical devices, sensors, replay files, and more. You
