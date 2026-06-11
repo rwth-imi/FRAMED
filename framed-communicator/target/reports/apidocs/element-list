@@ -1,7 +1,0 @@
-com.framed.communicator.driver.parser.medibus
-com.framed.communicator.driver.parser.viatom
-com.framed.communicator.driver.protocol.medibus
-com.framed.communicator.driver.protocol.medibus.utils
-com.framed.communicator.driver.protocol.replay
-com.framed.communicator.io.parsed
-com.framed.communicator.io.raw

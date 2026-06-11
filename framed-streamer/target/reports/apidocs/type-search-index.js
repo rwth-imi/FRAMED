@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes and Interfaces","u":"allclasses-index.html"},{"p":"com.framed.streamer.dispatcher","l":"FfillDispatcher"},{"p":"com.framed.streamer.dispatcher","l":"InfluxDispatcher"},{"p":"com.framed.streamer.dispatcher","l":"JsonlDispatcher"}];updateSearchResults();

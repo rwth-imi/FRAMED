@@ -3,4 +3,4 @@
 .mvn/
 /output/*
 !output/.gitkeep
-/target
+target/
