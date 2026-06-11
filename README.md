@@ -7,6 +7,7 @@
 
 
 [![Java CI with Maven](https://github.com/rwth-imi/FRAMED/actions/workflows/maven.yml/badge.svg)](https://github.com/rwth-imi/FRAMED/actions/workflows/maven.yml)
+[![Docs](https://github.com/rwth-imi/FRAMED/actions/workflows/docs.yml/badge.svg)](https://rwth-imi.github.io/FRAMED/docs/)
 ![Version](https://img.shields.io/badge/version-1.0.0--SNAPSHOT-blue)
 ![Java](https://img.shields.io/badge/Java-21-orange)
 [![License](https://img.shields.io/badge/license-GPL--2.0-blue)](https://github.com/rwth-imi/FRAMED/blob/master/LICENSE)
