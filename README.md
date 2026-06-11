@@ -60,8 +60,7 @@ The orchestrator (`com.framed.orchestrator`) instantiates these from config, and
 
 - **Java 21**
 - **Maven 3.8+**
-- FRAMED currently builds from source (GitHub Packages publishing is planned — see
-  `docs/reusable-framework-plan.md`).
+- FRAMED currently builds from source (GitHub Packages publishing is planned).
 
 ---
 
@@ -504,12 +503,12 @@ from `communication.json` (`type`, `port`, `peers`).
 | `com.framed:framed-app` | runnable assembly (fat-jar + `Main`); not a library |
 
 ## Support 
-Please write an issue to get support on your matters.
+Please write an issue.
 
 ## Roadmap 
-There are more default protocols to come, including IEEE SDC!
-Also, we are at the state of developing an Alarm-CDSS on top of the data gathering layer (cf. Architecture).
-## Contributing 🫶
+There are more default protocols to come.
+
+## Contributing
 Thank you for considering! Further information is coming soon.
 
 ## License ⚖️
