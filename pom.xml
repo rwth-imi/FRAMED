@@ -131,7 +131,7 @@
           <addStylesheets>
             <addStylesheet>framed-javadoc.css</addStylesheet>
           </addStylesheets>
-          <top><![CDATA[<div class="framed-banner"><img class="framed-logo" src="https://raw.githubusercontent.com/rwth-imi/FRAMED/master/images/logo.png" alt="FRAMED"/><span class="framed-title">FRAMED API</span></div>]]></top>
+          <top><![CDATA[<div class="framed-banner"><img class="framed-logo" src="https://raw.githubusercontent.com/rwth-imi/FRAMED/master/images/logo_dark.png" alt="FRAMED"/><span class="framed-title">FRAMED API</span></div>]]></top>
           <!-- Exclude module-info so the aggregate report treats every module as unnamed;
                javadoc cannot aggregate a mix of named (framed-core) and unnamed modules. -->
           <sourceFileExcludes>
