@@ -1,5 +1,8 @@
 
-<img src="images/logo.png" alt="Logo" style="float: right; margin-left: 20px;">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/logo_dark.png">
+  <img src="images/logo.png" alt="Logo" style="float: right; margin-left: 20px;">
+</picture>
 <br style="clear: both"/>
 
 
