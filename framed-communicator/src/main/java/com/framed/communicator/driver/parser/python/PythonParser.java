@@ -1,12 +1,12 @@
-package com.framed.communicator.driver.parser.viatom;
+package com.framed.communicator.driver.parser.python;
 
 import com.framed.core.EventBus;
 import com.framed.io.parser.Parser;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-public class ViatomParser extends Parser<Object> {
-  public ViatomParser(EventBus eventBus, JSONArray devices) {
+public class PythonParser extends Parser<Object> {
+  public PythonParser(EventBus eventBus, JSONArray devices) {
     super(eventBus);
     for (Object device : devices) {
       String deviceName = (String) device;
