@@ -48,8 +48,8 @@
         ]
     },
     {
-      "class": "com.framed.communicator.driver.parser.viatom.ViatomParser",
-      "id": "Viatom-Parser",
+      "class": "com.framed.communicator.driver.parser.python.PythonParser",
+      "id": "Python-Parser",
       "devices":
       [
         "PC60FW"
