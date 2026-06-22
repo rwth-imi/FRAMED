@@ -3,7 +3,7 @@ com.framed.cdss
 com.framed.cdss.reactors
 com.framed.cdss.utils
 com.framed.communicator.driver.parser.medibus
-com.framed.communicator.driver.parser.viatom
+com.framed.communicator.driver.parser.python
 com.framed.communicator.driver.protocol.medibus
 com.framed.communicator.driver.protocol.medibus.utils
 com.framed.communicator.driver.protocol.replay
