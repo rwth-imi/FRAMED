@@ -1,7 +1,7 @@
 package com.framed.communicator.driver.parser.medibus;
 
 import com.framed.io.parser.Parser;
-import com.framed.communicator.driver.protocol.medibus.utils.DataConstants;
+import com.framed.communicator.driver.protocol.medibus.utils.ProtocolMap;
 import com.framed.core.EventBus;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -87,7 +87,7 @@ public class MedibusSlowParser extends Parser<byte[]> {
         dataValue = response.substring(i + 3, i + 3 + lastItemLength);
         dataValue = dataValue.trim();
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
-        channelID = DataConstants.MedibusXTextMessages.get(dataCodeByte);
+        channelID = ProtocolMap.MedibusXTextMessages.get(dataCodeByte);
 
         write(deviceName, channelID, "TextMessage", dataValue, timestamp);
       }
@@ -128,15 +128,15 @@ public class MedibusSlowParser extends Parser<byte[]> {
       switch (reqType) {
         case "MeasurementCP1" -> {
           className = "Measurement";
-          channelID = DataConstants.MedibusXMeasurementCP1.get(dataCodeByte);
+          channelID = ProtocolMap.MedibusXMeasurementCP1.get(dataCodeByte);
         }
         case "MeasurementCP2" -> {
           className = "Measurement";
-          channelID = DataConstants.MedibusXMeasurementCP2.get(dataCodeByte);
+          channelID = ProtocolMap.MedibusXMeasurementCP2.get(dataCodeByte);
         }
         case "DeviceSettings" -> {
           className = "Settings";
-          channelID = DataConstants.MedibusXDeviceSettings.get(dataCodeByte);
+          channelID = ProtocolMap.MedibusXDeviceSettings.get(dataCodeByte);
         }
         default -> throw new IllegalStateException("Unexpected value: %s".formatted(reqType));
       }
@@ -168,8 +168,8 @@ public class MedibusSlowParser extends Parser<byte[]> {
         dataValue = dataValue.trim();
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
         channelID = switch (reqType) {
-          case "AlarmCP1" -> DataConstants.MedibusXAlarmsCP1.get(dataCodeByte);
-          case "AlarmCP2" -> DataConstants.MedibusXAlarmsCP2.get(dataCodeByte);
+          case "AlarmCP1" -> ProtocolMap.MedibusXAlarmsCP1.get(dataCodeByte);
+          case "AlarmCP2" -> ProtocolMap.MedibusXAlarmsCP2.get(dataCodeByte);
           default -> throw new IllegalStateException("Unexpected value: %s".formatted(reqType));
         };
         write(deviceName, channelID, "Alarm", dataValue, timestamp);

@@ -4,9 +4,9 @@ import java.util.Map;
 
 import static java.util.Map.entry;
 
-public class DataConstants {
+public class ProtocolMap {
 
-  private DataConstants() {
+  private ProtocolMap() {
     throw new IllegalStateException("Utility class");
   }
 

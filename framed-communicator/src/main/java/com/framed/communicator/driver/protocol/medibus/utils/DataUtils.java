@@ -21,7 +21,7 @@ public class DataUtils {
     byte[] finalTxBuff = new byte[inputBuffer.length + checksumAsciiHexBytes.length + 1]; // +1 for EOF
     System.arraycopy(inputBuffer, 0, finalTxBuff, 0, inputBuffer.length);
     System.arraycopy(checksumAsciiHexBytes, 0, finalTxBuff, inputBuffer.length, checksumAsciiHexBytes.length);
-    finalTxBuff[finalTxBuff.length - 1] = DataConstants.EOFCHAR;
+    finalTxBuff[finalTxBuff.length - 1] = ProtocolMap.EOFCHAR;
     return finalTxBuff;
   }
 
@@ -53,7 +53,7 @@ public class DataUtils {
     for (int i = 0; i < waveFormTypeList.size(); i++) {
       rtdListArray[i] = waveFormTypeList.get(i);
     }
-    for (byte b : DataConstants.poll_configure_real_time_transmission) {
+    for (byte b : ProtocolMap.poll_configure_real_time_transmission) {
       tempTxBuffList.add(b);
     }
 

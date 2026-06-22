@@ -1,7 +1,7 @@
 package com.framed.communicator.driver.protocol.medibus;
 
 import com.framed.communicator.driver.protocol.medibus.utils.DataUtils;
-import com.framed.communicator.driver.protocol.medibus.utils.DataConstants;
+import com.framed.communicator.driver.protocol.medibus.utils.ProtocolMap;
 import com.framed.core.EventBus;
 
 import java.nio.charset.StandardCharsets;
@@ -37,21 +37,21 @@ public class MedibusFramer {
 
   public void createFrameListFromByte(byte bValue) {
     switch (bValue) {
-      case DataConstants.BOFRESPCHAR:
+      case ProtocolMap.BOFRESPCHAR:
         storeStartResp = true;
         storeEnd = false;
         bRespList.clear();
         bRespList.add(bValue);
         break;
 
-      case DataConstants.BOFCOMCHAR:
+      case ProtocolMap.BOFCOMCHAR:
         storeStartCom = true;
         storeEnd = false;
         bComList.clear();
         bComList.add(bValue);
         break;
 
-      case DataConstants.EOFCHAR:
+      case ProtocolMap.EOFCHAR:
         if (storeStartCom && storeStartResp) {
           bList.addAll(bComList);
         } else if (storeStartCom) {
@@ -70,7 +70,7 @@ public class MedibusFramer {
         break;
 
       default:
-        if ((bValue & DataConstants.RT_BYTE) == DataConstants.RT_BYTE) {
+        if ((bValue & ProtocolMap.RT_BYTE) == ProtocolMap.RT_BYTE) {
           eventBus.publish(deviceID + ".real-time", bValue);
           bRTList.add(bValue);
         } else if (storeStartCom && !storeEnd) {

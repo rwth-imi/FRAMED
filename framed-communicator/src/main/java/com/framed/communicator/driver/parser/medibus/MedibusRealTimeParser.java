@@ -2,7 +2,7 @@ package com.framed.communicator.driver.parser.medibus;
 
 import com.framed.io.parser.Parser;
 import com.framed.communicator.driver.protocol.medibus.utils.DataUtils;
-import com.framed.communicator.driver.protocol.medibus.utils.DataConstants;
+import com.framed.communicator.driver.protocol.medibus.utils.ProtocolMap;
 import com.framed.core.EventBus;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -62,10 +62,10 @@ public class MedibusRealTimeParser extends Parser<Byte> {
       byte bValue = realTimeByteArray[i];
 
       // ignore slow bytes in realtime parser
-      if ((bValue & DataConstants.RT_BYTE) == 0) continue;
+      if ((bValue & ProtocolMap.RT_BYTE) == 0) continue;
 
       // strict Sync detection (mask + pattern)
-      if ((bValue & DataConstants.SYNC_MASK) == DataConstants.SYNC_BYTE) {
+      if ((bValue & ProtocolMap.SYNC_MASK) == ProtocolMap.SYNC_BYTE) {
         // Start of a new realtime data record -> capture timestamps NOW
         recordWallMs = System.currentTimeMillis();
         recordMonoNs = System.nanoTime();
@@ -83,7 +83,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
           byte bValueNext = realTimeByteArray[j];
 
           // next record starts? (mask + pattern)
-          if ((bValueNext & DataConstants.SYNC_MASK) == DataConstants.SYNC_BYTE) break;
+          if ((bValueNext & ProtocolMap.SYNC_MASK) == ProtocolMap.SYNC_BYTE) break;
 
           byte[] buffer = new byte[2];
           System.arraycopy(realTimeByteArray, j, buffer, 0, 2);
@@ -91,8 +91,8 @@ public class MedibusRealTimeParser extends Parser<Byte> {
           boolean isCmdPair = isIsCmdPair(buffer);
 
           boolean isValPair =
-            ((buffer[0] & DataConstants.RT_BYTE_MASK) == DataConstants.RT_BYTE) &&
-              ((buffer[1] & DataConstants.RT_BYTE_MASK) == DataConstants.RT_BYTE);
+            ((buffer[0] & ProtocolMap.RT_BYTE_MASK) == ProtocolMap.RT_BYTE) &&
+              ((buffer[1] & ProtocolMap.RT_BYTE_MASK) == ProtocolMap.RT_BYTE);
 
           if (isCmdPair) {
             syncCommands.add(buffer);
@@ -154,7 +154,7 @@ public class MedibusRealTimeParser extends Parser<Byte> {
                 // Use the captured record time — not "now" later
                 result.put("timestampMs", recordWallMs);
                 result.put("relativeTimeNs", recordMonoNs);
-                result.put("channelID", DataConstants.MedibusXRealTimeData.get(waveCode));
+                result.put("channelID", ProtocolMap.MedibusXRealTimeData.get(waveCode));
                 result.put("respiratoryCycleState", respSyncState);
                 result.put("value", finalValue);
                 result.put("config", config);
@@ -180,8 +180,8 @@ public class MedibusRealTimeParser extends Parser<Byte> {
 
   private static boolean isIsCmdPair(byte[] buffer) {
     // classify pair strictly
-    return ((buffer[0] & DataConstants.SYNC_MASK) == DataConstants.SYNC_CMD_BYTE) &&
-        ((buffer[1] & DataConstants.SYNC_MASK) == DataConstants.SYNC_CMD_BYTE);
+    return ((buffer[0] & ProtocolMap.SYNC_MASK) == ProtocolMap.SYNC_CMD_BYTE) &&
+        ((buffer[1] & ProtocolMap.SYNC_MASK) == ProtocolMap.SYNC_CMD_BYTE);
   }
 
   private static String interpretCommandTypes(List<byte[]> syncCommands, List<Integer> dataStreamList, String respSyncState) {
@@ -190,19 +190,19 @@ public class MedibusRealTimeParser extends Parser<Byte> {
       byte arg = cmd[1];
 
       switch (cmdType) {
-        case DataConstants.SC_TX_DATASTREAM_5_8:
+        case ProtocolMap.SC_TX_DATASTREAM_5_8:
           if ((arg & 0x01) != 0) dataStreamList.add(4);
           if ((arg & 0x02) != 0) dataStreamList.add(5);
           if ((arg & 0x04) != 0) dataStreamList.add(6);
           if ((arg & 0x08) != 0) dataStreamList.add(7);
           break;
-        case DataConstants.SC_TX_DATASTREAM_9_12:
+        case ProtocolMap.SC_TX_DATASTREAM_9_12:
           if ((arg & 0x01) != 0) dataStreamList.add(8);
           if ((arg & 0x02) != 0) dataStreamList.add(9);
           if ((arg & 0x04) != 0) dataStreamList.add(10);
           if ((arg & 0x08) != 0) dataStreamList.add(11);
           break;
-        case DataConstants.SC_START_CYCLE:
+        case ProtocolMap.SC_START_CYCLE:
           if (arg == (byte) 0xC0) respSyncState = "InspStart";
           if (arg == (byte) 0xC1) respSyncState = "ExpStart";
           break;
