@@ -53,7 +53,7 @@ public class DataUtils {
     for (int i = 0; i < waveFormTypeList.size(); i++) {
       rtdListArray[i] = waveFormTypeList.get(i);
     }
-    for (byte b : ProtocolMap.poll_configure_real_time_transmission) {
+    for (byte b : ProtocolMap.POLL_CONFIGURE_RT_TRANSMISSION) {
       tempTxBuffList.add(b);
     }
 

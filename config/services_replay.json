@@ -99,10 +99,10 @@
       "id": "etCO2-Limit-Classifier",
       "firingRules": [
         {
-        "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": "*"
+        "Measurement.Oxylog-3000-Plus-00.etCO2.parsed": "*"
         }
       ],
-      "inputChannel": "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed",
+      "inputChannel": "Measurement.Oxylog-3000-Plus-00.etCO2.parsed",
       "outputChannels": ["etCO2-Limit"],
       "limits": [0,25,30,40]
     },
@@ -158,7 +158,7 @@
       "class": "com.framed.cdss.reactors.SFComputationReactor",
       "id": "SF-Computation-Reactor",
       "spo2Channel": "Percentage_int.PC60FW.SpO2.parsed",
-      "fio2Channel": "Measurement.Oxylog-3000-Plus-00.Inspiratory oxygen fraction, FiO2.parsed",
+      "fio2Channel": "Measurement.Oxylog-3000-Plus-00.FiO2.parsed",
       "outputChannel": "S/F-Value"
     },
     {
@@ -181,10 +181,10 @@
       "id": "etCO2-Trend-Classifier",
       "firingRules": [
         {
-          "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed": "*"
+          "Measurement.Oxylog-3000-Plus-00.etCO2.parsed": "*"
         }
       ],
-      "inputChannel": "Measurement.Oxylog-3000-Plus-00.End-tidal CO2 concentration, etCO2.parsed",
+      "inputChannel": "Measurement.Oxylog-3000-Plus-00.etCO2.parsed",
       "outputChannels": ["etCO2-Trend"],
       "windowSize": 10,
       "persistWindows": 1,
@@ -210,7 +210,7 @@
     {
       "class": "com.framed.cdss.reactors.RespiratoryRateEstimationReactor",
       "id": "RespiratoryRateEstimator",
-      "etco2Channel":"RealTime.Oxylog-3000-Plus-00.CO2 concentration, CO2 (mmHg).parsed",
+      "etco2Channel":"RealTime.Oxylog-3000-Plus-00.CO2_mmHg.parsed",
       "outputChannels": [
         "EstimatedRR"
       ],
@@ -229,7 +229,7 @@
       "class": "com.framed.cdss.reactors.RRMismatchClassificationReactor",
       "id": "RRMismatchClassifier",
       "rrEstimationChannel": "EstimatedRR",
-      "rrSettingsChannel": "Settings.Oxylog-3000-Plus-00.Respiratory rate, RR.parsed",
+      "rrSettingsChannel": "Settings.Oxylog-3000-Plus-00.RR.parsed",
       "outputChannels": ["RRMismatchClassification"],
       "varLimit": 4
     },

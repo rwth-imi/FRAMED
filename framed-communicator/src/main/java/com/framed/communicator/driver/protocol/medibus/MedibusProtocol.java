@@ -83,9 +83,9 @@ public class MedibusProtocol extends Protocol {
   @Override
   public void stop() {
     currentState = MedibusState.TERMINATING;
-    logger.fine("Sending command: poll_request_stop_com");
+    logger.fine("Sending command: POLL_REQUEST_STOP_COM");
     timer.shutdown();
-    sendCommand(ProtocolMap.poll_request_stop_com);
+    sendCommand(ProtocolMap.POLL_REQUEST_STOP_COM);
   }
 
 
@@ -136,15 +136,15 @@ public class MedibusProtocol extends Protocol {
         switch (echo) {
           case ProtocolMap.ICC_COMMAND -> {
             logger.fine("ICC command received.");
-            commandEchoResponse(ProtocolMap.poll_request_icc_msg);
-            logger.fine("Sending command: poll_request_deviceid");
-            sendCommand(ProtocolMap.poll_request_deviceid);
+            commandEchoResponse(ProtocolMap.POLL_REQUEST_ICC);
+            logger.fine("Sending command: POLL_REQUEST_DEVICE_ID");
+            sendCommand(ProtocolMap.POLL_REQUEST_DEVICE_ID);
             currentState = MedibusState.IDENTIFYING;
           }
           case ProtocolMap.ICC_RESPONSE -> {
             logger.fine("ICC response received. Transitioning to IDENTIFYING.");
-            logger.fine("Sending command: poll_request_deviceid");
-            sendCommand(ProtocolMap.poll_request_deviceid);
+            logger.fine("Sending command: POLL_REQUEST_DEVICE_ID");
+            sendCommand(ProtocolMap.POLL_REQUEST_DEVICE_ID);
             currentState = MedibusState.IDENTIFYING;
           }
           default -> {
@@ -161,15 +161,15 @@ public class MedibusProtocol extends Protocol {
           }
           case ProtocolMap.NOP_REQUEST -> {
             logger.fine("NOP request received.");
-            logger.fine("Sending command: poll_request_deviceid");
-            sendCommand(ProtocolMap.poll_request_deviceid);
+            logger.fine("Sending command: POLL_REQUEST_DEVICE_ID");
+            sendCommand(ProtocolMap.POLL_REQUEST_DEVICE_ID);
           }
           case ProtocolMap.DEV_ID_RESPONSE -> {
             logger.fine("Device ID response received.");
             if (realTime) {
               logger.fine("Realtime enabled. Transitioning to CONFIGURING.");
               currentState = MedibusState.CONFIGURING;
-              timer.setTimer(200, () -> sendCommand(ProtocolMap.poll_request_real_time_data_config));
+              timer.setTimer(200, () -> sendCommand(ProtocolMap.POLL_REQUEST_RT_DATA_CONFIG));
             } else {
               logger.fine("Transitioning to ACTIVE.");
               currentState = MedibusState.ACTIVE;
@@ -190,15 +190,15 @@ public class MedibusProtocol extends Protocol {
           case ProtocolMap.ICC_COMMAND -> {
             logger.fine("ICC command received. Returning to INITIALIZING.");
             currentState = MedibusState.INITIALIZING;
-            commandEchoResponse(ProtocolMap.poll_request_icc_msg);
+            commandEchoResponse(ProtocolMap.POLL_REQUEST_ICC);
           }
           case ProtocolMap.NOP_REQUEST -> {
             logger.fine("NOP request received.");
-            commandEchoResponse(ProtocolMap.poll_request_no_operation);
+            commandEchoResponse(ProtocolMap.POLL_REQUEST_NOP);
           }
           case ProtocolMap.RT_CONFIG_RESPONSE -> {
             logger.fine("Realtime config received. Sending transmission config.");
-            logger.fine("Sending command: poll_configure_real_time_transmission");
+            logger.fine("Sending command: POLL_CONFIGURE_RT_TRANSMISSION");
             readRealtimeConfigResponse(packetBuffer, eventBus, id);
             configureRealtimeTransmission();
           }
@@ -221,59 +221,59 @@ public class MedibusProtocol extends Protocol {
           case ProtocolMap.NOP_RESPONSE -> {
             logger.fine("NOP response received.");
             if (this.slowData) {
-              logger.fine("Sending command: poll_request_config_measured_data_codepage1");
-              sendCommand(ProtocolMap.poll_request_config_measured_data_codepage1);
+              logger.fine("Sending command: POLL_REQUEST_MEASURED_DATA_CP1");
+              sendCommand(ProtocolMap.POLL_REQUEST_MEASURED_DATA_CP1);
             }
           }
           case ProtocolMap.NOP_REQUEST -> {
             logger.fine("NOP request received.");
-            commandEchoResponse(ProtocolMap.poll_request_no_operation);
+            commandEchoResponse(ProtocolMap.POLL_REQUEST_NOP);
             if (this.slowData) {
-              logger.fine("Sending command: poll_request_config_measured_data_codepage1");
-              sendCommand(ProtocolMap.poll_request_config_measured_data_codepage1);
+              logger.fine("Sending command: POLL_REQUEST_MEASURED_DATA_CP1");
+              sendCommand(ProtocolMap.POLL_REQUEST_MEASURED_DATA_CP1);
             }
           }
           case ProtocolMap.RT_CONFIG_CHANGED -> {
             logger.fine("Realtime config changed. Reconfiguring.");
             setConfiguredDataStreams(true);
             currentState = MedibusState.CONFIGURING;
-            logger.fine("Sending command: poll_request_real_time_data_config");
-            sendCommand(ProtocolMap.poll_request_real_time_data_config);
+            logger.fine("Sending command: POLL_REQUEST_RT_DATA_CONFIG");
+            sendCommand(ProtocolMap.POLL_REQUEST_RT_DATA_CONFIG);
           }
           case ProtocolMap.ICC_COMMAND -> {
             logger.fine("ICC command received. Returning to INITIALIZING.");
             currentState = MedibusState.INITIALIZING;
-            commandEchoResponse(ProtocolMap.poll_request_icc_msg);
+            commandEchoResponse(ProtocolMap.POLL_REQUEST_ICC);
           }
           case ProtocolMap.DATA_RESPONSE_CP1 -> { // Data response cp1
             logger.fine("Received: Data CP1 response");
-            logger.fine("Sending command: poll_request_config_measured_data_codepage2");
-            sendCommand(ProtocolMap.poll_request_config_measured_data_codepage2);
+            logger.fine("Sending command: POLL_REQUEST_MEASURED_DATA_CP2");
+            sendCommand(ProtocolMap.POLL_REQUEST_MEASURED_DATA_CP2);
           }
           case ProtocolMap.DATA_RESPONSE_CP2 -> { // Data response cp2
             logger.fine("Received: Data CP2 response");
-            logger.fine("Sending command: poll_request_device_settings");
-            sendCommand(ProtocolMap.poll_request_device_settings);
+            logger.fine("Sending command: POLL_REQUEST_DEVICE_SETTINGS");
+            sendCommand(ProtocolMap.POLL_REQUEST_DEVICE_SETTINGS);
           }
           case ProtocolMap.SETTINGS_RESPONSE -> { // Data response device settings
             logger.fine("Received: Data device settings response");
-            logger.fine("Sending command: poll_request_text_messages");
-            sendCommand(ProtocolMap.poll_request_text_messages);
+            logger.fine("Sending command: POLL_REQUEST_TEXT_MESSAGES");
+            sendCommand(ProtocolMap.POLL_REQUEST_TEXT_MESSAGES);
           }
           case ProtocolMap.TEXT_RESPONSE -> { // Data response text messages
             logger.fine("Received: Data text messages response");
-            logger.fine("Sending command: poll_request_config_alarms_codepage1");
-            sendCommand(ProtocolMap.poll_request_config_alarms_codepage1);
+            logger.fine("Sending command: POLL_REQUEST_ALARMS_CP1");
+            sendCommand(ProtocolMap.POLL_REQUEST_ALARMS_CP1);
           }
           case ProtocolMap.ALARM_RESPONSE_CP1 -> { // Alarm response cp1
             logger.fine("Received: Alarm CP1 response");
-            logger.fine("Sending command: poll_request_config_alarms_codepage2");
-            sendCommand(ProtocolMap.poll_request_config_alarms_codepage2);
+            logger.fine("Sending command: POLL_REQUEST_ALARMS_CP2");
+            sendCommand(ProtocolMap.POLL_REQUEST_ALARMS_CP2);
           }
           case ProtocolMap.ALARM_RESPONSE_CP2 -> { // Alarm response cp2
             logger.fine("Received: Alarm CP2 response");
-            logger.fine("Sending command: poll_request_config_measured_data_codepage1");
-            sendCommand(ProtocolMap.poll_request_config_measured_data_codepage1);
+            logger.fine("Sending command: POLL_REQUEST_MEASURED_DATA_CP1");
+            sendCommand(ProtocolMap.POLL_REQUEST_MEASURED_DATA_CP1);
           }
           default -> {
             String echoHex = stringToHex(echo);
@@ -290,11 +290,11 @@ public class MedibusProtocol extends Protocol {
         switch (echo) {
           case ProtocolMap.NOP_RESPONSE -> {
             logger.fine("NOP response received.");
-            commandEchoResponse(ProtocolMap.poll_request_no_operation);
+            commandEchoResponse(ProtocolMap.POLL_REQUEST_NOP);
           }
           case ProtocolMap.NOP_REQUEST -> {
             logger.fine("NOP request received.");
-            commandEchoResponse(ProtocolMap.poll_request_no_operation);
+            commandEchoResponse(ProtocolMap.POLL_REQUEST_NOP);
           }
 
           default -> {
@@ -309,18 +309,18 @@ public class MedibusProtocol extends Protocol {
   private void transitToActive() {
     if (this.slowData) {
       logger.fine("Slow Data transmission configured.");
-      logger.fine("Sending command: poll_request_config_measured_data_codepage1");
-      sendCommand(ProtocolMap.poll_request_config_measured_data_codepage1);
+      logger.fine("Sending command: POLL_REQUEST_MEASURED_DATA_CP1");
+      sendCommand(ProtocolMap.POLL_REQUEST_MEASURED_DATA_CP1);
     } else {
       logger.fine("Slow Data transmission not configured.");
       logger.fine("Keeping connection alive by NOP");
-      timer.setPeriodic(2000, () -> sendCommand(ProtocolMap.poll_request_no_operation));
+      timer.setPeriodic(2000, () -> sendCommand(ProtocolMap.POLL_REQUEST_NOP));
     }
   }
 
   private void sendICC() {
-    logger.fine("Sending command: poll_request_icc_msg");
-    sendCommand(ProtocolMap.poll_request_icc_msg); // ICC
+    logger.fine("Sending command: POLL_REQUEST_ICC");
+    sendCommand(ProtocolMap.POLL_REQUEST_ICC); // ICC
     currentState = MedibusState.INITIALIZING;
   }
 

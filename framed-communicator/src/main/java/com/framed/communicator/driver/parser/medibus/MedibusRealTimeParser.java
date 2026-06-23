@@ -2,6 +2,7 @@ package com.framed.communicator.driver.parser.medibus;
 
 import com.framed.io.parser.Parser;
 import com.framed.communicator.driver.protocol.medibus.utils.DataUtils;
+import com.framed.communicator.driver.protocol.medibus.utils.MedibusParam;
 import com.framed.communicator.driver.protocol.medibus.utils.ProtocolMap;
 import com.framed.core.EventBus;
 import org.json.JSONArray;
@@ -149,12 +150,17 @@ public class MedibusRealTimeParser extends Parser<Byte> {
                 double rtValue = ((double) binVal / maxBinValue) * (maxValue - minValue) + minValue;
                 double finalValue = Math.round(rtValue);
 
+                MedibusParam rtParam = ProtocolMap.MedibusXRealTimeData.get(waveCode);
+                if (rtParam == null) {
+                  continue;
+                }
+
                 Map<String, Object> result = new HashMap<>();
                 result.put("dataStreamIndex", streamIndex);
                 // Use the captured record time — not "now" later
                 result.put("timestampMs", recordWallMs);
                 result.put("relativeTimeNs", recordMonoNs);
-                result.put("channelID", ProtocolMap.MedibusXRealTimeData.get(waveCode));
+                result.put("channelID", rtParam.id());
                 result.put("respiratoryCycleState", respSyncState);
                 result.put("value", finalValue);
                 result.put("config", config);

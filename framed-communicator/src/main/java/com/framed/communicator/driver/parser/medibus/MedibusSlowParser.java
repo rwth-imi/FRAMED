@@ -1,6 +1,7 @@
 package com.framed.communicator.driver.parser.medibus;
 
 import com.framed.io.parser.Parser;
+import com.framed.communicator.driver.protocol.medibus.utils.MedibusParam;
 import com.framed.communicator.driver.protocol.medibus.utils.ProtocolMap;
 import com.framed.core.EventBus;
 import org.json.JSONArray;
@@ -74,7 +75,6 @@ public class MedibusSlowParser extends Parser<byte[]> {
 
     String dataCode;
     String dataValue;
-    String channelID;
 
     int lastItemLength;
     for (int i = 0; i < responseLength; i += offset + lastItemLength) {
@@ -87,9 +87,13 @@ public class MedibusSlowParser extends Parser<byte[]> {
         dataValue = response.substring(i + 3, i + 3 + lastItemLength);
         dataValue = dataValue.trim();
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
-        channelID = ProtocolMap.MedibusXTextMessages.get(dataCodeByte);
+        MedibusParam param = ProtocolMap.MedibusXTextMessages.get(dataCodeByte);
+        if (param == null) {
+          logger.warning("Unknown text-message code: 0x%02X".formatted(dataCodeByte));
+          continue;
+        }
 
-        write(deviceName, channelID, "TextMessage", dataValue, timestamp);
+        write(deviceName, param.id(), "TextMessage", dataValue, timestamp);
       }
     }
   }
@@ -103,7 +107,6 @@ public class MedibusSlowParser extends Parser<byte[]> {
 
     String dataCode;
     double dataValue;
-    String channelID;
 
     int responseLength = response.length();
 
@@ -124,24 +127,29 @@ public class MedibusSlowParser extends Parser<byte[]> {
 
       byte dataCodeByte = (byte) (Integer.parseInt(dataCode, 16) % 256);
       String className;
+      MedibusParam param;
 
       switch (reqType) {
         case "MeasurementCP1" -> {
           className = "Measurement";
-          channelID = ProtocolMap.MedibusXMeasurementCP1.get(dataCodeByte);
+          param = ProtocolMap.MedibusXMeasurementCP1.get(dataCodeByte);
         }
         case "MeasurementCP2" -> {
           className = "Measurement";
-          channelID = ProtocolMap.MedibusXMeasurementCP2.get(dataCodeByte);
+          param = ProtocolMap.MedibusXMeasurementCP2.get(dataCodeByte);
         }
         case "DeviceSettings" -> {
           className = "Settings";
-          channelID = ProtocolMap.MedibusXDeviceSettings.get(dataCodeByte);
+          param = ProtocolMap.MedibusXDeviceSettings.get(dataCodeByte);
         }
         default -> throw new IllegalStateException("Unexpected value: %s".formatted(reqType));
       }
 
-      write(deviceName, channelID, className, dataValue, timestamp);
+      if (param == null) {
+        logger.warning("Unknown %s data code: 0x%02X".formatted(reqType, dataCodeByte));
+        continue;
+      }
+      write(deviceName, param.id(), className, dataValue, timestamp);
     }
   }
 
@@ -154,7 +162,6 @@ public class MedibusSlowParser extends Parser<byte[]> {
     int responseLength = response.length();
     String dataCode;
     String dataValue;
-    String channelID;
 
     if (responseLength > 0) {
       for (int i = 0; i < responseLength; i += offset) {
@@ -167,12 +174,16 @@ public class MedibusSlowParser extends Parser<byte[]> {
         dataValue = response.substring(i + 3, j);
         dataValue = dataValue.trim();
         byte dataCodeByte = dataCode.getBytes(StandardCharsets.US_ASCII)[0];
-        channelID = switch (reqType) {
+        MedibusParam param = switch (reqType) {
           case "AlarmCP1" -> ProtocolMap.MedibusXAlarmsCP1.get(dataCodeByte);
           case "AlarmCP2" -> ProtocolMap.MedibusXAlarmsCP2.get(dataCodeByte);
           default -> throw new IllegalStateException("Unexpected value: %s".formatted(reqType));
         };
-        write(deviceName, channelID, "Alarm", dataValue, timestamp);
+        if (param == null) {
+          logger.warning("Unknown %s code: 0x%02X".formatted(reqType, dataCodeByte));
+          continue;
+        }
+        write(deviceName, param.id(), "Alarm", dataValue, timestamp);
       }
     }
   }

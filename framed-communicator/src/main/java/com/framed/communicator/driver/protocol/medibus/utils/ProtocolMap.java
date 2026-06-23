@@ -1,5 +1,6 @@
 package com.framed.communicator.driver.protocol.medibus.utils;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import static java.util.Map.entry;
@@ -48,62 +49,62 @@ public class ProtocolMap {
   public static final byte SC_START_CYCLE = (byte) 0xC6;
   public static final byte SC_CORRUPT_DATA = (byte) 0xCF;
 
-  public static byte[] poll_request_icc_msg = {
+  public static byte[] POLL_REQUEST_ICC = {
     0x51
   };
-  public static byte[] poll_request_deviceid = {
+  public static byte[] POLL_REQUEST_DEVICE_ID = {
     0x52
   };
 
-  public static byte[] poll_request_no_operation = {
+  public static byte[] POLL_REQUEST_NOP = {
     0x30
   };
 
-  public static byte[] poll_request_stop_com = {
+  public static byte[] POLL_REQUEST_STOP_COM = {
     0x55
   };
 
-  public static byte[] poll_request_config_measured_data_codepage1 = {
+  public static byte[] POLL_REQUEST_MEASURED_DATA_CP1 = {
     0x24
   };
 
-  public static byte[] poll_request_config_measured_data_codepage2 = {
+  public static byte[] POLL_REQUEST_MEASURED_DATA_CP2 = {
     0x2B
   };
 
-  public static byte[] poll_request_config_alarms_codepage1 = {
+  public static byte[] POLL_REQUEST_ALARMS_CP1 = {
     0x27
   };
 
-  public static byte[] poll_request_config_alarms_codepage2 = {
+  public static byte[] POLL_REQUEST_ALARMS_CP2 = {
     0x2E
   };
 
-  public static byte[] poll_request_current_date_time = {
+  public static byte[] POLL_REQUEST_DATE_TIME = {
     0x28
   };
 
-  public static byte[] poll_request_device_settings = {
+  public static byte[] POLL_REQUEST_DEVICE_SETTINGS = {
     0x29
   };
 
-  public static byte[] poll_request_text_messages = {
+  public static byte[] POLL_REQUEST_TEXT_MESSAGES = {
     0x2A
   };
 
-  public static byte[] poll_request_real_time_data_config = {
+  public static byte[] POLL_REQUEST_RT_DATA_CONFIG = {
     0x53
   };
 
-  public static byte[] poll_configure_real_time_transmission = {
+  public static byte[] POLL_CONFIGURE_RT_TRANSMISSION = {
     0x54
   };
 
-  public static byte[] poll_request_real_time_config_changed = {
+  public static byte[] POLL_REQUEST_RT_CONFIG_CHANGED = {
     0x56
   };
 
-  public static Map<Byte, String> MedibusXMeasurementCP1 = Map.<Byte, String>ofEntries(
+  private static final Map<Byte, String> RAW_MEASUREMENT_CP1 = Map.<Byte, String>ofEntries(
     entry((byte) 0x00, "Accumulated air consumption of the device per case, Air cons"),
     entry((byte) 0x01, "Accumulated N2O consumption of the device per case, N2O  cons"),
     entry((byte) 0x03, "Expiratory minute volume, MVe"),
@@ -116,10 +117,10 @@ public class ProtocolMap {
     entry((byte) 0x0A, "Spontaneous expiratory minute volume, MVespon"),
     entry((byte) 0x0B, "Patient airway resistance, Rpat"),
     entry((byte) 0x0D, "Mandatory expiratory minute volume, MVemand"),
-    entry((byte) 0x0E, "Increase of measured CO2 value in phase II of the capnogram, CO2 slope"),
+    entry((byte) 0x0E, "Increase of measured CO2 value in phase II of the capnogram, CO2 slope II"),
     entry((byte) 0x0F, "O2 central gas supply pressure, O2-CGS"),
-    entry((byte) 0x10, "Increase of measured CO2 value in phase III of the  capnogram, CO2 slope"),
-    entry((byte) 0x11, "Increase of measured CO2 value in phase III of the  capnogram, CO2 slope"),
+    entry((byte) 0x10, "Increase of measured CO2 value in phase III of the  capnogram, CO2 slope III"),
+    entry((byte) 0x11, "Increase of measured CO2 value in phase III of the  capnogram, CO2 slope III"),
     entry((byte) 0x12, "Average device flow, Flow device"),
     entry((byte) 0x16, "Mandatory tidal volume, VTmand"),
     entry((byte) 0x19, "ST deviation in lead I, STI"),
@@ -293,7 +294,7 @@ public class ProtocolMap {
     entry((byte) 0xFF, "Inspiratory CO2 concentration, inCO2")
   );
 
-  public static Map<Byte, String> MedibusXMeasurementCP2 = Map.<Byte, String>ofEntries(
+  private static final Map<Byte, String> RAW_MEASUREMENT_CP2 = Map.<Byte, String>ofEntries(
     entry((byte) 0x00, "Spontaneous tidal volume, VTspon"),
     entry((byte) 0x03, "Pressure amplitude during HFO, ΔPhf"),
     entry((byte) 0x04, "Inspiratory part of I:E ratio during spontaneous breathing, I  (I:Espon)"),
@@ -319,8 +320,8 @@ public class ProtocolMap {
     entry((byte) 0x19, "Total power (BIS), EEG Pwr"),
     entry((byte) 0x1A, "Goal for Δpressure support in SmartCare, SC-ΔPsupp goal"),
     entry((byte) 0x1B, "Rated Δpressure support by internal controller in SmartCare, SC-ΔPsupp rated"),
-    entry((byte) 0x1C, "Duration of session (hours) in SmartCare, SC-duration"),
-    entry((byte) 0x1D, "Duration of session (minutes) in SmartCare, SC-duration"),
+    entry((byte) 0x1C, "Duration of session (hours) in SmartCare, SC-duration-h"),
+    entry((byte) 0x1D, "Duration of session (minutes) in SmartCare, SC-duration-min"),
     entry((byte) 0x1E, "Spontaneous respiratory rate in SmartCare, SC-RRspon"),
     entry((byte) 0x1F, "Tidal volume in SmartCare, SC-VT"),
     entry((byte) 0x21, "Expiratory tidal volume, VTe"),
@@ -374,7 +375,7 @@ public class ProtocolMap {
     entry((byte) 0x53, "Difference between inspired and expired tidal volume (VTi VTe), ΔVT")
   );
 
-  public static Map<Byte, String> MedibusXRealTimeData = Map.<Byte, String>ofEntries(
+  private static final Map<Byte, String> RAW_REALTIME = Map.<Byte, String>ofEntries(
     entry((byte) 0x00, "Airway pressure, Paw"),
     entry((byte) 0x01, "Flow (inspiratory/expiratory), Flow"),
     entry((byte) 0x02, "Oxygen saturation pulse, Pleth"),
@@ -382,7 +383,7 @@ public class ProtocolMap {
     entry((byte) 0x05, "Oxygen concentration (inspiratory/expiratory), O2"),
     entry((byte) 0x06, "CO2 concentration, CO2 (mmHg)"),
     entry((byte) 0x07, "CO2 concentration, CO2 (kPa)"),
-    entry((byte) 0x08, "CO2 concentration, CO2 (%)"),
+    entry((byte) 0x08, "CO2 concentration, CO2 (pct)"),
     entry((byte) 0x0A, "Concentration of primary agent (inspiratory/expiratory) (%)"),
     entry((byte) 0x0B, "Halothane concentration (inspiratory/expiratory), Hal (%)"),
     entry((byte) 0x0C, "Enflurane concentration (inspiratory/expiratory), Enf (%)"),
@@ -399,7 +400,7 @@ public class ProtocolMap {
     entry((byte) 0x2F, "Sevoflurane concentration (inspiratory/expiratory), Sev (kPa)")
   );
 
-  public static Map<Byte, String> MedibusXAlarmsCP1 = Map.<Byte, String>ofEntries(
+  private static final Map<Byte, String> RAW_ALARMS_CP1 = Map.<Byte, String>ofEntries(
     entry((byte) 0x00, "Apnea by different or undefined sources"),
     entry((byte) 0x01, "No SpO2 pulse"),
     entry((byte) 0x02, "SpO2 pulse < low limit"),
@@ -637,7 +638,7 @@ public class ProtocolMap {
     entry((byte) 0xFF, "Disconnection ventilator")
   );
 
-  public static Map<Byte, String> MedibusXAlarmsCP2 = Map.<Byte, String>ofEntries(
+  private static final Map<Byte, String> RAW_ALARMS_CP2 = Map.<Byte, String>ofEntries(
     entry((byte) 0x01, "NiBP did not measure"),
     entry((byte) 0x03, "NIBP max. inflation press. exceeded"),
     entry((byte) 0x07, "NIBP measurement max time exceeded"),
@@ -803,7 +804,7 @@ public class ProtocolMap {
     entry((byte) 0xFF, "In O2 therapy the set flow cannot be reached due to high resistance.")
   );
 
-  public static Map<Byte, String> MedibusXTextMessages = Map.<Byte, String>ofEntries(
+  private static final Map<Byte, String> RAW_TEXT_MESSAGES = Map.<Byte, String>ofEntries(
     entry((byte) 0x01, "Mode VC-CMV (volume-controlled, continuous mandatory  ventilation)"),
     entry((byte) 0x02, "Mode VC-AC (volume-controlled, assist controlled ventilation)"),
     entry((byte) 0x06, "Mode VC-SIMV (volume-controlled, synchronized intermittent  mandatory ventilation)"),
@@ -935,7 +936,7 @@ public class ProtocolMap {
   );
 
 
-  public static Map<Byte, String> MedibusXDeviceSettings = Map.<Byte, String>ofEntries(
+  private static final Map<Byte, String> RAW_DEVICE_SETTINGS = Map.<Byte, String>ofEntries(
     entry((byte) 0x01, "Inspiratory oxygen fraction, FiO2"),
     entry((byte) 0x02, "Inspiratory flow, Flowi"),
     entry((byte) 0x03, "Time interval between sighs, Interval sigh"),
@@ -1003,7 +1004,7 @@ public class ProtocolMap {
     entry((byte) 0x6B, "Respiratory rate of sighs during HFO, RRsigh"),
     entry((byte) 0x6C, "Inspiratory time of sighs during HFO, Tisigh"),
     entry((byte) 0x6D, "Inspiratory pressure of sighs during HFO, Psigh"),
-    entry((byte) 0x6E, "Tidal volume during apnea ventilation, VTapn"),
+    entry((byte) 0x6E, "Tidal volume during apnea ventilation, VTapn-during"),
     entry((byte) 0x6F, "Ideal body weight, IBW"),
     entry((byte) 0x72, "Inspiratory termination criterion based on peak inspiratory flow, Insp. term."),
     entry((byte) 0x73, "Expiratory termination criterion during APRV/AutoRelease, Exp. term."),
@@ -1030,4 +1031,91 @@ public class ProtocolMap {
     entry((byte) 0x8B, "Lung mechanics in Smart Ventilation Control, Lung mechanics"),
     entry((byte) 0x8C, "Ventilation goal of Smart Ventilation Control, Ventilation goal")
   );
+
+  // ---------------------------------------------------------------------------
+  // Structured parameter catalog
+  //
+  // The verbose RAW_* maps above are the source "code -> description" data. The
+  // public maps below expose each entry as a MedibusParam carrying a stable,
+  // address-safe `id` (used downstream as channelID) plus label/unit. IDs are
+  // derived from the descriptions ("<label>, <shortcode>" -> id = <shortcode>).
+  // Where two codes would otherwise derive the same id, the shortcode suffix is
+  // disambiguated in the RAW_* description itself (e.g. "SC-duration-h" vs
+  // "SC-duration-min") — verified by ProtocolMapTest.
+  // ---------------------------------------------------------------------------
+
+  /** Numeric measurement parameters from code page 1 (keyed by Medibus data code). */
+  public static final Map<Byte, MedibusParam> MedibusXMeasurementCP1 = buildParamCatalog(RAW_MEASUREMENT_CP1);
+  /** Numeric measurement parameters from code page 2. */
+  public static final Map<Byte, MedibusParam> MedibusXMeasurementCP2 = buildParamCatalog(RAW_MEASUREMENT_CP2);
+  /** Real-time (waveform) data channels. */
+  public static final Map<Byte, MedibusParam> MedibusXRealTimeData   = buildParamCatalog(RAW_REALTIME);
+  /** Device setting parameters. */
+  public static final Map<Byte, MedibusParam> MedibusXDeviceSettings = buildParamCatalog(RAW_DEVICE_SETTINGS);
+  /** Alarm event catalog, code page 1 (ids are slugs of the alarm text). */
+  public static final Map<Byte, MedibusParam> MedibusXAlarmsCP1      = buildEventCatalog(RAW_ALARMS_CP1);
+  /** Alarm event catalog, code page 2. */
+  public static final Map<Byte, MedibusParam> MedibusXAlarmsCP2      = buildEventCatalog(RAW_ALARMS_CP2);
+  /** Text/status message catalog (ids are slugs of the message text). */
+  public static final Map<Byte, MedibusParam> MedibusXTextMessages   = buildEventCatalog(RAW_TEXT_MESSAGES);
+
+  /** Builds a parameter catalog by deriving a {@link MedibusParam} per raw entry. */
+  private static Map<Byte, MedibusParam> buildParamCatalog(Map<Byte, String> raw) {
+    Map<Byte, MedibusParam> out = new HashMap<>();
+    for (Map.Entry<Byte, String> e : raw.entrySet()) {
+      out.put(e.getKey(), deriveParam(e.getKey(), e.getValue()));
+    }
+    return Map.copyOf(out);
+  }
+
+  /** Builds an event catalog (alarms/text): id is a slug of the whole description, no shortcode split. */
+  private static Map<Byte, MedibusParam> buildEventCatalog(Map<Byte, String> raw) {
+    Map<Byte, MedibusParam> out = new HashMap<>();
+    for (Map.Entry<Byte, String> e : raw.entrySet()) {
+      String norm = normalize(e.getValue());
+      out.put(e.getKey(), new MedibusParam(e.getKey(), slug(norm), norm, ""));
+    }
+    return Map.copyOf(out);
+  }
+
+  /** Derives a parameter from a {@code "<label>, <shortcode>"} description (falls back to a slug when no comma). */
+  private static MedibusParam deriveParam(byte code, String description) {
+    String norm = normalize(description);
+    int comma = norm.lastIndexOf(',');
+    String label;
+    String idRaw;
+    if (comma >= 0) {
+      label = norm.substring(0, comma).trim();
+      idRaw = norm.substring(comma + 1).trim();
+    } else {
+      label = norm;
+      idRaw = norm;
+    }
+    String unit = extractUnit(idRaw);
+    String id = (comma >= 0) ? sanitizeId(idRaw) : slug(idRaw);
+    return new MedibusParam(code, id, label, unit);
+  }
+
+  private static String normalize(String s) {
+    return s.replaceAll("\\s+", " ").trim();
+  }
+
+  /** Extracts a unit from a trailing parenthesised token, e.g. {@code "CO2 (mmHg)" -> "mmHg"}. */
+  private static String extractUnit(String idRaw) {
+    int open = idRaw.indexOf('(');
+    int close = (open >= 0) ? idRaw.indexOf(')', open + 1) : -1;
+    return (close > open) ? idRaw.substring(open + 1, close).trim() : "";
+  }
+
+  /** Makes a shortcode address-safe: {@code "CO2 (mmHg)" -> "CO2_mmHg"}, {@code "GP1 D" -> "GP1_D"}. */
+  private static String sanitizeId(String idRaw) {
+    String t = normalize(idRaw).replace(" (", "_").replace("(", "_").replace(")", "");
+    // '.' is the bus-address delimiter, ' ' would split addresses: neither is allowed in an id.
+    return t.replace(' ', '_').replace('.', '_');
+  }
+
+  /** Slugs free text into an address-safe token (used for alarms/text messages). */
+  private static String slug(String s) {
+    return normalize(s).replaceAll("[^A-Za-z0-9]+", "_").replaceAll("^_+|_+$", "");
+  }
 }
