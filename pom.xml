@@ -17,6 +17,7 @@
     <module>framed-communicator</module>
     <module>framed-streamer</module>
     <module>framed-cdss</module>
+    <module>framed-interop</module>
     <module>framed-app</module>
   </modules>
 
@@ -59,6 +60,11 @@
       <dependency>
         <groupId>com.framed</groupId>
         <artifactId>framed-cdss</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.framed</groupId>
+        <artifactId>framed-interop</artifactId>
         <version>${project.version}</version>
       </dependency>
 

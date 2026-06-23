@@ -1,0 +1,7 @@
+{
+  "Measurement.Oxylog-3000-Plus-00.etCO2": { "code": "19889-5", "system": "LOINC", "display": "End tidal CO2", "unit": "mm[Hg]", "valueType": "NM" },
+  "Measurement.Oxylog-3000-Plus-00.FiO2":  { "code": "3150-0",  "system": "LOINC", "display": "Inhaled oxygen concentration", "unit": "%", "valueType": "NM" },
+  "Settings.Oxylog-3000-Plus-00.RR":        { "code": "76270-8", "system": "LOINC", "display": "Respiratory rate setting", "unit": "/min", "valueType": "NM" },
+  "Percentage_int.PC60FW.SpO2":             { "code": "59408-5", "system": "LOINC", "display": "SpO2 by pulse oximetry", "unit": "%", "valueType": "NM" },
+  "BPM.PC60FW.PR":                          { "code": "8867-4",  "system": "LOINC", "display": "Heart rate", "unit": "/min", "valueType": "NM" }
+}

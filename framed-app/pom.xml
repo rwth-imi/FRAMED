@@ -33,6 +33,10 @@
       <groupId>com.framed</groupId>
       <artifactId>framed-cdss</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.framed</groupId>
+      <artifactId>framed-interop</artifactId>
+    </dependency>
   </dependencies>
 
   <build>

@@ -4,3 +4,7 @@
 /output/*
 !output/.gitkeep
 target/
+ARCHITECTURE.md
+CLAUDE.md
+CHANGELOG.md
+

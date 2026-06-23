@@ -1,0 +1,43 @@
+{
+  "Devices": [
+    {
+      "class": "com.framed.interop.hl7.Hl7v2Protocol",
+      "id": "HL7-Inbound",
+      "port": 2575,
+      "mappingPath": "config/interop-mapping.json",
+      "inboundDeviceId": "HL7-In",
+      "ingestADT": true
+    }
+  ],
+  "Dispatchers": [
+    {
+      "class": "com.framed.interop.hl7.Hl7v2Dispatcher",
+      "id": "HL7-Outbound",
+      "devices": [
+        "Oxylog-3000-Plus-00",
+        "PC60FW"
+      ],
+      "host": "127.0.0.1",
+      "port": 2575,
+      "mappingPath": "config/interop-mapping.json",
+      "patient": {
+        "mrn": "12345",
+        "lastName": "Doe",
+        "firstName": "Jane",
+        "dob": "19800101",
+        "sex": "F",
+        "location": "ICU^01^A"
+      },
+      "sendingIds": {
+        "sendingApp": "FRAMED",
+        "sendingFacility": "ICU",
+        "receivingApp": "HIS",
+        "receivingFacility": "HOSPITAL"
+      },
+      "gate": {
+        "onChange": false,
+        "minIntervalMs": 5000
+      }
+    }
+  ]
+}
