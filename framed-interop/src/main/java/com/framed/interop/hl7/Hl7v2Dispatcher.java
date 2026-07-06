@@ -16,10 +16,9 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Outbound HL7 v2 sink: maps FRAMED datapoints to {@code ORU^R01} messages and sends them over MLLP
@@ -35,7 +34,6 @@ public final class Hl7v2Dispatcher extends Dispatcher {
   private final PatientContext patient;
   private final SendingIds ids;
   private final MllpClient client;
-  private final AtomicLong controlIds = new AtomicLong();
 
   /**
    * @param eventBus   the event bus
@@ -74,16 +72,36 @@ public final class Hl7v2Dispatcher extends Dispatcher {
       return;
     }
 
-    String controlId = "FRAMED" + controlIds.incrementAndGet();
+    String controlId = controlIdFor(dataPoint);
     String oru = OruBuilder.build(ids, patient, concept.get(),
         formatValue(dataPoint.value()), dataPoint.timestamp(), controlId);
 
+    // A transport failure (connect/timeout) throws IOException here -> the base retries with
+    // backoff. That retry reuses the same control id (see controlIdFor), so a receiver that lost
+    // only the ACK can de-duplicate on MSH-10 rather than recording the observation twice.
     String ack = client.sendAndReceive(oru);
+
     String ackCode = Hl7Message.parse(ack).field("MSA", 1);
     if (!"AA".equals(ackCode) && !"CA".equals(ackCode)) {
-      // Negative acknowledgement: treat as transient so the base retries with backoff.
-      throw new IOException("HL7 endpoint NAK (MSA-1=" + ackCode + ") for control id " + controlId);
+      // Application-level reject/error: the peer received the message and rejected it, so resending
+      // the identical content cannot succeed. Drop to the dead-letter hook instead of retrying
+      // forever (which would wedge the single push worker on a poison message).
+      onDrop(dataPoint, new IOException(
+          "HL7 endpoint NAK (MSA-1=" + ackCode + ") for control id " + controlId));
     }
+  }
+
+  /**
+   * Stable message control id (MSH-10) for a datapoint. It is derived from the datapoint rather
+   * than a counter so that a retry of the <em>same</em> datapoint re-sends the same control id,
+   * letting a conformant receiver de-duplicate when only the acknowledgement was lost.
+   *
+   * @param dp the datapoint
+   * @return the control id
+   */
+  static String controlIdFor(DataPoint<?> dp) {
+    return "FRAMED-" + Integer.toUnsignedString(
+        Objects.hash(dp.deviceID(), dp.channelID(), dp.timestamp(), dp.value()));
   }
 
   @Override
@@ -109,11 +127,5 @@ public final class Hl7v2Dispatcher extends Dispatcher {
   public void stop() {
     client.close();
     super.stop();
-  }
-
-  /** Releases the MLLP client and drains the push queue. */
-  public void shutdownClient() {
-    shutdown(Duration.ofSeconds(2));
-    client.close();
   }
 }

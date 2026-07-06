@@ -15,9 +15,6 @@ import java.util.List;
  */
 public final class Hl7Message {
 
-  /** HL7 component separator within a field. */
-  public static final String COMPONENT_SEP = "\\^";
-
   private final List<String[]> segments;
 
   private Hl7Message(List<String[]> segments) {

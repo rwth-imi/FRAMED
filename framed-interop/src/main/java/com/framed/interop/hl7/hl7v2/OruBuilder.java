@@ -21,7 +21,12 @@ public final class OruBuilder {
 
   private OruBuilder() {}
 
-  /** A single observation to encode as an OBX segment. */
+  /**
+   * A single observation to encode as an OBX segment.
+   *
+   * @param concept the coded concept (OBX-3 / OBX-6)
+   * @param value   the observation value, already formatted (OBX-5)
+   */
   public record Observation(CodedConcept concept, String value) {}
 
   /**

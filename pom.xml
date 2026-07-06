@@ -36,6 +36,8 @@
     <json.version>20250517</json.version>
     <influxdb.version>7.4.0</influxdb.version>
     <jserialcomm.version>2.10.4</jserialcomm.version>
+    <paho.version>1.2.5</paho.version>
+    <moquette.version>0.17</moquette.version>
 
     <launcher.class>com.framed.orchestrator.Main</launcher.class>
   </properties>
@@ -82,6 +84,17 @@
         <groupId>com.fazecast</groupId>
         <artifactId>jSerialComm</artifactId>
         <version>${jserialcomm.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.paho</groupId>
+        <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
+        <version>${paho.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.moquette</groupId>
+        <artifactId>moquette-broker</artifactId>
+        <version>${moquette.version}</version>
+        <scope>test</scope>
       </dependency>
 
       <dependency>

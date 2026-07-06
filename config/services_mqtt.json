@@ -1,0 +1,26 @@
+{
+  "Devices": [
+    {
+      "class": "com.framed.interop.mqtt.MqttService",
+      "id": "MQTT-Bridge",
+      "brokerUrl": "tcp://127.0.0.1:1883",
+      "clientId": "framed-bridge",
+      "devices": [
+        "Oxylog-3000-Plus-00",
+        "PC60FW"
+      ],
+      "subscribeTopics": [
+        "framed/external/#"
+      ],
+      "topicPrefix": "framed",
+      "qos": 1,
+      "mappingPath": "config/interop-mapping.json",
+      "gate": {
+        "onChange": false,
+        "minIntervalMs": 1000
+      },
+      "includeUnmapped": false,
+      "inboundDeviceId": "MQTT-In"
+    }
+  ]
+}

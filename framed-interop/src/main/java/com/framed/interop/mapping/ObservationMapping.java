@@ -23,7 +23,13 @@ import java.util.Optional;
  */
 public final class ObservationMapping {
 
-  /** A resolved FRAMED channel coordinate decoded from a mapping key. */
+  /**
+   * A resolved FRAMED channel coordinate decoded from a mapping key.
+   *
+   * @param className the channel class name
+   * @param deviceID  the producing device id, or {@code null} for a device-agnostic key
+   * @param channelID the channel id
+   */
   public record Channel(String className, String deviceID, String channelID) {}
 
   private final Map<String, CodedConcept> byKey = new HashMap<>();
