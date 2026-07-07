@@ -178,7 +178,12 @@ public Hl7v2Protocol(String id, EventBus eventBus, int port,
 
 ---
 
-## Step 2 — Optional MQTT support
+## Step 2 — Optional MQTT support  ✅ delivered
+
+> **Status:** implemented as `com.framed.interop.mqtt.MqttService` (bidirectional,
+> one Paho 3.1.1 connection), behind an `MqttTransport` abstraction with a
+> `PahoMqttTransport` adapter. Tested with an in-memory transport fake and
+> end-to-end against an embedded Moquette broker. Example: `config/services_mqtt.json`.
 
 **Goal:** a lightweight streaming bridge for the edge/telemetry boundary. **Exception to the
 Dispatcher/Protocol split:** a single MQTT client connection serves both publish and subscribe,
@@ -255,6 +260,15 @@ is GPL-2.0), Java 21 support, and maintenance status. **Decision gate:** no Phas
 working spike (provider + consumer exchanging one metric + one waveform). Fallback if no viable
 lib: bridge SDC externally via the Step-2 MQTT service rather than implementing SDC in-process.
 
+> **Phase A status: ✅ GO (2026-07-07).** Chosen dep: **`org.somda.sdc:glue:6.2.1`** (SDCri,
+> Maven Central, Apr 2025). License **MIT** — compatible with GPL-2.0. Targets **Java 17**
+> bytecode, runs on FRAMED's Java 21. Actively maintained (gitlab.com/sdc-suite/sdc-ri,
+> ~1,900 commits). Spike: `framed-interop/src/test-sdc/.../SdcriSpikeTest` — SDCri provider +
+> consumer on loopback exchange one numeric metric and one waveform (real-time sample array)
+> over MDPWS incl. WS-Discovery, asserting value/sample fidelity; green in ~10 s. Runs only
+> under the heavy `sdc` Maven profile (`mvn -pl framed-interop -Psdc test`); default builds
+> and the fat-jar are untouched.
+
 ### Phased plan
 
 - **Phase A — Spike & decision (time-boxed).** SDCri provider + consumer in a scratch test;
@@ -266,6 +280,18 @@ lib: bridge SDC externally via the Step-2 MQTT service rather than implementing 
   drops — are first-class here (buffer samples into real-time sample arrays at device rate). The
   `EmissionGate` is bypassed for waveforms (SDC handles full rate) but still applies to derived
   metrics.
+
+  > **Status: ✅ delivered (2026-07-07)** as `com.framed.interop.sdc.SdcProviderDispatcher`.
+  > MDIB skeleton (MDS → VMD/channel per device group) is seeded at startup; metric/waveform
+  > descriptors are inserted lazily on each channel's first datapoint, so device-agnostic mapping
+  > keys work. Mapping schema extension shipped: `kind` (`metric`|`waveform`|`setting`) and
+  > optional `mdc`; entries without a `code` are legal for SDC-only channels. HL7/MQTT now skip
+  > `kind=waveform` explicitly. Descriptors carry a coded type **only** when the integrator
+  > assigns `mdc` (no guessed nomenclature codes); units are UCUM-coded. SDCri is an **optional**
+  > dependency: the fat-jar ships the class but no SDC stack — deployments add
+  > `org.somda.sdc:glue` to `framed-app` to activate it. E2E-tested against a real SDCri consumer
+  > (`SdcProviderDispatcherTest`, `sdc` profile). **Open:** TLS/crypto (SDC security profile) is
+  > not wired — plain HTTP only, not for clinical use until Phase D.
 - **Phase C — `SdcConsumerProtocol extends Protocol` (optional).** WS-Discovery to find remote
   providers; subscribe to metrics/waveforms; republish into FRAMED as `.parsed` EAV via reverse
   `mdc`→channel mapping. Lets FRAMED consume other vendors' SDC devices.
@@ -275,8 +301,12 @@ lib: bridge SDC externally via the Step-2 MQTT service rather than implementing 
 
 ### Mapping extension
 
-`interop-mapping.json` entries already reserve optional `mdc` (11073 nomenclature) and `kind`
-(`metric` | `waveform` | `setting`) fields, so the same file drives HL7, MQTT, and SDC.
+`interop-mapping.json` entries carry optional `mdc` (11073 nomenclature) and `kind`
+(`metric` | `waveform` | `setting`, default `metric`) fields, so the same file drives HL7, MQTT,
+and SDC. ✅ implemented: `CodedConcept` parses both; `kind=waveform` entries are emitted only by
+SDC (HL7/MQTT skip them) and may omit `code`. The deployment mapping ships **without** `mdc`
+codes — assigning verified 11073-10101 codes is integrator/clinical-content work; the SDC
+descriptor carries no coded type until then.
 
 ### Tests
 
@@ -309,8 +339,23 @@ is a bare `Service`, placed under `Devices`.
 ### Config
 
 - `config/interop-mapping.json` — shared coding map (LOINC + UCUM, plus `mdc`/`kind` for SDC).
-- `config/services_interop.json` — example `Dispatchers` + `Devices` entries; the working
-  `config/services.json` is left untouched.
+- `config/services_interop.json` — replay-driven interop simulation (`ReplayProtocol` feeding the
+  HL7 endpoints and the MQTT bridge); the working `config/services.json` is left untouched.
+
+### Running the interop simulation profile
+
+`config/services_interop.json` replays `data/replay/p01-VC1-clean-0.jsonl` through both interop
+boundaries. It needs two external receivers, which are deliberately **not** part of the profile:
+
+- **MLLP listener on `127.0.0.1:2576`** — the `Hl7v2Dispatcher` target. This must be an external
+  receiver (e.g. a HIS test endpoint, or a second FRAMED instance whose `Hl7v2Protocol` listens
+  on 2576). It must **not** be the same instance's own inbound `Hl7v2Protocol` (port 2575): the
+  inbound side republishes received observations under the very device groups the dispatcher
+  subscribes to, so a self-referential endpoint re-emits every observation in a feedback loop
+  (documented on `Hl7v2Dispatcher`). Without a listener on 2576 the dispatcher retries each
+  gated observation for its retry budget (default 30 s) and then dead-letters it.
+- **MQTT broker on `tcp://127.0.0.1:1883`** — e.g. `mosquitto`. A broker that is down at startup
+  is not fatal: `MqttService` retries connect+subscribe in the background until it appears.
 
 ### Build / POM changes
 
