@@ -1,5 +1,5 @@
 {
-  "devices": [
+  "Devices": [
     {
       "class": "com.framed.communicator.driver.protocol.medibus.MedibusProtocol",
       "id": "Oxylog-3000-Plus-00",
@@ -13,7 +13,7 @@
       "multiplier": "10"
     }
   ],
-  "writers": [
+  "Writers": [
     {
       "class": "com.framed.communicator.io.raw.RawByteWriter",
       "id": "Raw-Byte-Writer",
@@ -90,6 +90,7 @@
   "Reactors":  [
     {
       "class": "com.framed.cdss.reactors.LimitClassificationReactor",
+      "atomic": false,
       "id": "etCO2-Limit-Classifier",
       "firingRules": [
         {
@@ -104,6 +105,7 @@
     },
     {
       "class": "com.framed.cdss.reactors.LimitClassificationReactor",
+      "atomic": false,
       "id": "PulseOxi-Limit-Classifier",
       "firingRules": [
         {
@@ -120,6 +122,7 @@
     },
     {
       "class": "com.framed.cdss.reactors.LimitClassificationReactor",
+      "atomic": false,
       "id": "S/F-Limit-Classifier",
       "firingRules": [
         {
@@ -136,6 +139,7 @@
     },
     {
       "class": "com.framed.cdss.reactors.LimitClassificationReactor",
+      "atomic": false,
       "id": "HR-Limit-Classifier",
       "firingRules": [
         {
@@ -150,6 +154,7 @@
     },
     {
       "class": "com.framed.cdss.reactors.SFComputationReactor",
+      "atomic": false,
       "id": "SF-Computation-Reactor",
       "spo2Channel": "Percentage_int.PC60FW.SpO2.parsed",
       "fio2Channel": "Measurement.Oxylog-3000-Plus-00.FiO2.parsed",
@@ -157,6 +162,7 @@
     },
     {
       "class": "com.framed.cdss.reactors.TrendClassificationReactor",
+      "atomic": false,
       "id": "spo2-Trend-Classifier",
       "firingRules": [
         {
@@ -178,6 +184,7 @@
     },
     {
       "class": "com.framed.cdss.reactors.TrendClassificationReactor",
+      "atomic": false,
       "id": "etCO2-Trend-Classifier",
       "firingRules": [
         {
@@ -199,6 +206,7 @@
     },
     {
       "class": "com.framed.cdss.reactors.HemodynamicRhythmClassificationReactor",
+      "atomic": false,
       "id": "Hemodynamic arrhythmia",
       "etCO2TrendChannel": "etCO2-Trend",
       "hrLimitChannel": "HR-Limit",
@@ -206,6 +214,7 @@
     },
     {
       "class": "com.framed.cdss.reactors.DislocationClassificationReactor",
+      "atomic": false,
       "id": "Dislocation-Classifier",
       "spo2TrendChannel": "SpO2-Trend",
       "etCO2LimitChannel": "etCO2-Limit",
@@ -214,6 +223,7 @@
     },
     {
       "class": "com.framed.cdss.reactors.RespiratoryRateEstimationReactor",
+      "atomic": false,
       "id": "RespiratoryRateEstimator",
       "etco2Channel":"RealTime.Oxylog-3000-Plus-00.CO2_mmHg.parsed",
       "outputChannels": [
@@ -232,6 +242,7 @@
     },
     {
       "class": "com.framed.cdss.reactors.RRMismatchClassificationReactor",
+      "atomic": false,
       "id": "RRMismatchClassifier",
       "rrEstimationChannel": "EstimatedRR",
       "rrSettingsChannel": "Settings.Oxylog-3000-Plus-00.RR.parsed",
