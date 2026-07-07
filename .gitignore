@@ -4,8 +4,7 @@
 /output/*
 !output/.gitkeep
 target/
+commlog/
 ARCHITECTURE.md
 CLAUDE.md
 CHANGELOG.md
-
-framed-interop/data/
