@@ -45,12 +45,8 @@ class Hl7ReplaySimulationTest {
     Path mappingPath = ReplayFixture.deploymentMapping();
     ObservationMapping mapping = ObservationMapping.load(mappingPath);
 
-    List<Event> mapped = events.stream()
-        .filter(e -> mapping.lookup(e.className(), e.deviceID(), e.channelID()).isPresent())
-        .toList();
-    List<Event> unmapped = events.stream()
-        .filter(e -> mapping.lookup(e.className(), e.deviceID(), e.channelID()).isEmpty())
-        .toList();
+    List<Event> mapped = ReplayFixture.mapped(events, mapping);
+    List<Event> unmapped = ReplayFixture.unmapped(events, mapping);
     assertFalse(mapped.isEmpty(), "fixture must contain mapped telemetry");
     assertFalse(unmapped.isEmpty(), "fixture must contain unmapped telemetry as a control group");
 

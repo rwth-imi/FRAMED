@@ -45,17 +45,11 @@ class MqttReplaySimulationTest {
     }
   }
 
-  private static List<Event> mapped(List<Event> events, ObservationMapping mapping) {
-    return events.stream()
-        .filter(e -> mapping.lookup(e.className(), e.deviceID(), e.channelID()).isPresent())
-        .toList();
-  }
-
   @Test
   void replayedTelemetryIsBridgedOutAndBackWithFullFidelity() {
     List<Event> events = ReplayFixture.load();
     ObservationMapping mapping = mapping();
-    List<Event> mapped = mapped(events, mapping);
+    List<Event> mapped = ReplayFixture.mapped(events, mapping);
     assertFalse(mapped.isEmpty(), "fixture must contain mapped telemetry");
     assertTrue(mapped.size() < events.size(), "fixture must contain unmapped telemetry as a control group");
 
@@ -127,13 +121,13 @@ class MqttReplaySimulationTest {
   void onChangeGateKeepsReplayAtClinicalCadence() {
     List<Event> events = ReplayFixture.load();
     ObservationMapping mapping = mapping();
-    List<Event> mapped = mapped(events, mapping);
+    List<Event> mapped = ReplayFixture.mapped(events, mapping);
 
     // Expected emissions under onChange: per gate key (deviceID.channelID), only value changes.
     Map<String, Object> last = new HashMap<>();
     int expected = 0;
     for (Event ev : mapped) {
-      Object prev = last.put(ev.deviceID() + "." + ev.channelID(), ev.value());
+      Object prev = last.put(EmissionGate.keyFor(ev.deviceID(), ev.channelID()), ev.value());
       if (prev == null || !prev.equals(ev.value())) {
         expected++;
       }
