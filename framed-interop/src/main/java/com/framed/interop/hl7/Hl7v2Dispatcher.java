@@ -15,9 +15,12 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -25,7 +28,12 @@ import java.util.Optional;
  * to a remote endpoint, retrying on transient failures via the {@link Dispatcher} base.
  *
  * <p>Only channels present in the mapping are emitted (so high-rate waveforms are naturally skipped),
- * and emission is further throttled by the {@link EmissionGate}.</p>
+ * and emission is further throttled by the {@link EmissionGate}, keyed per device and channel.</p>
+ *
+ * <p><b>Deployment caution:</b> never point {@code host}/{@code port} at FRAMED's own
+ * {@link Hl7v2Protocol} MLLP server. The inbound side republishes received observations under the
+ * mapped device groups — the very groups this dispatcher subscribes to — so a self-referential
+ * endpoint creates a feedback loop that re-emits every observation indefinitely.</p>
  */
 public final class Hl7v2Dispatcher extends Dispatcher {
 
@@ -68,7 +76,13 @@ public final class Hl7v2Dispatcher extends Dispatcher {
     if (concept.isEmpty()) {
       return; // unmapped channel (e.g. a raw waveform) — not emitted over HL7
     }
-    if (!gate.allow(dataPoint.channelID(), dataPoint.value(), System.currentTimeMillis())) {
+    // Gate keyed per device+channel so identically named channels on different devices don't
+    // share a throttle slot. Checked here, committed only after the send succeeded: committing
+    // before a failed send would make the gate suppress the base Dispatcher's retry of this very
+    // datapoint and silently lose it.
+    String gateKey = dataPoint.deviceID() + "." + dataPoint.channelID();
+    long nowMs = System.currentTimeMillis();
+    if (!gate.allows(gateKey, dataPoint.value(), nowMs)) {
       return;
     }
 
@@ -80,6 +94,8 @@ public final class Hl7v2Dispatcher extends Dispatcher {
     // backoff. That retry reuses the same control id (see controlIdFor), so a receiver that lost
     // only the ACK can de-duplicate on MSH-10 rather than recording the observation twice.
     String ack = client.sendAndReceive(oru);
+    // The peer received the message (even a NAK below counts as delivered): the emission happened.
+    gate.commit(gateKey, dataPoint.value(), nowMs);
 
     String ackCode = Hl7Message.parse(ack).field("MSA", 1);
     if (!"AA".equals(ackCode) && !"CA".equals(ackCode)) {
@@ -96,12 +112,23 @@ public final class Hl7v2Dispatcher extends Dispatcher {
    * than a counter so that a retry of the <em>same</em> datapoint re-sends the same control id,
    * letting a conformant receiver de-duplicate when only the acknowledgement was lost.
    *
+   * <p>The id is the first 80 bits of a SHA-256 over the datapoint's identity, hex-encoded to the
+   * 20-character HL7 v2.5 length limit of MSH-10. 80 bits keeps birthday collisions between
+   * <em>distinct</em> observations negligible over years of continuous vitals (a 32-bit hash, by
+   * contrast, collides within weeks and makes receivers silently discard real observations).</p>
+   *
    * @param dp the datapoint
-   * @return the control id
+   * @return the control id (20 hex characters)
    */
   static String controlIdFor(DataPoint<?> dp) {
-    return "FRAMED-" + Integer.toUnsignedString(
-        Objects.hash(dp.deviceID(), dp.channelID(), dp.timestamp(), dp.value()));
+    String identity = dp.deviceID() + '|' + dp.channelID() + '|' + dp.timestamp() + '|' + dp.value();
+    try {
+      byte[] hash = MessageDigest.getInstance("SHA-256")
+          .digest(identity.getBytes(StandardCharsets.UTF_8));
+      return HexFormat.of().withUpperCase().formatHex(hash, 0, 10);
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 unavailable", e); // mandated by the JCA spec
+    }
   }
 
   @Override

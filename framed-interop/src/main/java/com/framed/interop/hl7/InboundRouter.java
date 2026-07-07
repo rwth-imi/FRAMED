@@ -10,6 +10,8 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Parses inbound HL7 messages and routes their content onto the FRAMED bus as EAV observations,
@@ -29,6 +31,10 @@ public final class InboundRouter {
   private static final Logger LOGGER = Logger.getLogger(InboundRouter.class.getName());
 
   private static final DateTimeFormatter HL7_TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
+  /** HL7 DTM: 4–14 digits (year down to seconds), optional fraction, optional zone offset. */
+  private static final Pattern HL7_DTM =
+      Pattern.compile("(\\d{4,14})(?:\\.\\d+)?([+-]\\d{4})?");
 
   private final ObservationMapping mapping;
   private final ObservationSink sink;
@@ -127,14 +133,38 @@ public final class InboundRouter {
     }
   }
 
-  private static Instant parseTimestamp(String hl7Ts) {
-    if (hl7Ts == null || hl7Ts.length() < 14) {
-      return Instant.now();
+  /**
+   * Parses an HL7 DTM (OBX-14) honouring any explicit zone offset and every legal precision from
+   * year down to seconds (shorter precisions are padded: missing month/day default to {@code 01},
+   * missing time-of-day to {@code 00}). Without an explicit offset the value is interpreted as
+   * UTC, matching the outbound convention of {@code OruBuilder}. An absent value falls back to the
+   * arrival time; a malformed value does too, with a warning — never silently.
+   *
+   * @param hl7Ts the raw OBX-14 text (may be {@code null} or empty)
+   * @return the observation instant, or the arrival time when absent/unparseable
+   */
+  static Instant parseTimestamp(String hl7Ts) {
+    if (hl7Ts == null || hl7Ts.isBlank()) {
+      return Instant.now(); // OBX-14 is optional; arrival time is the documented fallback
     }
-    try {
-      return LocalDateTime.parse(hl7Ts.substring(0, 14), HL7_TS).toInstant(ZoneOffset.UTC);
-    } catch (RuntimeException e) {
-      return Instant.now();
+    Matcher m = HL7_DTM.matcher(hl7Ts.trim());
+    if (m.matches() && m.group(1).length() % 2 == 0) {
+      String body = m.group(1);
+      // Pad to full yyyyMMddHHmmss: absent month/day become 01, absent time-of-day 00.
+      String padded = switch (body.length()) {
+        case 4 -> body + "0101000000";
+        case 6 -> body + "01000000";
+        default -> body + "00000000000000".substring(body.length());
+      };
+      ZoneOffset offset = m.group(2) != null ? ZoneOffset.of(m.group(2)) : ZoneOffset.UTC;
+      try {
+        return LocalDateTime.parse(padded, HL7_TS).toInstant(offset);
+      } catch (RuntimeException e) {
+        // fall through to the warning below (e.g. month 13)
+      }
     }
+    LOGGER.log(Level.WARNING,
+        "Unparseable OBX-14 timestamp \"{0}\"; falling back to arrival time", hl7Ts);
+    return Instant.now();
   }
 }
