@@ -14,14 +14,25 @@ final class FakeMqttTransport implements MqttTransport {
   final List<Published> published = new CopyOnWriteArrayList<>();
   private final List<Map.Entry<String, BiConsumer<String, byte[]>>> subs = new CopyOnWriteArrayList<>();
   boolean connected;
+  /** When true, {@link #publish} throws instead of recording — simulates a down broker. */
+  boolean failPublishes;
+  /** Number of {@link #connect} calls that throw before connecting succeeds. */
+  int failConnects;
 
   @Override
   public void connect() {
+    if (failConnects > 0) {
+      failConnects--;
+      throw new IllegalStateException("simulated broker down at startup");
+    }
     connected = true;
   }
 
   @Override
   public void publish(String topic, byte[] payload, int qos) {
+    if (failPublishes) {
+      throw new IllegalStateException("simulated broker outage");
+    }
     published.add(new Published(topic, payload, qos));
   }
 

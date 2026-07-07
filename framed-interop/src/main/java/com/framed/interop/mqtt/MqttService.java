@@ -11,6 +11,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.nio.file.Path;
+import java.time.DateTimeException;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -37,6 +39,13 @@ import java.util.logging.Level;
  * <p>This is a single bidirectional {@link Service} (rather than a Dispatcher + Protocol pair)
  * because one MQTT client connection inherently serves both directions; the Paho client is already
  * asynchronous, so no extra worker is needed to keep the bus handler non-blocking.</p>
+ *
+ * <p><b>Broker availability:</b> a broker that is down at startup is not fatal — the bridge logs a
+ * warning and a daemon thread retries connect+subscribe until it succeeds or the service stops
+ * (the deployment must not lose its MQTT leg permanently to a startup race). Once the initial
+ * connect succeeded, later connection drops are healed by the transport's automatic reconnect.
+ * Outbound publishes while disconnected fail and are dropped with a warning, throttled by the
+ * gate's interval filter.</p>
  */
 public final class MqttService extends Service {
 
@@ -51,6 +60,18 @@ public final class MqttService extends Service {
   private final String inboundDeviceId;
 
   private final Set<String> boundChannels = ConcurrentHashMap.newKeySet();
+
+  /**
+   * One inbound handler instance shared across all subscribe calls (including re-subscribes after
+   * a reconnect), so the transport's identity-based de-duplication of overlapping filters holds.
+   */
+  private final BiConsumer<String, byte[]> inboundHandler = this::onInbound;
+
+  /** Delay between startup-connect retries. Package-visible for tests. */
+  long reconnectDelayMs = 5_000;
+
+  private volatile boolean running = true;
+  private volatile boolean connected;
 
   /**
    * Config-loadable constructor.
@@ -108,13 +129,7 @@ public final class MqttService extends Service {
   }
 
   private void init() {
-    try {
-      transport.connect();
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to connect MQTT transport", e);
-    }
-
-    // Outbound: discover device channels and forward them.
+    // Outbound bus wiring is independent of broker state: discover device channels and forward.
     for (Object deviceObj : devices) {
       String device = deviceObj.toString();
       eventBus.register(addressRegistry(device), msg -> {
@@ -128,16 +143,56 @@ public final class MqttService extends Service {
       });
     }
 
-    // Inbound: subscribe and republish onto the bus. All filters share ONE handler instance so
-    // the transport can de-duplicate deliveries matched by overlapping filters (a fresh method
-    // reference per filter would defeat its identity-based de-duplication).
-    BiConsumer<String, byte[]> inbound = this::onInbound;
+    if (!connectAndSubscribe()) {
+      // Broker down at startup: keep the deployment alive and retry in the background, otherwise
+      // a startup race against the broker would silently cost the MQTT leg until a restart.
+      Thread retry = new Thread(this::reconnectLoop, "MqttService-connect-retry");
+      retry.setDaemon(true);
+      retry.start();
+    }
+  }
+
+  /**
+   * Connects the transport and subscribes all configured inbound filters. Safe to call again
+   * after a failure; a no-op once connected. Synchronized so the retry thread and any direct
+   * caller cannot connect concurrently.
+   *
+   * @return {@code true} if the transport is connected (subscribe failures are logged, not fatal)
+   */
+  synchronized boolean connectAndSubscribe() {
+    if (connected) {
+      return true;
+    }
+    try {
+      transport.connect();
+    } catch (Exception e) {
+      logger.log(Level.WARNING,
+          "MQTT broker not reachable (will retry in %d ms)".formatted(reconnectDelayMs), e);
+      return false;
+    }
+    // Inbound: subscribe and republish onto the bus (shared handler, see inboundHandler).
     for (Object t : subscribeTopics) {
       String filter = t.toString();
       try {
-        transport.subscribe(filter, qos, inbound);
+        transport.subscribe(filter, qos, inboundHandler);
       } catch (Exception e) {
         logger.log(Level.WARNING, "Failed to subscribe to MQTT topic " + filter, e);
+      }
+    }
+    connected = true;
+    return true;
+  }
+
+  private void reconnectLoop() {
+    while (running && !connected) {
+      try {
+        Thread.sleep(reconnectDelayMs);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return;
+      }
+      if (connectAndSubscribe()) {
+        return;
       }
     }
   }
@@ -155,17 +210,21 @@ public final class MqttService extends Service {
       if (concept.isEmpty() && !includeUnmapped) {
         return;
       }
-      // Gate keyed per device+channel so identically named channels on different devices don't
-      // share a throttle slot. Committed only after the publish was handed off, so a throwing
-      // transport doesn't burn the throttle slot on a message that never left.
-      String gateKey = device + "." + dp.channelID();
+      if (concept.isPresent() && concept.get().isWaveform()) {
+        return; // one MQTT message per waveform sample would flood the broker; SDC streams these
+      }
+      // Interval state is committed at attempt time (a down broker is probed at most once per
+      // interval, not once per sample); onChange state only after the publish was handed off, so
+      // a throwing transport doesn't suppress an identical follow-up value that never left.
+      String gateKey = EmissionGate.keyFor(device, dp.channelID());
       long nowMs = System.currentTimeMillis();
       if (!gate.allows(gateKey, dp.value(), nowMs)) {
         return;
       }
+      gate.commitAttempt(gateKey, nowMs);
       String topic = "%s/%s/%s".formatted(topicPrefix, device, dp.channelID());
       transport.publish(topic, MqttCodec.encode(dp, concept.orElse(null)), qos);
-      gate.commit(gateKey, dp.value(), nowMs);
+      gate.commitValue(gateKey, dp.value());
     } catch (Exception e) {
       logger.log(Level.WARNING, "Failed to publish MQTT message for device " + device, e);
     }
@@ -210,8 +269,10 @@ public final class MqttService extends Service {
    * Normalizes an external timestamp to the bus convention (UTC, {@code Timer.formatter}), which
    * every subscriber parses strictly — an unvalidated pass-through would make all sinks and
    * reactors reject every inbound sample. Accepts the bus format itself, ISO-8601 with an offset
-   * or {@code Z} (converted to UTC), and offset-less ISO-8601 (interpreted as UTC). An absent or
-   * unparseable timestamp falls back to the UTC arrival time (with a warning when unparseable).
+   * or {@code Z} (converted to UTC), offset-less ISO-8601 (interpreted as UTC), and the common
+   * epoch conventions (13 digits = millis, 10 digits = seconds; numeric JSON values arrive here
+   * stringified). An absent or unparseable timestamp falls back to the UTC arrival time (with a
+   * warning when unparseable).
    *
    * @param raw   the external timestamp text, or {@code null} if absent
    * @param topic the source topic, for the warning log
@@ -236,6 +297,19 @@ public final class MqttService extends Service {
       } catch (DateTimeParseException ignored) {
         // unparseable
       }
+      // Digit-only timestamps: the common epoch conventions. Exactly 13 digits is epoch millis
+      // and exactly 10 is epoch seconds (both hold until the year 2286); other digit counts are
+      // ambiguous (e.g. a 14-digit HL7 DTM would misread as a year-2612 epoch) and deliberately
+      // fall through to the arrival-time fallback instead of guessing.
+      if ((raw.length() == 13 || raw.length() == 10) && raw.chars().allMatch(Character::isDigit)) {
+        try {
+          long v = Long.parseLong(raw);
+          Instant epoch = raw.length() == 13 ? Instant.ofEpochMilli(v) : Instant.ofEpochSecond(v);
+          return LocalDateTime.ofInstant(epoch, ZoneOffset.UTC).format(formatter);
+        } catch (NumberFormatException | DateTimeException ignored) {
+          // unparseable after all
+        }
+      }
       logger.log(Level.WARNING,
           "Unparseable timestamp \"%s\" on MQTT topic %s; using arrival time".formatted(raw, topic));
     }
@@ -245,6 +319,7 @@ public final class MqttService extends Service {
 
   @Override
   public void stop() {
+    running = false;
     transport.close();
   }
 }

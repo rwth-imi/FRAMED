@@ -117,6 +117,10 @@ class InboundRouterTest {
         "full precision, no offset: interpreted as UTC");
     assertEquals(Instant.parse("2026-06-23T10:00:00Z"), InboundRouter.parseTimestamp("20260623120000+0200"),
         "explicit zone offset honoured");
+    assertEquals(Instant.parse("2026-06-23T10:00:00Z"), InboundRouter.parseTimestamp("20260623120000+02:00"),
+        "ISO-style colon offset tolerated");
+    assertEquals(Instant.parse("2026-06-23T10:00:00Z"), InboundRouter.parseTimestamp("20260623120000+02"),
+        "hour-only offset tolerated");
     assertEquals(Instant.parse("2026-06-23T14:00:00Z"), InboundRouter.parseTimestamp("20260623120000-0200"),
         "negative zone offset honoured");
     assertEquals(Instant.parse("2026-06-23T12:00:00Z"), InboundRouter.parseTimestamp("20260623120000.1234"),
@@ -132,8 +136,23 @@ class InboundRouterTest {
   }
 
   @Test
+  void escapedObxValueIsDecodedBeforeReachingTheBus() {
+    String oru = String.join("\r",
+        "MSH|^~\\&|MONITOR|ICU|FRAMED|HOSP|20260623120000||ORU^R01|MSG0004|P|2.5",
+        "OBR|1||||",
+        "OBX|1|ST|19889-5^End tidal CO2^LOINC||A\\F\\B \\T\\ C\\S\\D|mm[Hg]|||||F") + "\r";
+    router(false).handle(oru);
+
+    assertEquals(List.of("A|B & C^D"), captured.stream().map(Captured::value).toList(),
+        "escape sequences produced by a conformant sender (e.g. FRAMED's own outbound side) must decode");
+  }
+
+  @Test
   void absentOrMalformedDtmFallsBackToArrivalTime() {
-    for (String raw : new String[]{null, "", "  ", "20261323120000", "202606231", "not-a-dtm"}) {
+    // The last two match the DTM regex but carry out-of-range offsets: ZoneOffset.of throws for
+    // them, which must fall back to arrival time instead of NAKing the whole message.
+    for (String raw : new String[]{null, "", "  ", "20261323120000", "202606231", "not-a-dtm",
+        "20260707120000+1900", "20260707120000+0299"}) {
       Instant before = Instant.now();
       Instant got = InboundRouter.parseTimestamp(raw);
       Instant after = Instant.now();

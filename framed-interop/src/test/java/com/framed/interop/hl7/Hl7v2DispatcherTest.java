@@ -18,6 +18,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -142,6 +144,113 @@ class Hl7v2DispatcherTest {
       }
       bus.shutdown();
     }
+  }
+
+  /**
+   * Regression: a NAK'd value must not be recorded as delivered — under an onChange gate that
+   * would suppress every identical follow-up value although the receiver never stored the first,
+   * silently losing a stable vital for as long as it stays stable.
+   */
+  @Test
+  void nakDoesNotSuppressIdenticalFollowUpUnderOnChange() throws Exception {
+    Path mapping = tmp.resolve("m.json");
+    Files.writeString(mapping, """
+        { "Measurement.Oxylog-3000-Plus-00.etCO2": {"code":"19889-5","system":"LOINC","display":"etCO2","unit":"mm[Hg]","valueType":"NM"} }""");
+
+    AtomicInteger received = new AtomicInteger();
+    MllpServer server = new MllpServer(0, raw -> {
+      // Reject the first delivery, accept everything after.
+      String code = received.incrementAndGet() == 1 ? AckBuilder.AE : AckBuilder.AA;
+      return AckBuilder.build(Hl7Message.parse(raw), code, "", Instant.now());
+    });
+
+    LocalEventBus bus = new LocalEventBus(DispatchMode.PER_HANDLER);
+    Hl7v2Dispatcher dispatcher = new Hl7v2Dispatcher(bus, new JSONArray().put("Oxylog-3000-Plus-00"),
+        "127.0.0.1", server.getPort(), mapping.toString(), new JSONObject(), new JSONObject(),
+        new JSONObject().put("onChange", true));
+
+    try {
+      String channel = "Measurement.Oxylog-3000-Plus-00.etCO2.parsed";
+      bus.publish(Service.addressRegistry("Oxylog-3000-Plus-00"), channel);
+      Thread.sleep(300);
+      bus.publish(channel, sample(38));
+
+      long deadline = System.currentTimeMillis() + 5000;
+      while (received.get() < 1 && System.currentTimeMillis() < deadline) {
+        Thread.sleep(20);
+      }
+      assertEquals(1, received.get(), "first sample sent and NAK'd");
+
+      // Identical value, new sample: must still be offered — the NAK'd one was never stored.
+      bus.publish(channel, sample(38));
+      deadline = System.currentTimeMillis() + 5000;
+      while (received.get() < 2 && System.currentTimeMillis() < deadline) {
+        Thread.sleep(20);
+      }
+      assertEquals(2, received.get(), "a NAK'd value must not burn the onChange slot");
+    } finally {
+      dispatcher.stop();
+      server.close();
+      bus.shutdown();
+    }
+  }
+
+  /**
+   * A dead endpoint must not wedge the single push worker forever: after {@code retryBudgetMs}
+   * the datapoint is dead-lettered and later datapoints flow as soon as the endpoint is up.
+   */
+  @Test
+  void retryBudgetGivesUpOnDeadEndpointAndFreesTheWorker() throws Exception {
+    Path mapping = tmp.resolve("m.json");
+    Files.writeString(mapping, """
+        { "Measurement.Oxylog-3000-Plus-00.etCO2": {"code":"19889-5","system":"LOINC","display":"etCO2","unit":"mm[Hg]","valueType":"NM"} }""");
+
+    int port;
+    try (ServerSocket reserve = new ServerSocket(0)) {
+      port = reserve.getLocalPort();
+    }
+
+    LocalEventBus bus = new LocalEventBus(DispatchMode.PER_HANDLER);
+    Hl7v2Dispatcher dispatcher = new Hl7v2Dispatcher(bus, new JSONArray().put("Oxylog-3000-Plus-00"),
+        "127.0.0.1", port, mapping.toString(), new JSONObject(), new JSONObject(), new JSONObject());
+    dispatcher.retryBudgetMs = 300;
+
+    List<String> values = new CopyOnWriteArrayList<>();
+    MllpServer server = null;
+    try {
+      String channel = "Measurement.Oxylog-3000-Plus-00.etCO2.parsed";
+      bus.publish(Service.addressRegistry("Oxylog-3000-Plus-00"), channel);
+      Thread.sleep(300);
+      bus.publish(channel, sample(38));
+      Thread.sleep(1500); // let the retry budget expire and the datapoint be dead-lettered
+
+      server = new MllpServer(port, raw -> {
+        Hl7Message msg = Hl7Message.parse(raw);
+        values.add(msg.field("OBX", 5));
+        return AckBuilder.build(msg, AckBuilder.AA, "", Instant.now());
+      });
+      bus.publish(channel, sample(40));
+
+      long deadline = System.currentTimeMillis() + 5000;
+      while (values.isEmpty() && System.currentTimeMillis() < deadline) {
+        Thread.sleep(20);
+      }
+      Thread.sleep(500); // grace: a still-wedged worker would deliver the stale 38 about now
+      assertEquals(List.of("40"), values,
+          "the dead-lettered datapoint must not resurface and the follow-up must flow immediately");
+    } finally {
+      dispatcher.stop();
+      if (server != null) {
+        server.close();
+      }
+      bus.shutdown();
+    }
+  }
+
+  private static JSONObject sample(int value) {
+    return new JSONObject()
+        .put("timestamp", LocalDateTime.now().format(Timer.formatter))
+        .put("channelID", "etCO2").put("value", value).put("className", "Measurement");
   }
 
   /** The gate is keyed per device+channel: same-named channels on two devices must both emit. */

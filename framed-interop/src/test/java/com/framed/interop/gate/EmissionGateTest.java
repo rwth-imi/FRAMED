@@ -2,6 +2,7 @@ package com.framed.interop.gate;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -52,6 +53,27 @@ class EmissionGateTest {
     assertFalse(gate.allows("c", 5, 500), "committed emission now throttles");
     assertFalse(gate.allows("c", 6, 500), "interval applies after commit");
     assertTrue(gate.allows("c", 6, 1500), "interval elapsed and value changed");
+  }
+
+  @Test
+  void commitAttemptOnlyBurnsTheIntervalSlot() {
+    EmissionGate gate = new EmissionGate(true, 1000);
+    gate.commitAttempt("c", 0);
+    assertFalse(gate.allows("c", 5, 500), "an attempt throttles the interval even without delivery");
+    assertTrue(gate.allows("c", 5, 1500), "the value was never delivered, so onChange must not suppress it");
+  }
+
+  @Test
+  void commitValueOnlyRecordsTheDeliveredValue() {
+    EmissionGate gate = new EmissionGate(true, 1000);
+    gate.commitValue("c", 5);
+    assertFalse(gate.allows("c", 5, 0), "a delivered value suppresses its repeat");
+    assertTrue(gate.allows("c", 6, 0), "no attempt was recorded, so the interval does not block");
+  }
+
+  @Test
+  void keyForBuildsTheCanonicalDeviceScopedKey() {
+    assertEquals("devA.RR", EmissionGate.keyFor("devA", "RR"));
   }
 
   @Test
