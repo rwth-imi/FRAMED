@@ -35,12 +35,8 @@ final class FakeMqttTransport implements MqttTransport {
     connected = false;
   }
 
-  /** Test helper: simulate an inbound broker message, routing to matching subscribers. */
+  /** Test helper: simulate an inbound broker message, using the real transport dispatch logic. */
   void deliver(String topic, byte[] payload) {
-    for (Map.Entry<String, BiConsumer<String, byte[]>> sub : subs) {
-      if (PahoMqttTransport.topicMatches(sub.getKey(), topic)) {
-        sub.getValue().accept(topic, payload);
-      }
-    }
+    PahoMqttTransport.dispatchArrived(topic, payload, subs);
   }
 }

@@ -12,9 +12,13 @@ import org.json.JSONObject;
 
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeParseException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 import java.util.logging.Level;
 
 /**
@@ -124,11 +128,14 @@ public final class MqttService extends Service {
       });
     }
 
-    // Inbound: subscribe and republish onto the bus.
+    // Inbound: subscribe and republish onto the bus. All filters share ONE handler instance so
+    // the transport can de-duplicate deliveries matched by overlapping filters (a fresh method
+    // reference per filter would defeat its identity-based de-duplication).
+    BiConsumer<String, byte[]> inbound = this::onInbound;
     for (Object t : subscribeTopics) {
       String filter = t.toString();
       try {
-        transport.subscribe(filter, qos, this::onInbound);
+        transport.subscribe(filter, qos, inbound);
       } catch (Exception e) {
         logger.log(Level.WARNING, "Failed to subscribe to MQTT topic " + filter, e);
       }
@@ -148,11 +155,17 @@ public final class MqttService extends Service {
       if (concept.isEmpty() && !includeUnmapped) {
         return;
       }
-      if (!gate.allow(dp.channelID(), dp.value(), System.currentTimeMillis())) {
+      // Gate keyed per device+channel so identically named channels on different devices don't
+      // share a throttle slot. Committed only after the publish was handed off, so a throwing
+      // transport doesn't burn the throttle slot on a message that never left.
+      String gateKey = device + "." + dp.channelID();
+      long nowMs = System.currentTimeMillis();
+      if (!gate.allows(gateKey, dp.value(), nowMs)) {
         return;
       }
       String topic = "%s/%s/%s".formatted(topicPrefix, device, dp.channelID());
       transport.publish(topic, MqttCodec.encode(dp, concept.orElse(null)), qos);
+      gate.commit(gateKey, dp.value(), nowMs);
     } catch (Exception e) {
       logger.log(Level.WARNING, "Failed to publish MQTT message for device " + device, e);
     }
@@ -178,7 +191,7 @@ public final class MqttService extends Service {
         logger.log(Level.WARNING, "Inbound MQTT message on {0} has no value; dropping", topic);
         return;
       }
-      String timestamp = o.optString("timestamp", LocalDateTime.now().format(formatter));
+      String timestamp = normalizeTimestamp(o.optString("timestamp", null), topic);
 
       String address = "%s.%s.%s.parsed".formatted(className, deviceID, channelID);
       JSONObject result = new JSONObject()
@@ -191,6 +204,43 @@ public final class MqttService extends Service {
     } catch (Exception e) {
       logger.log(Level.WARNING, "Failed to handle inbound MQTT message on " + topic, e);
     }
+  }
+
+  /**
+   * Normalizes an external timestamp to the bus convention (UTC, {@code Timer.formatter}), which
+   * every subscriber parses strictly — an unvalidated pass-through would make all sinks and
+   * reactors reject every inbound sample. Accepts the bus format itself, ISO-8601 with an offset
+   * or {@code Z} (converted to UTC), and offset-less ISO-8601 (interpreted as UTC). An absent or
+   * unparseable timestamp falls back to the UTC arrival time (with a warning when unparseable).
+   *
+   * @param raw   the external timestamp text, or {@code null} if absent
+   * @param topic the source topic, for the warning log
+   * @return a bus-format UTC timestamp string
+   */
+  private String normalizeTimestamp(String raw, String topic) {
+    if (raw != null && !raw.isBlank()) {
+      try {
+        LocalDateTime.parse(raw, formatter);
+        return raw; // already in bus format
+      } catch (DateTimeParseException ignored) {
+        // try the ISO-8601 forms below
+      }
+      try {
+        return OffsetDateTime.parse(raw)
+            .withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime().format(formatter);
+      } catch (DateTimeParseException ignored) {
+        // not offset-carrying ISO-8601
+      }
+      try {
+        return LocalDateTime.parse(raw).format(formatter); // offset-less ISO-8601, taken as UTC
+      } catch (DateTimeParseException ignored) {
+        // unparseable
+      }
+      logger.log(Level.WARNING,
+          "Unparseable timestamp \"%s\" on MQTT topic %s; using arrival time".formatted(raw, topic));
+    }
+    // Bus timestamps are UTC by convention: never stamp with local wall-clock time.
+    return LocalDateTime.now(ZoneOffset.UTC).format(formatter);
   }
 
   @Override

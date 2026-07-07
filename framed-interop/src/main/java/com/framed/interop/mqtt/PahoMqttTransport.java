@@ -9,8 +9,11 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
 import java.util.AbstractMap.SimpleImmutableEntry;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 
@@ -23,8 +26,12 @@ import java.util.function.BiConsumer;
  * {@code MqttClient} would block until the broker acknowledges, indefinitely while it is down).
  * {@link #connect} and {@link #subscribe} run only at startup and wait with a bounded timeout.</p>
  *
- * <p>A single Paho callback dispatches each incoming message to every registered subscription whose
- * topic filter matches, so one connection can serve multiple inbound filters.</p>
+ * <p>A single Paho callback dispatches each incoming message to every <em>distinct</em> handler
+ * whose topic filter matches, so one connection can serve multiple inbound filters. A handler
+ * registered under several overlapping filters (e.g. {@code a/#} and {@code a/+}) is invoked at
+ * most once per delivery. Note that with overlapping filters the broker itself may still deliver
+ * one copy per matching subscription (permitted by MQTT 3.1.1 §3.3.5) — prefer non-overlapping
+ * subscribe filters.</p>
  */
 public final class PahoMqttTransport implements MqttTransport {
 
@@ -88,6 +95,25 @@ public final class PahoMqttTransport implements MqttTransport {
     }
   }
 
+  /**
+   * Dispatches one delivered message to every matching subscription, invoking each distinct
+   * handler at most once even when several of its filters match (overlapping filters would
+   * otherwise duplicate every observation on the bus).
+   *
+   * @param topic         the delivery topic
+   * @param payload       the message payload
+   * @param subscriptions the registered (filter, handler) pairs
+   */
+  static void dispatchArrived(String topic, byte[] payload,
+                              List<Map.Entry<String, BiConsumer<String, byte[]>>> subscriptions) {
+    Set<BiConsumer<String, byte[]>> invoked = Collections.newSetFromMap(new IdentityHashMap<>());
+    for (Map.Entry<String, BiConsumer<String, byte[]>> sub : subscriptions) {
+      if (topicMatches(sub.getKey(), topic) && invoked.add(sub.getValue())) {
+        sub.getValue().accept(topic, payload);
+      }
+    }
+  }
+
   /** MQTT topic-filter match supporting {@code +} (single level) and {@code #} (multi level). */
   static boolean topicMatches(String filter, String topic) {
     String[] f = filter.split("/");
@@ -113,12 +139,7 @@ public final class PahoMqttTransport implements MqttTransport {
   private final class Callback implements MqttCallback {
     @Override
     public void messageArrived(String topic, MqttMessage message) {
-      byte[] payload = message.getPayload();
-      for (Map.Entry<String, BiConsumer<String, byte[]>> sub : subscriptions) {
-        if (topicMatches(sub.getKey(), topic)) {
-          sub.getValue().accept(topic, payload);
-        }
-      }
+      dispatchArrived(topic, message.getPayload(), subscriptions);
     }
 
     @Override

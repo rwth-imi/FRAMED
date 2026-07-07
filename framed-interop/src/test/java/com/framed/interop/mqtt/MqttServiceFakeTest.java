@@ -12,6 +12,9 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -96,6 +99,61 @@ class MqttServiceFakeTest {
     fake.deliver("framed/EXT/etCO2", payload.toString().getBytes(StandardCharsets.UTF_8));
 
     assertEquals(42, ((Number) got.get()).intValue());
+  }
+
+  private static byte[] inboundPayload(String timestamp) {
+    JSONObject payload = new JSONObject().put("value", 42).put("channelID", "etCO2")
+        .put("deviceID", "EXT").put("className", "Measurement");
+    if (timestamp != null) {
+      payload.put("timestamp", timestamp);
+    }
+    return payload.toString().getBytes(StandardCharsets.UTF_8);
+  }
+
+  @Test
+  void inboundTimestampsAreNormalizedToBusFormatUtc() {
+    LocalEventBus bus = new LocalEventBus(DispatchMode.SEQUENTIAL);
+    FakeMqttTransport fake = new FakeMqttTransport();
+    new MqttService(bus, fake, new JSONArray(), new JSONArray().put("framed/#"),
+        "framed", 1, MAPPING, EmissionGate.passthrough(), false, "MQTT-In");
+
+    List<String> stamps = new ArrayList<>();
+    bus.register("Measurement.EXT.etCO2.parsed",
+        msg -> stamps.add(((JSONObject) msg).getString("timestamp")));
+
+    fake.deliver("framed/EXT/etCO2", inboundPayload("2026-06-23T12:30:00.123456"));
+    fake.deliver("framed/EXT/etCO2", inboundPayload("2026-06-23T14:30:00+02:00"));
+    fake.deliver("framed/EXT/etCO2", inboundPayload("2026-06-23T12:30:00"));
+
+    assertEquals(List.of(
+            "2026-06-23T12:30:00.123456",  // bus format: passed through unchanged
+            "2026-06-23T12:30:00.000000",  // ISO-8601 with offset: converted to UTC
+            "2026-06-23T12:30:00.000000"), // offset-less ISO-8601: interpreted as UTC
+        stamps, "every subscriber parses timestamps strictly, so all forms must normalize");
+  }
+
+  @Test
+  void inboundAbsentOrUnparseableTimestampFallsBackToUtcArrival() {
+    LocalEventBus bus = new LocalEventBus(DispatchMode.SEQUENTIAL);
+    FakeMqttTransport fake = new FakeMqttTransport();
+    new MqttService(bus, fake, new JSONArray(), new JSONArray().put("framed/#"),
+        "framed", 1, MAPPING, EmissionGate.passthrough(), false, "MQTT-In");
+
+    List<String> stamps = new ArrayList<>();
+    bus.register("Measurement.EXT.etCO2.parsed",
+        msg -> stamps.add(((JSONObject) msg).getString("timestamp")));
+
+    LocalDateTime before = LocalDateTime.now(ZoneOffset.UTC).minusSeconds(1);
+    fake.deliver("framed/EXT/etCO2", inboundPayload("last tuesday, around noon"));
+    fake.deliver("framed/EXT/etCO2", inboundPayload(null));
+    LocalDateTime after = LocalDateTime.now(ZoneOffset.UTC).plusSeconds(1);
+
+    assertEquals(2, stamps.size());
+    for (String stamp : stamps) {
+      LocalDateTime got = LocalDateTime.parse(stamp, Timer.formatter); // parseable bus format
+      assertTrue(!got.isBefore(before) && !got.isAfter(after),
+          "fallback must be the UTC arrival time, not local wall-clock: " + stamp);
+    }
   }
 
   @Test
