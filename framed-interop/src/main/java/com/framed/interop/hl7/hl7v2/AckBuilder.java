@@ -43,7 +43,8 @@ public final class AckBuilder {
     return "MSH|^~\\&|" + out.sendingApp() + '|' + out.sendingFacility()
         + '|' + out.receivingApp() + '|' + out.receivingFacility()
         + '|' + ts + "||ACK|" + controlId + "|P|2.5" + SEGMENT_SEP
-        + "MSA|" + code + '|' + controlId + (text == null || text.isEmpty() ? "" : "|" + text)
+        + "MSA|" + code + '|' + controlId
+        + (text == null || text.isEmpty() ? "" : "|" + Hl7Escape.field(text))
         + SEGMENT_SEP;
   }
 }

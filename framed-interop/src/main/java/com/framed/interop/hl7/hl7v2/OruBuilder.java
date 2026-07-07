@@ -10,6 +10,12 @@ import java.util.List;
 /**
  * Builds {@code ORU^R01} (unsolicited observation result) HL7 v2.5 messages from FRAMED
  * observations. Segments are joined with {@code \r} as required by MLLP.
+ *
+ * <p>All data taken from observations, mapping and configuration is delimiter-escaped via
+ * {@link Hl7Escape} before embedding; the configured patient location is treated as
+ * component-structured (its {@code ^} separators are preserved). Each OBX carries the observation
+ * time in OBX-14, so receivers (including a FRAMED inbound side) keep the original timestamp
+ * instead of re-stamping on arrival.</p>
  */
 public final class OruBuilder {
 
@@ -60,27 +66,33 @@ public final class OruBuilder {
     String ts = HL7_TS.format(timestamp);
     StringBuilder sb = new StringBuilder();
 
-    sb.append("MSH|^~\\&|").append(ids.sendingApp()).append('|').append(ids.sendingFacility())
-        .append('|').append(ids.receivingApp()).append('|').append(ids.receivingFacility())
-        .append('|').append(ts).append("||ORU^R01|").append(controlId).append("|P|2.5")
+    sb.append("MSH|^~\\&|").append(Hl7Escape.field(ids.sendingApp())).append('|')
+        .append(Hl7Escape.field(ids.sendingFacility()))
+        .append('|').append(Hl7Escape.field(ids.receivingApp())).append('|')
+        .append(Hl7Escape.field(ids.receivingFacility()))
+        .append('|').append(ts).append("||ORU^R01|").append(Hl7Escape.field(controlId))
+        .append("|P|2.5").append(SEGMENT_SEP);
+
+    sb.append("PID|1||").append(Hl7Escape.field(patient.mrn())).append("^^^MRN||")
+        .append(Hl7Escape.field(patient.lastName())).append('^')
+        .append(Hl7Escape.field(patient.firstName()))
+        .append("||").append(Hl7Escape.field(patient.dob())).append('|')
+        .append(Hl7Escape.field(patient.sex()))
         .append(SEGMENT_SEP);
 
-    sb.append("PID|1||").append(patient.mrn()).append("^^^MRN||")
-        .append(patient.lastName()).append('^').append(patient.firstName())
-        .append("||").append(patient.dob()).append('|').append(patient.sex())
-        .append(SEGMENT_SEP);
-
-    sb.append("PV1|1|I|").append(patient.location()).append(SEGMENT_SEP);
+    sb.append("PV1|1|I|").append(Hl7Escape.components(patient.location())).append(SEGMENT_SEP);
 
     sb.append("OBR|1||||").append(SEGMENT_SEP);
 
     int setId = 1;
     for (Observation obs : observations) {
       CodedConcept c = obs.concept();
-      sb.append("OBX|").append(setId++).append('|').append(c.valueType()).append('|')
-          .append(c.code()).append('^').append(c.display()).append('^').append(c.system())
-          .append("||").append(obs.value()).append('|').append(c.unit())
-          .append("|||||F").append(SEGMENT_SEP);
+      sb.append("OBX|").append(setId++).append('|').append(Hl7Escape.field(c.valueType())).append('|')
+          .append(Hl7Escape.field(c.code())).append('^').append(Hl7Escape.field(c.display()))
+          .append('^').append(Hl7Escape.field(c.system()))
+          .append("||").append(Hl7Escape.field(obs.value())).append('|')
+          .append(Hl7Escape.field(c.unit()))
+          .append("|||||F|||").append(ts).append(SEGMENT_SEP);
     }
 
     return sb.toString();
