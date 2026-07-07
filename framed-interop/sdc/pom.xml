@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.framed</groupId>
+    <artifactId>framed-interop</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>framed-interop-sdc</artifactId>
+
+  <name>FRAMED Interop SDC</name>
+  <description>IEEE 11073 SDC provider bridge (SdcProviderDispatcher): exposes FRAMED as a
+    BICEPS provider via SDCri (MDPWS, WS-Discovery, WS-Eventing) with metrics, settings and
+    device-rate waveform streams. SDCri is a REQUIRED dependency of this module - depending
+    on framed-interop-sdc is what activates SDC; the other interop modules stay free of the
+    SDC stack. Tests are heavyweight (network stack, WS-Discovery) and run only under the
+    sdc profile: mvn -pl framed-interop/sdc -am -Psdc test.</description>
+
+  <properties>
+    <!-- SDC tests bind sockets, join multicast and take ~20 s; skipped in default builds. -->
+    <sdc.tests.skip>true</sdc.tests.skip>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.framed</groupId>
+      <artifactId>framed-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.framed</groupId>
+      <artifactId>framed-interop-common</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.json</groupId>
+      <artifactId>json</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.somda.sdc</groupId>
+      <artifactId>glue</artifactId>
+    </dependency>
+    <dependency>
+      <!-- SDCri logs via the log4j2 API; route it to actual output during tests. -->
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>${maven-jar-plugin.version}</version>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Automatic-Module-Name>com.framed.interop.sdc</Automatic-Module-Name>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <skipTests>${sdc.tests.skip}</skipTests>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <profile>
+      <id>sdc</id>
+      <properties>
+        <sdc.tests.skip>false</sdc.tests.skip>
+      </properties>
+    </profile>
+  </profiles>
+
+</project>

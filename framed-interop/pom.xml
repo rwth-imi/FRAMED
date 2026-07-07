@@ -11,117 +11,19 @@
   </parent>
 
   <artifactId>framed-interop</artifactId>
+  <packaging>pom</packaging>
 
-  <name>FRAMED Interop</name>
-  <description>Standards-based interoperability at the socket edge: HL7 v2.x over MLLP
-    (inbound Protocol + outbound Dispatcher), keeping FRAMED's internal flow on the EAV model.</description>
+  <name>FRAMED Interop (aggregator)</name>
+  <description>Standards-based interoperability at the socket edge, split per standard so
+    framework consumers import only the boundary they need: shared mapping/gate (common),
+    HL7 v2.x over MLLP (hl7), MQTT (mqtt), IEEE 11073 SDC (sdc). FRAMED's internal flow
+    stays on the EAV model throughout.</description>
 
-  <dependencies>
-    <dependency>
-      <groupId>com.framed</groupId>
-      <artifactId>framed-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.json</groupId>
-      <artifactId>json</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.paho</groupId>
-      <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
-    </dependency>
-    <dependency>
-      <!-- IEEE 11073 SDC stack (SDCri; INTEROP_PLAN Step 3). Optional: consumers and the fat-jar
-           do not inherit it — a deployment wanting SdcProviderDispatcher must add this dependency
-           to framed-app explicitly. SDC tests additionally run only under the sdc profile. -->
-      <groupId>org.somda.sdc</groupId>
-      <artifactId>glue</artifactId>
-      <version>6.2.1</version>
-      <optional>true</optional>
-    </dependency>
-    <dependency>
-      <groupId>io.moquette</groupId>
-      <artifactId>moquette-broker</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-api</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
-    </dependency>
-  </dependencies>
-
-  <build>
-    <plugins>
-      <plugin>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>${maven-jar-plugin.version}</version>
-        <configuration>
-          <archive>
-            <manifestEntries>
-              <Automatic-Module-Name>com.framed.interop</Automatic-Module-Name>
-            </manifestEntries>
-          </archive>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
-
-  <profiles>
-    <!-- IEEE 11073 SDC (INTEROP_PLAN Step 3). The SDC stack (SDCri: BICEPS/MDPWS/DPWS, Guice,
-         Kotlin runtime, BouncyCastle) is heavy, so its tests live in src/test-sdc and compile/run
-         ONLY under this profile: mvn -pl framed-interop -Psdc test. Default builds are unaffected. -->
-    <profile>
-      <id>sdc</id>
-      <dependencies>
-        <dependency>
-          <!-- SDCri logs via the log4j2 API; route it to actual output during tests. -->
-          <groupId>org.apache.logging.log4j</groupId>
-          <artifactId>log4j-core</artifactId>
-          <version>2.24.1</version>
-          <scope>test</scope>
-        </dependency>
-      </dependencies>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>build-helper-maven-plugin</artifactId>
-            <version>3.6.0</version>
-            <executions>
-              <execution>
-                <id>add-sdc-test-source</id>
-                <phase>generate-test-sources</phase>
-                <goals>
-                  <goal>add-test-source</goal>
-                </goals>
-                <configuration>
-                  <sources>
-                    <source>src/test-sdc/java</source>
-                  </sources>
-                </configuration>
-              </execution>
-              <execution>
-                <id>add-sdc-test-resources</id>
-                <phase>generate-test-resources</phase>
-                <goals>
-                  <goal>add-test-resource</goal>
-                </goals>
-                <configuration>
-                  <resources>
-                    <resource>
-                      <directory>src/test-sdc/resources</directory>
-                    </resource>
-                  </resources>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-  </profiles>
+  <modules>
+    <module>common</module>
+    <module>hl7</module>
+    <module>mqtt</module>
+    <module>sdc</module>
+  </modules>
 
 </project>
