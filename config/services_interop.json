@@ -18,7 +18,7 @@
         "PC60FW"
       ],
       "host": "127.0.0.1",
-      "port": 2575,
+      "port": 2576,
       "mappingPath": "config/interop-mapping.json",
       "patient": {
         "mrn": "12345",
