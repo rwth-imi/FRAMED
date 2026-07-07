@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -90,5 +91,54 @@ class InboundRouterTest {
   void malformedMessageYieldsApplicationError() {
     String ack = router(false).handle("this is not HL7");
     assertEquals("AE", Hl7Message.parse(ack).field("MSA", 1));
+  }
+
+  @Test
+  void obx14TimestampReachesTheSink() {
+    List<Instant> stamps = new ArrayList<>();
+    ObservationMapping mapping = ObservationMapping.fromJson(new JSONObject(MAPPING_JSON));
+    InboundRouter router =
+        new InboundRouter(mapping, (cls, dev, ch, val, ts) -> stamps.add(ts), "HL7-In", false);
+
+    String oru = String.join("\r",
+        "MSH|^~\\&|MONITOR|ICU|FRAMED|HOSP|20260623120000||ORU^R01|MSG0003|P|2.5",
+        "PID|1||12345^^^MRN||Doe^Jane||19800101|F",
+        "OBR|1||||",
+        "OBX|1|NM|19889-5^End tidal CO2^LOINC||38|mm[Hg]|||||F|||20260623115959") + "\r";
+    router.handle(oru);
+
+    assertEquals(List.of(Instant.parse("2026-06-23T11:59:59Z")), stamps,
+        "the observation keeps its OBX-14 time instead of being re-stamped on arrival");
+  }
+
+  @Test
+  void parsesHl7DtmPrecisionsAndOffsets() {
+    assertEquals(Instant.parse("2026-06-23T12:00:00Z"), InboundRouter.parseTimestamp("20260623120000"),
+        "full precision, no offset: interpreted as UTC");
+    assertEquals(Instant.parse("2026-06-23T10:00:00Z"), InboundRouter.parseTimestamp("20260623120000+0200"),
+        "explicit zone offset honoured");
+    assertEquals(Instant.parse("2026-06-23T14:00:00Z"), InboundRouter.parseTimestamp("20260623120000-0200"),
+        "negative zone offset honoured");
+    assertEquals(Instant.parse("2026-06-23T12:00:00Z"), InboundRouter.parseTimestamp("20260623120000.1234"),
+        "fractional seconds tolerated");
+    assertEquals(Instant.parse("2026-06-23T12:30:00Z"), InboundRouter.parseTimestamp("202606231230"),
+        "minute precision padded");
+    assertEquals(Instant.parse("2026-06-23T00:00:00Z"), InboundRouter.parseTimestamp("20260623"),
+        "day precision padded to midnight");
+    assertEquals(Instant.parse("2026-06-01T00:00:00Z"), InboundRouter.parseTimestamp("202606"),
+        "month precision padded to the 1st");
+    assertEquals(Instant.parse("2026-01-01T00:00:00Z"), InboundRouter.parseTimestamp("2026"),
+        "year precision padded to Jan 1st");
+  }
+
+  @Test
+  void absentOrMalformedDtmFallsBackToArrivalTime() {
+    for (String raw : new String[]{null, "", "  ", "20261323120000", "202606231", "not-a-dtm"}) {
+      Instant before = Instant.now();
+      Instant got = InboundRouter.parseTimestamp(raw);
+      Instant after = Instant.now();
+      assertFalse(got.isBefore(before) || got.isAfter(after),
+          "\"%s\" must fall back to the arrival time".formatted(raw));
+    }
   }
 }

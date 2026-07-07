@@ -37,6 +37,36 @@ class OruBuilderTest {
   }
 
   @Test
+  void obx14CarriesTheObservationTime() {
+    CodedConcept etco2 = new CodedConcept("19889-5", "LOINC", "End tidal CO2", "mm[Hg]", "NM");
+    String oru = OruBuilder.build(IDS, PATIENT, etco2, "38", Instant.parse("2026-06-23T12:00:00Z"), "CID4");
+
+    String[] obx = Hl7Message.parse(oru).segment("OBX");
+    assertEquals("20260623120000", Hl7Message.field(obx, "OBX", 14),
+        "receivers must see the observation time, not their arrival time");
+  }
+
+  @Test
+  void reservedCharactersAreEscapedWithoutShiftingFields() {
+    PatientContext patient =
+        new PatientContext("12|345", "Doe|Smith", "Ja^ne", "19800101", "F", "ICU^0|1^A");
+    CodedConcept concept = new CodedConcept("19889-5", "LOINC", "CO2|partial", "mm[Hg]", "NM");
+    String oru = OruBuilder.build(IDS, patient, concept, "A|B", Instant.parse("2026-06-23T12:00:00Z"), "CID5");
+
+    Hl7Message msg = Hl7Message.parse(oru);
+    assertEquals("ORU^R01", msg.messageType(), "message structure survives hostile data");
+    assertEquals("12\\F\\345", Hl7Message.firstComponent(msg.field("PID", 3)));
+    assertEquals("Doe\\F\\Smith^Ja\\S\\ne", msg.field("PID", 5));
+    // The configured location is component-structured: its ^ separators stay, data within is escaped.
+    assertEquals("ICU^0\\F\\1^A", msg.field("PV1", 3));
+
+    String[] obx = msg.segment("OBX");
+    assertEquals("A\\F\\B", Hl7Message.field(obx, "OBX", 5));
+    assertEquals("mm[Hg]", Hl7Message.field(obx, "OBX", 6),
+        "a value containing | must not shift the unit into the wrong field");
+  }
+
+  @Test
   void buildsMultipleObxSegments() {
     var hr = new CodedConcept("8867-4", "LOINC", "Heart rate", "/min", "NM");
     var spo2 = new CodedConcept("59408-5", "LOINC", "SpO2", "%", "NM");
