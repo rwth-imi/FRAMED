@@ -3,11 +3,11 @@ package com.framed.interop.replay;
 import com.framed.core.EventBus;
 import com.framed.core.Service;
 import com.framed.core.utils.Timer;
+import com.framed.interop.mapping.ObservationMapping;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -31,11 +30,15 @@ import java.util.Set;
  * here because a test dependency on {@code framed-communicator} would add a forbidden
  * leaf→leaf module edge.
  *
- * <p>The bundled fixture ({@value #RESOURCE}) is an excerpt of a real bench ventilation
- * recording ({@code vc_cmv_ph_03032026.jsonl}): pure device telemetry (Oxylog-3000-Plus-00
- * ventilator, PC60FW pulse oximeter, CDSS-derived channels), no personal data. It contains both
- * channels present in the deployment mapping {@code config/interop-mapping.json} and deliberately
- * unmapped ones — high-rate {@code RealTime} waveforms, CDSS output, and the same channel names
+ * <p>The fixture ({@value #RECORDING}) is the recording the replay deployment configs use as
+ * well: one run from the curated bench-ventilation dataset (proband {@code p01},
+ * volume-controlled ventilation, fault-free condition) — pure device telemetry
+ * (Oxylog-3000-Plus-00 ventilator, PC60FW pulse oximeter, a per-second annotation channel), no
+ * personal data. Its Oxylog channel ids were normalized from the recording-time full-description
+ * naming to the ids the current Medibus driver derives (see {@code ProtocolMap} in
+ * {@code framed-communicator}), so the deployment mapping {@code config/interop-mapping.json}
+ * applies. It contains both mapped channels and deliberately unmapped ones — high-rate
+ * {@code RealTime} waveforms, text messages, the annotation channel, and the same channel names
  * under an unmapped class ({@code Settings.FiO2}, {@code Measurement.RR}) — so simulations can
  * assert that interop bridges emit exactly the mapped subset.</p>
  *
@@ -45,8 +48,8 @@ import java.util.Set;
  */
 public final class ReplayFixture {
 
-  /** Classpath location of the bundled replay excerpt. */
-  public static final String RESOURCE = "/replay/vc_cmv_excerpt.jsonl";
+  /** Repo-relative path of the replayed recording, shared with the replay deployment configs. */
+  public static final String RECORDING = "data/replay/p01-VC1-clean-0.jsonl";
 
   private ReplayFixture() {}
 
@@ -69,15 +72,26 @@ public final class ReplayFixture {
     }
   }
 
+  private static volatile List<Event> cached;
+
   /**
-   * Loads the bundled fixture in recorded (timestamp) order.
+   * Loads the recording ({@value #RECORDING}) in recorded (timestamp) order. The recording is
+   * immutable, so the parsed events are cached: repeated calls across tests do not re-read the
+   * multi-megabyte file.
    *
-   * @return the recorded events
+   * @return the recorded events (unmodifiable)
    */
   public static List<Event> load() {
-    try (BufferedReader br = new BufferedReader(new InputStreamReader(
-        Objects.requireNonNull(ReplayFixture.class.getResourceAsStream(RESOURCE),
-            RESOURCE + " missing from test resources"), StandardCharsets.UTF_8))) {
+    List<Event> events = cached;
+    if (events == null) {
+      events = List.copyOf(read());
+      cached = events;
+    }
+    return events;
+  }
+
+  private static List<Event> read() {
+    try (BufferedReader br = Files.newBufferedReader(resolve(RECORDING), StandardCharsets.UTF_8)) {
       List<Event> events = new ArrayList<>();
       String line;
       while ((line = br.readLine()) != null) {
@@ -92,6 +106,38 @@ public final class ReplayFixture {
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
+  }
+
+  /**
+   * The subset of {@code events} the HL7 and MQTT bridges must emit: channels present in
+   * {@code mapping} with a non-waveform kind (waveform-kind channels belong to the SDC bridge
+   * and are skipped by HL7/MQTT). Both replay simulations partition through this method (and
+   * {@link #unmapped}) so they cannot diverge on what counts as mapped.
+   *
+   * @param events  the recorded events
+   * @param mapping the deployment mapping
+   * @return the emitted events, in input order
+   */
+  public static List<Event> mapped(List<Event> events, ObservationMapping mapping) {
+    return events.stream()
+        .filter(e -> mapping.lookup(e.className(), e.deviceID(), e.channelID())
+            .filter(c -> !c.isWaveform()).isPresent())
+        .toList();
+  }
+
+  /**
+   * The complement of {@link #mapped}: the control group that must <em>not</em> cross the HL7 or
+   * MQTT boundary (unmapped channels plus waveform-kind mappings).
+   *
+   * @param events  the recorded events
+   * @param mapping the deployment mapping
+   * @return the non-emitted events, in input order
+   */
+  public static List<Event> unmapped(List<Event> events, ObservationMapping mapping) {
+    return events.stream()
+        .filter(e -> mapping.lookup(e.className(), e.deviceID(), e.channelID())
+            .filter(c -> !c.isWaveform()).isEmpty())
+        .toList();
   }
 
   /**
@@ -127,21 +173,31 @@ public final class ReplayFixture {
   }
 
   /**
-   * Resolves the real deployment mapping {@code config/interop-mapping.json} by walking up from
-   * the working directory (module dir under Maven, repo root elsewhere), so simulations exercise
-   * the mapping that actually ships.
+   * Resolves the real deployment mapping {@code config/interop-mapping.json}, so simulations
+   * exercise the mapping that actually ships.
    *
    * @return the path to {@code config/interop-mapping.json}
    */
   public static Path deploymentMapping() {
+    return resolve("config/interop-mapping.json");
+  }
+
+  /**
+   * Resolves a repo-relative path by walking up from the working directory (module dir under
+   * Maven, repo root elsewhere).
+   *
+   * @param relative the repo-relative path
+   * @return the resolved existing path
+   */
+  private static Path resolve(String relative) {
     Path dir = Path.of("").toAbsolutePath();
     for (int i = 0; i < 4 && dir != null; i++, dir = dir.getParent()) {
-      Path candidate = dir.resolve("config").resolve("interop-mapping.json");
+      Path candidate = dir.resolve(relative);
       if (Files.exists(candidate)) {
         return candidate;
       }
     }
     throw new IllegalStateException(
-        "config/interop-mapping.json not found above " + Path.of("").toAbsolutePath());
+        relative + " not found above " + Path.of("").toAbsolutePath());
   }
 }
