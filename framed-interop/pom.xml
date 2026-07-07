@@ -30,6 +30,15 @@
       <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
     </dependency>
     <dependency>
+      <!-- IEEE 11073 SDC stack (SDCri; INTEROP_PLAN Step 3). Optional: consumers and the fat-jar
+           do not inherit it — a deployment wanting SdcProviderDispatcher must add this dependency
+           to framed-app explicitly. SDC tests additionally run only under the sdc profile. -->
+      <groupId>org.somda.sdc</groupId>
+      <artifactId>glue</artifactId>
+      <version>6.2.1</version>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
       <groupId>io.moquette</groupId>
       <artifactId>moquette-broker</artifactId>
       <scope>test</scope>
@@ -59,5 +68,60 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <!-- IEEE 11073 SDC (INTEROP_PLAN Step 3). The SDC stack (SDCri: BICEPS/MDPWS/DPWS, Guice,
+         Kotlin runtime, BouncyCastle) is heavy, so its tests live in src/test-sdc and compile/run
+         ONLY under this profile: mvn -pl framed-interop -Psdc test. Default builds are unaffected. -->
+    <profile>
+      <id>sdc</id>
+      <dependencies>
+        <dependency>
+          <!-- SDCri logs via the log4j2 API; route it to actual output during tests. -->
+          <groupId>org.apache.logging.log4j</groupId>
+          <artifactId>log4j-core</artifactId>
+          <version>2.24.1</version>
+          <scope>test</scope>
+        </dependency>
+      </dependencies>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>3.6.0</version>
+            <executions>
+              <execution>
+                <id>add-sdc-test-source</id>
+                <phase>generate-test-sources</phase>
+                <goals>
+                  <goal>add-test-source</goal>
+                </goals>
+                <configuration>
+                  <sources>
+                    <source>src/test-sdc/java</source>
+                  </sources>
+                </configuration>
+              </execution>
+              <execution>
+                <id>add-sdc-test-resources</id>
+                <phase>generate-test-resources</phase>
+                <goals>
+                  <goal>add-test-resource</goal>
+                </goals>
+                <configuration>
+                  <resources>
+                    <resource>
+                      <directory>src/test-sdc/resources</directory>
+                    </resource>
+                  </resources>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 
 </project>
