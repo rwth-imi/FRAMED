@@ -57,6 +57,24 @@ class MqttServiceFakeTest {
   }
 
   @Test
+  void waveformKindChannelIsNotPublished() {
+    ObservationMapping mapping = ObservationMapping.fromJson(new JSONObject("""
+        { "RealTime.Oxylog-3000-Plus-00.CO2_mmHg": {"unit":"mm[Hg]","kind":"waveform"} }"""));
+    LocalEventBus bus = new LocalEventBus(DispatchMode.SEQUENTIAL);
+    FakeMqttTransport fake = new FakeMqttTransport();
+    new MqttService(bus, fake, new JSONArray().put("Oxylog-3000-Plus-00"), new JSONArray(),
+        "framed", 1, mapping, EmissionGate.passthrough(), false, "MQTT-In");
+
+    bus.publish(Service.addressRegistry("Oxylog-3000-Plus-00"),
+        "RealTime.Oxylog-3000-Plus-00.CO2_mmHg.parsed");
+    bus.publish("RealTime.Oxylog-3000-Plus-00.CO2_mmHg.parsed",
+        datapoint(38, "CO2_mmHg", "RealTime"));
+
+    assertTrue(fake.published.isEmpty(),
+        "waveform-kind channels are the SDC bridge's job, not MQTT's");
+  }
+
+  @Test
   void unmappedChannelIsNotPublished() {
     LocalEventBus bus = new LocalEventBus(DispatchMode.SEQUENTIAL);
     FakeMqttTransport fake = new FakeMqttTransport();
@@ -82,6 +100,28 @@ class MqttServiceFakeTest {
     bus.publish("Measurement.Oxylog-3000-Plus-00.etCO2.parsed", datapoint(40, "etCO2", "Measurement"));
 
     assertEquals(2, fake.published.size(), "duplicate value suppressed, changed value emitted");
+  }
+
+  /**
+   * Regression: the onChange state is committed only after a successful publish — a throwing
+   * transport must not suppress an identical follow-up value that never reached the broker.
+   */
+  @Test
+  void failedPublishDoesNotSuppressIdenticalFollowUpUnderOnChange() {
+    LocalEventBus bus = new LocalEventBus(DispatchMode.SEQUENTIAL);
+    FakeMqttTransport fake = new FakeMqttTransport();
+    new MqttService(bus, fake, new JSONArray().put("Oxylog-3000-Plus-00"), new JSONArray(),
+        "framed", 1, MAPPING, new EmissionGate(true, 0), false, "MQTT-In");
+
+    bus.publish(Service.addressRegistry("Oxylog-3000-Plus-00"), "Measurement.Oxylog-3000-Plus-00.etCO2.parsed");
+    fake.failPublishes = true;
+    bus.publish("Measurement.Oxylog-3000-Plus-00.etCO2.parsed", datapoint(38, "etCO2", "Measurement"));
+    assertTrue(fake.published.isEmpty(), "the failed publish must not be recorded");
+
+    fake.failPublishes = false;
+    bus.publish("Measurement.Oxylog-3000-Plus-00.etCO2.parsed", datapoint(38, "etCO2", "Measurement"));
+    assertEquals(1, fake.published.size(),
+        "an identical value must still be emitted after a failed publish");
   }
 
   @Test
@@ -154,6 +194,52 @@ class MqttServiceFakeTest {
       assertTrue(!got.isBefore(before) && !got.isAfter(after),
           "fallback must be the UTC arrival time, not local wall-clock: " + stamp);
     }
+  }
+
+  /**
+   * Regression: a broker that is down at startup must not permanently cost the MQTT leg — the
+   * constructor survives, and a later (retried) connect brings inbound subscriptions up.
+   */
+  @Test
+  void brokerDownAtStartupIsRetriedNotFatal() {
+    LocalEventBus bus = new LocalEventBus(DispatchMode.SEQUENTIAL);
+    FakeMqttTransport fake = new FakeMqttTransport();
+    fake.failConnects = 1;
+    MqttService service = new MqttService(bus, fake, new JSONArray(), new JSONArray().put("framed/#"),
+        "framed", 1, MAPPING, EmissionGate.passthrough(), false, "MQTT-In");
+
+    assertTrue(!fake.connected, "first connect failed, constructor must survive it");
+
+    assertTrue(service.connectAndSubscribe(), "retry connects once the broker is up");
+    AtomicReference<Object> got = new AtomicReference<>();
+    bus.register("Measurement.EXT.etCO2.parsed", msg -> got.set(((JSONObject) msg).get("value")));
+    fake.deliver("framed/EXT/etCO2", inboundPayload("2026-06-23T12:30:00.000000"));
+    assertEquals(42, ((Number) got.get()).intValue(),
+        "subscriptions must be live after the retried connect");
+  }
+
+  @Test
+  void inboundEpochTimestampsAreNormalized() {
+    LocalEventBus bus = new LocalEventBus(DispatchMode.SEQUENTIAL);
+    FakeMqttTransport fake = new FakeMqttTransport();
+    new MqttService(bus, fake, new JSONArray(), new JSONArray().put("framed/#"),
+        "framed", 1, MAPPING, EmissionGate.passthrough(), false, "MQTT-In");
+
+    List<String> stamps = new ArrayList<>();
+    bus.register("Measurement.EXT.etCO2.parsed",
+        msg -> stamps.add(((JSONObject) msg).getString("timestamp")));
+
+    // Numeric JSON epoch millis (the common MQTT convention) and epoch seconds as a string.
+    JSONObject numericMillis = new JSONObject().put("value", 42).put("channelID", "etCO2")
+        .put("deviceID", "EXT").put("className", "Measurement")
+        .put("timestamp", 1750680000000L);
+    fake.deliver("framed/EXT/etCO2", numericMillis.toString().getBytes(StandardCharsets.UTF_8));
+    fake.deliver("framed/EXT/etCO2", inboundPayload("1750680000"));
+
+    String expected = LocalDateTime.ofInstant(java.time.Instant.ofEpochSecond(1_750_680_000L),
+        ZoneOffset.UTC).format(Timer.formatter);
+    assertEquals(List.of(expected, expected), stamps,
+        "13-digit millis and 10-digit seconds must both normalize to the bus format");
   }
 
   @Test

@@ -1,6 +1,7 @@
 package com.framed.interop.hl7;
 
 import com.framed.interop.hl7.hl7v2.AckBuilder;
+import com.framed.interop.hl7.hl7v2.Hl7Escape;
 import com.framed.interop.hl7.hl7v2.Hl7Message;
 import com.framed.interop.mapping.ObservationMapping;
 
@@ -32,9 +33,13 @@ public final class InboundRouter {
 
   private static final DateTimeFormatter HL7_TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
-  /** HL7 DTM: 4–14 digits (year down to seconds), optional fraction, optional zone offset. */
+  /**
+   * HL7 DTM: 4–14 digits (year down to seconds), optional fraction, optional zone offset. The
+   * offset also tolerates the ISO-style variants real senders emit ({@code +02}, {@code +02:00})
+   * beyond the standard's {@code +0200} — all three are valid {@code ZoneOffset} texts.
+   */
   private static final Pattern HL7_DTM =
-      Pattern.compile("(\\d{4,14})(?:\\.\\d+)?([+-]\\d{4})?");
+      Pattern.compile("(\\d{4,14})(?:\\.\\d+)?([+-]\\d{2}(?::?\\d{2})?)?");
 
   private final ObservationMapping mapping;
   private final ObservationSink sink;
@@ -103,7 +108,9 @@ public final class InboundRouter {
       ObservationMapping.Channel ch = channel.get();
       String deviceID = ch.deviceID() != null ? ch.deviceID() : inboundDeviceId;
       Instant ts = parseTimestamp(Hl7Message.field(obx, "OBX", 14));
-      sink.accept(ch.className(), deviceID, ch.channelID(), coerce(rawValue), ts);
+      // Unescape before coercing so string values escaped by a conformant sender (including
+      // FRAMED's own OruBuilder) round-trip; numeric values contain no escapes and pass through.
+      sink.accept(ch.className(), deviceID, ch.channelID(), coerce(Hl7Escape.unescape(rawValue)), ts);
     }
   }
 
@@ -113,11 +120,12 @@ public final class InboundRouter {
     }
     String mrn = Hl7Message.firstComponent(msg.field("PID", 3));
     if (!mrn.isEmpty()) {
-      sink.accept("Patient", inboundDeviceId, "MRN", mrn, Instant.now());
+      sink.accept("Patient", inboundDeviceId, "MRN", Hl7Escape.unescape(mrn), Instant.now());
     }
     String name = msg.field("PID", 5);
     if (!name.isEmpty()) {
-      sink.accept("Patient", inboundDeviceId, "Name", name.replace('^', ' ').trim(), Instant.now());
+      sink.accept("Patient", inboundDeviceId, "Name",
+          Hl7Escape.unescape(name.replace('^', ' ').trim()), Instant.now());
     }
   }
 
@@ -156,11 +164,13 @@ public final class InboundRouter {
         case 6 -> body + "01000000";
         default -> body + "00000000000000".substring(body.length());
       };
-      ZoneOffset offset = m.group(2) != null ? ZoneOffset.of(m.group(2)) : ZoneOffset.UTC;
       try {
+        // ZoneOffset.of must sit inside the catch: a regex-matching but out-of-range offset
+        // (e.g. "+1900") throws DateTimeException and must fall back, not NAK the whole message.
+        ZoneOffset offset = m.group(2) != null ? ZoneOffset.of(m.group(2)) : ZoneOffset.UTC;
         return LocalDateTime.parse(padded, HL7_TS).toInstant(offset);
       } catch (RuntimeException e) {
-        // fall through to the warning below (e.g. month 13)
+        // fall through to the warning below (e.g. month 13 or offset hours > 18)
       }
     }
     LOGGER.log(Level.WARNING,

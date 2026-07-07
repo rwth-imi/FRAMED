@@ -13,9 +13,9 @@ import java.util.List;
  *
  * <p>All data taken from observations, mapping and configuration is delimiter-escaped via
  * {@link Hl7Escape} before embedding; the configured patient location is treated as
- * component-structured (its {@code ^} separators are preserved). Each OBX carries the observation
- * time in OBX-14, so receivers (including a FRAMED inbound side) keep the original timestamp
- * instead of re-stamping on arrival.</p>
+ * component-structured (its {@code ^} separators are preserved). Each OBX carries its own
+ * observation's time in OBX-14, so receivers (including a FRAMED inbound side) keep the original
+ * per-observation timestamps instead of re-stamping on arrival or inheriting the message time.</p>
  */
 public final class OruBuilder {
 
@@ -30,10 +30,11 @@ public final class OruBuilder {
   /**
    * A single observation to encode as an OBX segment.
    *
-   * @param concept the coded concept (OBX-3 / OBX-6)
-   * @param value   the observation value, already formatted (OBX-5)
+   * @param concept   the coded concept (OBX-3 / OBX-6)
+   * @param value     the observation value, already formatted (OBX-5)
+   * @param timestamp the observation time (OBX-14)
    */
-  public record Observation(CodedConcept concept, String value) {}
+  public record Observation(CodedConcept concept, String value, Instant timestamp) {}
 
   /**
    * Builds an ORU^R01 carrying a single observation.
@@ -48,16 +49,18 @@ public final class OruBuilder {
    */
   public static String build(SendingIds ids, PatientContext patient, CodedConcept concept,
                              String value, Instant timestamp, String controlId) {
-    return build(ids, patient, List.of(new Observation(concept, value)), timestamp, controlId);
+    return build(ids, patient, List.of(new Observation(concept, value, timestamp)), timestamp,
+        controlId);
   }
 
   /**
-   * Builds an ORU^R01 carrying one or more observations (one OBX each).
+   * Builds an ORU^R01 carrying one or more observations (one OBX each, stamped with its own
+   * observation time in OBX-14).
    *
    * @param ids          MSH sender/receiver ids
    * @param patient      patient context for PID/PV1
    * @param observations the observations to encode
-   * @param timestamp    the observation time (used for MSH-7 and each OBX)
+   * @param timestamp    the message time (MSH-7)
    * @param controlId    the MSH-10 message control id
    * @return the HL7 message text
    */
@@ -92,7 +95,7 @@ public final class OruBuilder {
           .append('^').append(Hl7Escape.field(c.system()))
           .append("||").append(Hl7Escape.field(obs.value())).append('|')
           .append(Hl7Escape.field(c.unit()))
-          .append("|||||F|||").append(ts).append(SEGMENT_SEP);
+          .append("|||||F|||").append(HL7_TS.format(obs.timestamp())).append(SEGMENT_SEP);
     }
 
     return sb.toString();

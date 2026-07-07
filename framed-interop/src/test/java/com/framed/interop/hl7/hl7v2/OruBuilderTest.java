@@ -71,7 +71,8 @@ class OruBuilderTest {
     var hr = new CodedConcept("8867-4", "LOINC", "Heart rate", "/min", "NM");
     var spo2 = new CodedConcept("59408-5", "LOINC", "SpO2", "%", "NM");
     String oru = OruBuilder.build(IDS, PATIENT,
-        List.of(new OruBuilder.Observation(hr, "72"), new OruBuilder.Observation(spo2, "98")),
+        List.of(new OruBuilder.Observation(hr, "72", Instant.parse("2026-06-23T11:59:58Z")),
+            new OruBuilder.Observation(spo2, "98", Instant.parse("2026-06-23T11:59:59Z"))),
         Instant.parse("2026-06-23T12:00:00Z"), "CID2");
 
     Hl7Message msg = Hl7Message.parse(oru);
@@ -80,5 +81,11 @@ class OruBuilderTest {
     assertEquals("8867-4", Hl7Message.firstComponent(Hl7Message.field(obxs.get(0), "OBX", 3)));
     assertEquals("59408-5", Hl7Message.firstComponent(Hl7Message.field(obxs.get(1), "OBX", 3)));
     assertEquals("98", Hl7Message.field(obxs.get(1), "OBX", 5));
+
+    // Each OBX keeps its own observation time; the message time (MSH-7) is stamped separately.
+    assertEquals("20260623120000", msg.field("MSH", 7));
+    assertEquals("20260623115958", Hl7Message.field(obxs.get(0), "OBX", 14),
+        "a batched observation must not inherit the message time");
+    assertEquals("20260623115959", Hl7Message.field(obxs.get(1), "OBX", 14));
   }
 }
