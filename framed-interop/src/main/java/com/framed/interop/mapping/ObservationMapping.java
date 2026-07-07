@@ -51,7 +51,9 @@ public final class ObservationMapping {
   /**
    * Builds a mapping from an already-parsed JSON object (testing-friendly).
    *
-   * @param json object of {@code channelKey -> { code, system, display, unit, valueType }}
+   * @param json object of
+   *             {@code channelKey -> { code, system, display, unit, valueType, mdc, kind }}
+   *             ({@code mdc} and {@code kind} are optional, see {@link CodedConcept})
    * @return the constructed mapping
    */
   public static ObservationMapping fromJson(JSONObject json) {
@@ -59,14 +61,19 @@ public final class ObservationMapping {
     for (String key : json.keySet()) {
       JSONObject c = json.getJSONObject(key);
       CodedConcept concept = new CodedConcept(
-          c.getString("code"),
+          c.optString("code", ""),
           c.optString("system", "LOINC"),
           c.optString("display", ""),
           c.optString("unit", ""),
-          c.optString("valueType", "NM"));
+          c.optString("valueType", "NM"),
+          c.optString("mdc", ""),
+          CodedConcept.Kind.valueOf(c.optString("kind", "metric").toUpperCase()));
       m.byKey.put(key, concept);
-      // First mapping wins for a given code on the reverse path.
-      m.codeToChannel.putIfAbsent(concept.code(), parseKey(key));
+      // First mapping wins for a given code on the reverse path. Entries without a code (legal
+      // for SDC-only channels, e.g. waveforms without an assigned LOINC) stay out of the index.
+      if (!concept.code().isEmpty()) {
+        m.codeToChannel.putIfAbsent(concept.code(), parseKey(key));
+      }
     }
     return m;
   }

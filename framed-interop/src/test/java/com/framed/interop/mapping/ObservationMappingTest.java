@@ -38,6 +38,32 @@ class ObservationMappingTest {
   }
 
   @Test
+  void parsesSdcAttributesWithDefaults() {
+    ObservationMapping m = ObservationMapping.fromJson(new JSONObject("""
+        {
+          "Measurement.Dev.etCO2": {"code":"19889-5","kind":"metric","mdc":"424242"},
+          "Settings.Dev.RR":      {"code":"76270-8","kind":"setting"},
+          "RealTime.Dev.CO2":     {"unit":"mm[Hg]","kind":"waveform"}
+        }"""));
+
+    CodedConcept metric = m.lookup("Measurement", "Dev", "etCO2").orElseThrow();
+    assertEquals(CodedConcept.Kind.METRIC, metric.kind());
+    assertEquals("424242", metric.mdc());
+
+    assertEquals(CodedConcept.Kind.SETTING, m.lookup("Settings", "Dev", "RR").orElseThrow().kind());
+
+    CodedConcept waveform = m.lookup("RealTime", "Dev", "CO2").orElseThrow();
+    assertTrue(waveform.isWaveform());
+    assertEquals("", waveform.code(), "SDC-only entries may omit the code");
+    assertTrue(m.channelForCode("").isEmpty(), "codeless entries must not enter the reverse index");
+
+    // entries without SDC attributes keep working with defaults
+    CodedConcept legacy = sample().lookup("Measurement", "Oxylog-3000-Plus-00", "etCO2").orElseThrow();
+    assertEquals(CodedConcept.Kind.METRIC, legacy.kind());
+    assertEquals("", legacy.mdc());
+  }
+
+  @Test
   void reverseMapsCodeToChannelCoordinates() {
     ObservationMapping.Channel ch = sample().channelForCode("19889-5").orElseThrow();
     assertEquals("Measurement", ch.className());
