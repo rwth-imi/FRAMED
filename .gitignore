@@ -5,6 +5,8 @@
 !output/.gitkeep
 target/
 commlog/
+benchmark/results/
+config/services.json.bench-backup
 ARCHITECTURE.md
 CLAUDE.md
 CHANGELOG.md
