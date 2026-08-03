@@ -38,6 +38,8 @@
     <jserialcomm.version>2.10.4</jserialcomm.version>
     <paho.version>1.2.5</paho.version>
     <moquette.version>0.17</moquette.version>
+    <sdcri.version>6.2.1</sdcri.version>
+    <log4j.version>2.24.1</log4j.version>
 
     <launcher.class>com.framed.orchestrator.Main</launcher.class>
   </properties>
@@ -66,7 +68,30 @@
       </dependency>
       <dependency>
         <groupId>com.framed</groupId>
-        <artifactId>framed-interop</artifactId>
+        <artifactId>framed-interop-common</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <!-- Shared test fixtures (ReplayFixture) for the interop bridge simulations. -->
+        <groupId>com.framed</groupId>
+        <artifactId>framed-interop-common</artifactId>
+        <version>${project.version}</version>
+        <type>test-jar</type>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.framed</groupId>
+        <artifactId>framed-interop-hl7</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.framed</groupId>
+        <artifactId>framed-interop-mqtt</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.framed</groupId>
+        <artifactId>framed-interop-sdc</artifactId>
         <version>${project.version}</version>
       </dependency>
 
@@ -94,6 +119,17 @@
         <groupId>io.moquette</groupId>
         <artifactId>moquette-broker</artifactId>
         <version>${moquette.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.somda.sdc</groupId>
+        <artifactId>glue</artifactId>
+        <version>${sdcri.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-core</artifactId>
+        <version>${log4j.version}</version>
         <scope>test</scope>
       </dependency>
 

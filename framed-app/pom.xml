@@ -33,9 +33,25 @@
       <groupId>com.framed</groupId>
       <artifactId>framed-cdss</artifactId>
     </dependency>
+    <!-- Interop bridges are opt-in per standard. The default assembly ships HL7 + MQTT;
+         add framed-interop-sdc here to include the (heavy) IEEE 11073 SDC stack. -->
     <dependency>
       <groupId>com.framed</groupId>
-      <artifactId>framed-interop</artifactId>
+      <artifactId>framed-interop-hl7</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.framed</groupId>
+      <artifactId>framed-interop-mqtt</artifactId>
+    </dependency>
+    <!-- Test scope only: framed-app is the single module that sees both framed-communicator and
+         framed-streamer, so the end-to-end pacing benchmark lives here. Adds no runtime edge. -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
     </dependency>
   </dependencies>
 
