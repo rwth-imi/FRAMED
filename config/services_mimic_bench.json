@@ -1,11 +1,9 @@
 {
   "Dispatchers": [
     {
-      "class": "com.framed.streamer.dispatcher.JsonlDispatcher",
-      "id": "Json-Lines",
-      "devices": ["MIMIC-3000003"],
-      "path": "output/streamer/",
-      "fileName": "mimic.jsonl"
+      "class": "com.framed.streamer.dispatcher.CountingDispatcher",
+      "id": "Counting",
+      "devices": ["MIMIC-3000003"]
     }
   ],
   "Devices": [
@@ -17,7 +15,7 @@
       "className": "Waveform",
       "channels": [],
       "speed": 1.0,
-      "maxSeconds": 300
+      "maxSeconds": 60
     }
   ]
 }
