@@ -10,3 +10,14 @@ config/services.json.bench-backup
 ARCHITECTURE.md
 CLAUDE.md
 CHANGELOG.md
+
+# Narrative, planning and derived material: kept locally, not tracked.
+# Same rule as ARCHITECTURE.md / CLAUDE.md / CHANGELOG.md above — the repo tracks
+# source and the tooling that produces these, not the documents themselves.
+docs/
+INTEROP_PLAN.md
+BENCHMARK_PLAN.md
+bathesis.md
+validate.md
+benchmark/CASE_STUDY_THROUGHPUT.md
+benchmark/figures/
