@@ -19,6 +19,7 @@
     <module>framed-cdss</module>
     <module>framed-interop</module>
     <module>framed-app</module>
+    <module>framed-benchmark</module>
   </modules>
 
   <properties>
