@@ -1,8 +1,10 @@
 package com.framed.core;
 
+import com.framed.core.utils.DispatchMode;
 import com.framed.core.utils.Timer;
 
 import java.time.format.DateTimeFormatter;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 /**
@@ -66,13 +68,48 @@ public abstract class Service {
 
   /**
    * Announces that {@code address} is an output channel of the producer {@code group}, so that
-   * sinks subscribed to {@link #addressRegistry(String)} can discover and bind it.
+   * sinks subscribed via {@link #subscribeToAnnouncements(String, Consumer)} can discover and bind
+   * it.
+   *
+   * <p><b>This call is synchronous with respect to binding.</b> Every subscriber registered through
+   * {@link #subscribeToAnnouncements(String, Consumer)} has finished binding {@code address} by the
+   * time this method returns, so a producer may announce a channel and publish its first sample on
+   * the very next statement without losing it.</p>
    *
    * @param group   device name or logical producer id this service emits under
    * @param address the output channel name being announced
+   * @see #subscribeToAnnouncements(String, Consumer)
    */
   protected void announceAddress(String group, String address) {
     eventBus.publish(addressRegistry(group), address);
+  }
+
+  /**
+   * Subscribes to {@code group}'s address-discovery topic, so this service learns each output
+   * channel the producer announces and can bind a handler to it.
+   *
+   * <p>The subscription is registered with {@link DispatchMode#SEQUENTIAL}, which is what makes the
+   * discovery handshake race-free: {@code binder} runs inline on the announcing thread, so
+   * {@link #announceAddress(String, String)} cannot return before every sink has bound. Registering
+   * for announcements with {@code eventBus.register(addressRegistry(group), ..)} instead leaves the
+   * binding to run on some other thread, and under {@link DispatchMode#PER_HANDLER} — the mode a
+   * deployment runs — the producer's first samples are then published to an address nobody is
+   * listening on yet and are silently discarded. <b>Sinks must use this method rather than
+   * subscribing to {@link #addressRegistry(String)} directly.</b></p>
+   *
+   * <p><b>Threading:</b> {@code binder} runs on whichever thread called
+   * {@link #announceAddress(String, String)}, and different producers announce on different
+   * threads, so it must be safe to call concurrently. It should also be cheap and must not block:
+   * it is executing inside the producer's publish path. Binding a handler is the only work it
+   * should do.</p>
+   *
+   * @param group  device name or logical producer id whose announcements to follow
+   * @param binder invoked once per announcement with the announced address
+   */
+  protected void subscribeToAnnouncements(String group, Consumer<String> binder) {
+    eventBus.register(addressRegistry(group),
+            msg -> binder.accept(String.valueOf(msg)),
+            DispatchMode.SEQUENTIAL);
   }
 
   /**
