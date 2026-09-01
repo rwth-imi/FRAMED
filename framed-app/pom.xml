@@ -43,16 +43,6 @@
       <groupId>com.framed</groupId>
       <artifactId>framed-interop-mqtt</artifactId>
     </dependency>
-    <!-- Test scope only: framed-app is the single module that sees both framed-communicator and
-         framed-streamer, so the end-to-end pacing benchmark lives here. Adds no runtime edge. -->
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-api</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
-    </dependency>
   </dependencies>
 
   <build>
