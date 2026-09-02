@@ -1,0 +1,4 @@
+experiment,label,repeat,ok,failure,wiring,speed,recordSeconds,primed,samplesPerFrame,published,received,missing,deliveryRatio,offeredDpPerSec,producerDpPerSec,sinkDpPerSec,sendFailures,latP50Ms,latP95Ms,latP99Ms,latMaxMs,harnessWallMs,peakHeapMb,peakThreads
+E1,LOCAL@100x,1,true,,LOCAL,100,320.0,true,2.9781,119125,119125,0,1.000000,37226.6,37238.2,37238.2,0,0,0,1,2,8215,292,15
+E1,TCP@100x,1,true,,TCP,100,320.0,true,2.9781,119125,90451,28674,0.759295,37226.6,12576.5,4346.7,2,7,1610,10834,19972,25823,248,8969
+E1,UDP@100x,1,true,,UDP,100,320.0,true,2.9781,119125,119125,0,1.000000,37226.6,37238.2,37226.6,0,0,1,1,4,8205,57,102

@@ -1,0 +1,11 @@
+# Python toolchain for the FRAMED throughput studies.
+#
+# Only make-figures.py needs third-party packages; analyse-throughput.py and
+# analyse-socket-pair.py are pure standard library and run with a bare Python 3.11+.
+#
+# Pinned to the versions the published figures were produced with (2026-09-02).
+# Kaleido 1.x renders through a headless Chrome/Chromium, which is NOT installed by
+# pip — see "Figures" in benchmark/README.md.
+
+plotly==7.0.0
+kaleido==1.4.0

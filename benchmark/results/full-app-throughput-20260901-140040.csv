@@ -1,0 +1,5 @@
+speed,maxSeconds,producerFrames,producerSamples,producerAchievedFrameHz,framesBehind,keptPace,sinkReceived,sinkDropped,sinkAchievedDpPerSec,latP50Ms,latP95Ms,latP99Ms
+1,60,7500,21625,125.02,0,true,21625,0,360.5,0,1,1
+200,1200,150000,449125,25004.17,870,false,449125,0,74916.6,0,1,1
+1500,8000,1000000,2999125,187546.89,71106,false,2999125,0,562898.8,0,52,84
+100000,8000,1000000,2999125,351246.93,999999,false,2999125,0,640564.9,1100,1610,1771

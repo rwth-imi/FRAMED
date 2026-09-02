@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Turns MimicThroughputBenchmark's CSV into the case-study tables and figures.
+"""Turns MimicThroughputBenchmark's CSV into the case-study tables.
 
-    python3 benchmark/analyse-throughput.py [csv] [--figures DIR]
+    python3 benchmark/analyse-throughput.py [csv ...] [--out FILE]
 
 Repeats of the same operating point are collapsed to their median, with the min-max spread
-reported alongside so run-to-run variation stays visible. Figures are optional: without
-matplotlib the tables are still written.
+reported alongside so run-to-run variation stays visible. Tables only, standard library only:
+figures are drawn by benchmark/make-figures.py, which is the single figure path for both studies.
 """
 from __future__ import annotations
 
@@ -316,147 +316,12 @@ def write_tables(grouped, out: list[str]) -> dict:
     return facts
 
 
-# ---------------------------------------------------------------------------------------------
-# Figures
-# ---------------------------------------------------------------------------------------------
-
-def write_figures(grouped, outdir: Path) -> list[str]:
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-    except ImportError:
-        print("matplotlib not available — skipping figures", file=sys.stderr)
-        return []
-
-    outdir.mkdir(parents=True, exist_ok=True)
-    plt.rcParams.update({
-        "font.family": "DejaVu Sans", "font.size": 9,
-        "axes.edgecolor": "#303030", "axes.labelcolor": "#101010",
-        "axes.grid": True, "grid.color": "#DDDDDD", "grid.linewidth": 0.6,
-        "axes.axisbelow": True, "xtick.color": "#303030", "ytick.color": "#303030",
-        "figure.facecolor": "white", "savefig.bbox": "tight", "savefig.dpi": 300,
-        "legend.frameon": False,
-    })
-    written: list[str] = []
-
-    def save(fig, stem):
-        for ext in ("svg", "pdf", "png"):
-            path = outdir / f"{stem}.{ext}"
-            fig.savefig(path)
-            if ext == "svg":
-                written.append(str(path))
-        plt.close(fig)
-
-    # Fig 1 — saturation curve
-    e1 = experiment_rows(grouped, "E1")
-    paced = [(med(r, "offeredDpPerSec"), med(r, "sinkSustainedDpPerSec"),
-              med(r, "producerDpPerSec"), med(r, "backlogAtProducerEnd"))
-             for _, r in e1 if not math.isnan(med(r, "offeredDpPerSec"))]
-    if paced:
-        paced.sort()
-        offered = [p[0] for p in paced]
-        consumed = [p[1] for p in paced]
-        produced = [p[2] for p in paced]
-        backlog = [p[3] for p in paced]
-
-        fig, (ax, bx) = plt.subplots(2, 1, figsize=(5.4, 5.2), sharex=True,
-                                     gridspec_kw={"height_ratios": [2, 1]})
-        lim = [min(offered) * 0.7, max(offered) * 1.4]
-        ax.plot(lim, lim, color="#AAAAAA", linestyle=(0, (4, 3)), linewidth=1,
-                label="ideal (consumed = offered)")
-        ax.plot(offered, produced, marker="s", markersize=4, color="#777777",
-                linewidth=1.2, label="producer publish rate")
-        ax.plot(offered, consumed, marker="o", markersize=4, color="#101010",
-                linewidth=1.4, label="sink sustained rate")
-        ax.set_xscale("log"); ax.set_yscale("log")
-        ax.set_ylabel("achieved throughput (datapoints/s)")
-        ax.legend(loc="upper left")
-
-        bx.plot(offered, backlog, marker="o", markersize=4, color="#101010", linewidth=1.4)
-        bx.set_xscale("log")
-        # symlog keeps a true zero on the axis: below the knee the backlog is exactly 0, and a plain
-        # log scale would have to fake that with a floor.
-        bx.set_yscale("symlog", linthresh=1)
-        bx.set_xlabel("offered load (datapoints/s)")
-        bx.set_ylabel("backlog at\nproducer end (dp)")
-
-        knee = max((o for o, c, _, b in paced if b == 0 and c >= 0.98 * o), default=None)
-        if knee:
-            for axis in (ax, bx):
-                axis.axvline(knee, color="#101010", linewidth=0.8, linestyle=(0, (1, 2)))
-            ax.annotate("last offered load\nsustained with no backlog\n%s dp/s" % f"{knee:,.0f}",
-                        xy=(knee, min(consumed)), xytext=(0.52, 0.13), textcoords="axes fraction",
-                        fontsize=8, color="#303030")
-        save(fig, "fig1-saturation")
-
-    # Fig 2 — device scaling
-    e2 = experiment_rows(grouped, "E2")
-    if e2:
-        n = [med(r, "devices") for _, r in e2]
-        consumed = [med(r, "sinkSustainedDpPerSec") for _, r in e2]
-        ideal = [consumed[0] * k / n[0] for k in n]
-        fig, ax = plt.subplots(figsize=(5.0, 3.2))
-        ax.plot(n, ideal, color="#AAAAAA", linestyle=(0, (4, 3)), linewidth=1, label="linear scaling")
-        ax.plot(n, consumed, marker="o", markersize=4, color="#101010", linewidth=1.4,
-                label="measured aggregate")
-        ax.set_xscale("log", base=2); ax.set_yscale("log")
-        ax.set_xticks(n); ax.set_xticklabels([f"{int(k)}" for k in n])
-        ax.set_xlabel("concurrent devices"); ax.set_ylabel("aggregate throughput (dp/s)")
-        ax.legend(loc="upper left")
-        save(fig, "fig2-device-scaling")
-
-    # Fig 3 — fan-out
-    e3 = experiment_rows(grouped, "E3")
-    if e3:
-        s = [med(r, "sinksPerDevice") for _, r in e3]
-        total = [med(r, "sinkSustainedDpPerSec") for _, r in e3]
-        produced = [med(r, "producerDpPerSec") for _, r in e3]
-        fig, ax = plt.subplots(figsize=(5.0, 3.2))
-        ax.plot(s, total, marker="o", markersize=4, color="#101010", linewidth=1.4,
-                label="total deliveries/s")
-        ax.plot(s, produced, marker="s", markersize=4, color="#777777", linewidth=1.2,
-                label="producer publish rate")
-        ax.set_xticks(s); ax.set_xticklabels([f"{int(k)}" for k in s])
-        ax.set_xlabel("sinks bound to the same channels"); ax.set_ylabel("datapoints/s")
-        ax.legend(loc="best")
-        save(fig, "fig3-fanout")
-
-    # Fig 4 — real-time capacity: threads and latency against beds
-    e5 = experiment_rows(grouped, "E5")
-    if e5:
-        beds = [med(r, "devices") for _, r in e5]
-        threads = [med(r, "peakThreads") for _, r in e5]
-        # p95 latency stays pinned at the 1 ms timestamp resolution across every bed count, so it
-        # shows nothing. Worst-case producer scheduling lag is what actually degrades.
-        lag_max = [max(med(r, "lagMaxMs"), 0.5) for _, r in e5]
-        fig, ax = plt.subplots(figsize=(5.4, 3.2))
-        ax.plot(beds, threads, marker="o", markersize=4, color="#101010", linewidth=1.4,
-                label="peak live threads")
-        ax.set_xscale("log", base=4); ax.set_yscale("log")
-        ax.set_xticks(beds); ax.set_xticklabels([f"{int(b)}" for b in beds])
-        ax.set_xlabel("concurrent beds at 125 Hz real time")
-        ax.set_ylabel("peak live threads")
-        bx = ax.twinx()
-        bx.plot(beds, lag_max, marker="^", markersize=4, color="#777777", linewidth=1.2,
-                linestyle=(0, (4, 2)), label="worst producer scheduling lag")
-        bx.set_yscale("log")
-        bx.set_ylabel("worst frame lag (ms)")
-        bx.grid(False)
-        lines = ax.get_lines() + bx.get_lines()
-        ax.legend(lines, [l.get_label() for l in lines], loc="upper left")
-        save(fig, "fig4-realtime-capacity")
-
-    return written
-
-
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("csv", nargs="*",
                     default=["framed-benchmark/target/benchmark/mimic-throughput.csv"],
                     help="one or more result CSVs; a later file supersedes an earlier one "
                          "for any point it re-measures")
-    ap.add_argument("--figures", default=None, help="directory to write figures into")
     ap.add_argument("--out", default=None, help="markdown file to write the tables into")
     args = ap.parse_args()
 
@@ -470,10 +335,6 @@ def main() -> int:
     grouped = group(rows)
     lines: list[str] = []
     facts = write_tables(grouped, lines)
-
-    if args.figures:
-        for f in write_figures(grouped, Path(args.figures)):
-            print(f"wrote {f}", file=sys.stderr)
 
     text = "\n".join(lines)
     if args.out:
