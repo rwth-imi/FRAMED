@@ -14,26 +14,6 @@ git](#what-is-and-is-not-in-git)).
 
 ---
 
-## Which commit the numbers belong to
-
-The measurements were taken at commit `83d7e85` **plus two transport fixes**, since committed as
-`e9e7b19` *fix(core): make the remote transports usable*. Study B does not reproduce at or before
-`83d7e85`, and not because of noise: UDP received nothing at all, and TCP opened one connection per
-message and silently lost 10–30 % of datapoints above ~7,400 dp/s. Check out `e9e7b19` or later.
-
-The fixes carry 12 regression tests — the two-instance path previously had none in either
-direction, which is how both defects shipped:
-
-```bash
-mvn -pl framed-core test -Dtest='NioTcpTransportTest,NioUdpTransportTest,SocketEventBusPeerTest'
-# NioTcpTransportTest 6, NioUdpTransportTest 3, SocketEventBusPeerTest 3 — all green (2026-09-02)
-```
-
-They are described under *Two transport defects the study had to fix* in the report. `socket-pair.csv`
-in `results/` is the pre-fix sweep, kept as the record of what the defect measured.
-
----
-
 ## Prerequisites
 
 | | Used for the published figures | Requirement |
@@ -262,21 +242,3 @@ dependable.
 
 Study B's saturated points carry the same caveat: repeating the whole sweep in a second session moved
 `LOCAL` unpaced by +6.6 % and UDP unpaced by −2.5 % with no code change on either path.
-
-## What is and is not in git
-
-`.gitignore` keeps narrative and derived material out of the repository, so a fresh clone has the
-harnesses, the scripts and this README, but no reports and no figures:
-
-| | Tracked | Why |
-|---|---|---|
-| harnesses, `analyse-*.py`, `make-figures.py`, `requirements.txt`, this file | yes | the method |
-| the transport fixes and their tests (`e9e7b19`) | yes | Study B measures nothing without them |
-| `results/*.csv` | yes | primary measurements — without them the figures cannot be rebuilt |
-| `results/*.log` | no | bulky, and every number in them is in the CSVs |
-| `figures/` | no | derived; `make-figures.py` rebuilds them in seconds |
-| `REPORT_*.md`, `CASE_STUDY_THROUGHPUT.md` | no | narrative, written against a specific sweep |
-
-Rebuilding the reports' figures from a clone therefore needs no measurement run at all — the CSVs are
-there, so `python3 benchmark/make-figures.py` is enough. Re-measuring needs the dataset and about
-half an hour.
