@@ -5,7 +5,11 @@
 !output/.gitkeep
 target/
 commlog/
-benchmark/results/
+# Measured CSVs are primary data — without them the reports' figures cannot be rebuilt from a
+# clone — so they are tracked while the bulky run logs are not.
+benchmark/results/*
+!benchmark/results/*.csv
+__pycache__/
 config/services.json.bench-backup
 ARCHITECTURE.md
 CLAUDE.md
@@ -21,3 +25,6 @@ bathesis.md
 validate.md
 benchmark/CASE_STUDY_THROUGHPUT.md
 benchmark/figures/
+benchmark/REPORT_THROUGHPUT.md
+benchmark/REPORT_SOCKET_PAIR.md
+benchmark/REPORT_COMBINED.md
