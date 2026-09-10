@@ -130,7 +130,7 @@ class MimicPacingBenchmark {
   /** Runs one replay to completion against a freshly wired bus + sink and collects the figures. */
   private Row run(Path record, double speed, double recordSeconds) throws Exception {
     LocalEventBus bus = new LocalEventBus(DispatchMode.PER_HANDLER);
-    CountingDispatcher sink = new CountingDispatcher(bus, new JSONArray(List.of(DEVICE)));
+    CountingDispatcher sink = new CountingDispatcher(bus, new JSONArray(List.of(DEVICE)), new JSONArray());
     try {
       primeAddressBinding(bus, sink);
 

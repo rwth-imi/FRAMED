@@ -42,7 +42,7 @@ class CountingDispatcherTest {
   @BeforeEach
   void setUp() {
     bus = new LocalEventBus(DispatchMode.SEQUENTIAL);
-    sink = new CountingDispatcher(bus, new JSONArray(List.of(DEVICE)));
+    sink = new CountingDispatcher(bus, new JSONArray(List.of(DEVICE)), new JSONArray());
   }
 
   @AfterEach
@@ -64,6 +64,94 @@ class CountingDispatcherTest {
 
   private void announce(String address) {
     bus.publish(DEVICE + ".addresses", address);
+  }
+
+  /**
+   * The channel filter scopes the figures without narrowing what the sink binds: a producer group
+   * carrying several pipeline stages (a reactor network announces every stage under one group) can
+   * then be measured on its final output alone.
+   */
+  @Test
+  void channelFilterScopesTheFiguresToTheSelectedChannels() throws Exception {
+    sink.shutdown(Duration.ofSeconds(1));
+    sink = new CountingDispatcher(bus, new JSONArray(List.of(DEVICE)), new JSONArray(List.of("HR")));
+
+    announce(HR);
+    announce(SPO2);
+
+    for (int i = 0; i < 4; i++) publish(HR, "HR", 60 + i, 0);
+    for (int i = 0; i < 7; i++) publish(SPO2, "SpO2", 98, 0);
+
+    assertTrue(sink.awaitQuiescence(Duration.ofMillis(100), Duration.ofSeconds(5)), "sink never drained");
+
+    CountingDispatcher.Snapshot s = sink.snapshot();
+    assertEquals(4, s.received(), "only the selected channel is counted");
+    assertEquals(List.of("HR"), List.copyOf(s.perChannel().keySet()));
+  }
+
+  /**
+   * A filtered-out arrival must still count as activity, or a benchmark reads its final snapshot
+   * too early.
+   *
+   * <p>The filter scopes the figures, not the traffic: an unlisted channel's datapoints cross the
+   * bus and occupy the same push queue. If only counted arrivals stamped the activity clock,
+   * {@link CountingDispatcher#awaitQuiescence} would report "drained" one quiet period into a burst
+   * of intermediate traffic — and the snapshot taken after it would undercount. That is the
+   * documented measurement pattern for a filtered sink (the kink CDSS sink is one), so the last
+   * arrival before quiescence being an uncounted one is the case that matters.</p>
+   */
+  @Test
+  void aFilteredOutArrivalStillDefersQuiescence() throws Exception {
+    sink.shutdown(Duration.ofSeconds(1));
+    sink = new CountingDispatcher(bus, new JSONArray(List.of(DEVICE)), new JSONArray(List.of("HR")));
+    announce(HR);
+    announce(SPO2);
+
+    // Establish a quiet baseline first, so the sink is demonstrably idle by more than the quiet
+    // period below: without it the construction-time seed would satisfy the assertion by itself.
+    assertTrue(sink.awaitQuiescence(Duration.ofMillis(400), Duration.ofSeconds(5)),
+            "the freshly built sink never went quiet");
+
+    publish(SPO2, "SpO2", 98, 0);      // counted by nothing, queued by everything
+
+    // The push path is asynchronous, so poll for the arrival rather than assuming it has landed.
+    boolean deferred = false;
+    long deadline = System.currentTimeMillis() + 5_000;
+    while (!deferred && System.currentTimeMillis() < deadline) {
+      deferred = !sink.awaitQuiescence(Duration.ofMillis(400), Duration.ofMillis(20));
+    }
+    assertTrue(deferred, "an uncounted arrival left the sink reporting itself as drained");
+    assertEquals(0, sink.snapshot().received(), "the filter must still scope the figures");
+  }
+
+  /** The same for a dropped datapoint the filter excludes: busy either way. */
+  @Test
+  void aFilteredOutDropStillDefersQuiescence() throws Exception {
+    sink.shutdown(Duration.ofSeconds(1));
+    sink = new CountingDispatcher(bus, new JSONArray(List.of(DEVICE)), new JSONArray(List.of("HR")));
+
+    assertTrue(sink.awaitQuiescence(Duration.ofMillis(400), Duration.ofSeconds(5)),
+            "the freshly built sink never went quiet");
+
+    sink.onDrop(new DataPoint<>(Instant.now(), 98.0, "SpO2", DEVICE, "Numeric"),
+            new IllegalStateException("queue full"));
+
+    assertFalse(sink.awaitQuiescence(Duration.ofMillis(400), Duration.ofMillis(100)),
+            "an uncounted drop left the sink reporting itself as drained");
+    assertEquals(0, sink.snapshot().dropped(), "the filter must still scope the figures");
+  }
+
+  /** An empty filter is the unfiltered sink: everything announced is counted. */
+  @Test
+  void emptyChannelFilterCountsEveryChannel() throws Exception {
+    announce(HR);
+    announce(SPO2);
+
+    publish(HR, "HR", 60, 0);
+    publish(SPO2, "SpO2", 98, 0);
+
+    assertTrue(sink.awaitQuiescence(Duration.ofMillis(100), Duration.ofSeconds(5)), "sink never drained");
+    assertEquals(2, sink.snapshot().received());
   }
 
   @Test
