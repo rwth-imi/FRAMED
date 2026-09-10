@@ -28,3 +28,4 @@ benchmark/figures/
 benchmark/REPORT_THROUGHPUT.md
 benchmark/REPORT_SOCKET_PAIR.md
 benchmark/REPORT_COMBINED.md
+benchmark/REPORT_KINK_TCP.md
