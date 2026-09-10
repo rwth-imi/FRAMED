@@ -3,7 +3,8 @@
     {
       "class": "com.framed.streamer.dispatcher.CountingDispatcher",
       "id": "Counting",
-      "devices": ["MIMIC-3000003"]
+      "devices": ["MIMIC-3000003"],
+      "channels": []
     }
   ],
   "Devices": [

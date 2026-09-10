@@ -7,8 +7,10 @@ import org.json.JSONArray;
 
 import java.time.Duration;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -35,7 +37,17 @@ import java.util.concurrent.atomic.AtomicLong;
  * <h2>Configuration keys</h2>
  * <ul>
  *   <li>{@code devices} &mdash; JSON array of device identifiers whose announced channels to count.</li>
+ *   <li>{@code channels} &mdash; JSON array of channel identifiers to count; empty counts every
+ *       channel the announced devices produce.</li>
  * </ul>
+ *
+ * <p>The channel filter scopes the <em>measurement</em>, not the traffic: a datapoint on an
+ * unlisted channel still crosses the bus, is still parsed, still occupies the push queue and still
+ * counts as activity for {@link #awaitQuiescence} — it is only left out of the figures. That is what makes a filtered run comparable to an unfiltered one,
+ * and it is why the filter is the right instrument when one producer group carries several stages
+ * of a pipeline. A reactor network, for instance, announces every reactor's output under one group,
+ * so an unfiltered sink mixes the intermediate results into the latency distribution of the final
+ * one.</p>
  *
  * <p><b>Threading:</b> {@link #push} runs on the dispatcher's single worker thread and
  * {@link #onDrop} may run on either that thread or an event-bus handler thread; all counter updates
@@ -46,6 +58,9 @@ public class CountingDispatcher extends Dispatcher {
 
   /** Guards every field below; uncontended in practice (a single writer plus rare readers). */
   private final Object lock = new Object();
+
+  /** Channels to count; empty counts everything. Immutable after construction. */
+  private final Set<String> channels;
 
   private final MillisHistogram latency = new MillisHistogram();
   private final Map<String, Long> perChannel = new LinkedHashMap<>();
@@ -66,24 +81,41 @@ public class CountingDispatcher extends Dispatcher {
    *
    * @param eventBus the event bus to discover channels and receive samples on
    * @param devices  the device identifiers whose announced channels this sink binds to
+   * @param channels the channel identifiers to count; empty counts every announced channel
    */
-  public CountingDispatcher(EventBus eventBus, JSONArray devices) {
+  public CountingDispatcher(EventBus eventBus, JSONArray devices, JSONArray channels) {
     super(eventBus, devices);
+    Set<String> selected = new LinkedHashSet<>();
+    for (Object channel : channels) {
+      selected.add(String.valueOf(channel));
+    }
+    this.channels = Set.copyOf(selected);
+  }
+
+  /** Whether {@code channelID} is in scope for the figures. */
+  private boolean counts(String channelID) {
+    return channels.isEmpty() || channels.contains(channelID);
   }
 
   @Override
   public void push(DataPoint<?> dataPoint) {
     long now = System.currentTimeMillis();
+    boolean counted = counts(dataPoint.channelID());
     long lag = now - dataPoint.timestamp().toEpochMilli();
     String channel = dataPoint.channelID();
 
     synchronized (lock) {
+      // Every arrival marks the sink busy, whether or not it is counted: quiescence is a property
+      // of the shared push queue, and a filtered-out datapoint occupies it exactly like a counted
+      // one. Stamping only counted arrivals would let awaitQuiescence report "drained" in the
+      // middle of a burst of intermediate traffic, and the snapshot taken after it would undercount.
+      lastActivityMillis = now;
+      if (!counted) return;
       received++;
       latency.add(lag);
       perChannel.merge(channel, 1L, Long::sum);
       if (firstPushMillis < 0) firstPushMillis = now;
       lastPushMillis = now;
-      lastActivityMillis = now;
     }
   }
 
@@ -100,14 +132,18 @@ public class CountingDispatcher extends Dispatcher {
    */
   @Override
   protected void onDrop(DataPoint<?> dp, Throwable cause) {
-    dropped.incrementAndGet();
-    synchronized (lock) {
+    synchronized (lock) {                       // busy either way, as in push
       lastActivityMillis = System.currentTimeMillis();
     }
+    if (!counts(dp.channelID())) return;
+    dropped.incrementAndGet();
   }
 
   /**
    * Counts the failure instead of printing a stack trace, for the same reason as {@link #onDrop}.
+   *
+   * <p>Not subject to the channel filter: a message that failed to parse has no channel identifier
+   * to filter on, so this count spans every channel the sink is bound to.</p>
    */
   @Override
   protected void onHandlerError(String deviceID, String address, Object rawMsg, Exception e) {
@@ -164,6 +200,10 @@ public class CountingDispatcher extends Dispatcher {
    * <p>Idleness is inferred from arrivals, so this reports "drained" for a producer that has merely
    * stalled longer than {@code quietPeriod}. Callers that need a true end-of-stream should observe
    * producer completion first and use this only to await the queue behind it.</p>
+   *
+   * <p><em>Every</em> arrival counts as activity, including one the channel filter excludes from the
+   * figures: the queue this waits on is shared by the whole bound stream, so a filtered run and an
+   * unfiltered one drain at the same instant.</p>
    *
    * @param quietPeriod how long nothing must arrive for the sink to count as drained
    * @param timeout     give up after this long

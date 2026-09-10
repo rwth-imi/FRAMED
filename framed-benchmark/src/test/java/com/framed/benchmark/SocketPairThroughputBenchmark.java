@@ -234,7 +234,7 @@ class SocketPairThroughputBenchmark {
         producerBus = producer;
       }
 
-      sink = new CountingDispatcher(readerBus, new JSONArray(List.of(DEVICE)));
+      sink = new CountingDispatcher(readerBus, new JSONArray(List.of(DEVICE)), new JSONArray());
       if (p.prime()) {
         primeAcrossWire(producerBus, sink, channels, p.wiring());
       }

@@ -319,7 +319,7 @@ class MimicThroughputBenchmark {
         String device = "BENCH-%02d".formatted(d);
         List<CountingDispatcher> forDevice = new ArrayList<>();
         for (int s = 0; s < p.sinksPerDevice(); s++) {
-          CountingDispatcher sink = new CountingDispatcher(bus, new JSONArray(List.of(device)));
+          CountingDispatcher sink = new CountingDispatcher(bus, new JSONArray(List.of(device)), new JSONArray());
           sinks.add(sink);
           forDevice.add(sink);
         }
