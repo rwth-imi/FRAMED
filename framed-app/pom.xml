@@ -33,6 +33,16 @@
       <groupId>com.framed</groupId>
       <artifactId>framed-cdss</artifactId>
     </dependency>
+    <!-- Interop bridges are opt-in per standard. The default assembly ships HL7 + MQTT;
+         add framed-interop-sdc here to include the (heavy) IEEE 11073 SDC stack. -->
+    <dependency>
+      <groupId>com.framed</groupId>
+      <artifactId>framed-interop-hl7</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.framed</groupId>
+      <artifactId>framed-interop-mqtt</artifactId>
+    </dependency>
   </dependencies>
 
   <build>

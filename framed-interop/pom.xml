@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.framed</groupId>
+    <artifactId>framed-parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>framed-interop</artifactId>
+  <packaging>pom</packaging>
+
+  <name>FRAMED Interop (aggregator)</name>
+  <description>Standards-based interoperability at the socket edge, split per standard so
+    framework consumers import only the boundary they need: shared mapping/gate (common),
+    HL7 v2.x over MLLP (hl7), MQTT (mqtt), IEEE 11073 SDC (sdc). FRAMED's internal flow
+    stays on the EAV model throughout.</description>
+
+  <modules>
+    <module>common</module>
+    <module>hl7</module>
+    <module>mqtt</module>
+    <module>sdc</module>
+  </modules>
+
+</project>

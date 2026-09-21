@@ -1,0 +1,22 @@
+{
+  "Dispatchers": [
+    {
+      "class": "com.framed.streamer.dispatcher.CountingDispatcher",
+      "id": "Counting",
+      "devices": ["MIMIC-3000003"],
+      "channels": []
+    }
+  ],
+  "Devices": [
+    {
+      "class": "com.framed.communicator.driver.protocol.mimic.MimicReplayProtocol",
+      "id": "MIMIC-Replay",
+      "recordPath": "/home/nils/Documents/Entwicklung/safety-box/physionet.org/files/mimic3wdb/1.0/30/3000003/3000003.hea",
+      "deviceID": "MIMIC-3000003",
+      "className": "Waveform",
+      "channels": [],
+      "speed": 1.0,
+      "maxSeconds": 60
+    }
+  ]
+}

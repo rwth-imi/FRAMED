@@ -10,26 +10,30 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MedibusParsedWriter extends Writer<JSONObject> {
-  private List<String> addresses = new ArrayList<>();
+
+  /**
+   * Addresses already bound, so a re-announced channel is not subscribed twice.
+   *
+   * <p>Concurrent because announcements are delivered on the announcing thread and different
+   * devices announce on different threads &mdash; see
+   * {@link com.framed.core.Service#subscribeToAnnouncements(String, java.util.function.Consumer)}.</p>
+   */
+  private final Set<String> addresses = ConcurrentHashMap.newKeySet();
 
   public MedibusParsedWriter(String path, EventBus eventBus, JSONArray devices) {
     super(path, eventBus);
     for (Object device : devices) {
       String deviceName = (String) device;
-      eventBus.register(addressRegistry(deviceName), msg -> {
-        if (!addresses.contains(msg.toString())) {
-          addresses.add(msg.toString());
-          eventBus.register(
-            msg.toString(), msg_ -> {
-              handleEventBus(msg_, deviceName);
-            }
-          );
-        }
+      // Binds synchronously, so the device cannot publish a sample before this writer is listening.
+      subscribeToAnnouncements(deviceName, address -> {
+        if (address == null || address.isBlank()) return;
+        if (!addresses.add(address)) return;
+        eventBus.register(address, msg_ -> handleEventBus(msg_, deviceName));
       });
     }
   }

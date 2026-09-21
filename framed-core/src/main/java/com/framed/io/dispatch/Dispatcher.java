@@ -64,7 +64,9 @@ public abstract class Dispatcher extends Service {
    *
    * <p>Starts a dedicated single-thread push worker and, for each device, subscribes to that
    * device's address-discovery topic so that channels announced by the device are dynamically
-   * registered and forwarded to {@link #push(DataPoint)}.</p>
+   * registered and forwarded to {@link #push(DataPoint)}. Binding happens synchronously on the
+   * announcing thread (see {@link Service#subscribeToAnnouncements(String, java.util.function.Consumer)}),
+   * so no sample published straight after an announcement can be missed.</p>
    *
    * @param eventBus the event bus used to receive announced addresses and incoming messages
    * @param devices  the device identifiers whose announced channels this dispatcher binds to
@@ -87,11 +89,10 @@ public abstract class Dispatcher extends Service {
     for (Object deviceObj : devices) {
       final String deviceID = deviceObj.toString();
 
-      // Register device's "addresses" channel
-      eventBus.register(addressRegistry(deviceID), msg -> {
+      // Follow the device's address-discovery topic. subscribeToAnnouncements binds synchronously,
+      // so the producer cannot publish a sample before this dispatcher is listening for it.
+      subscribeToAnnouncements(deviceID, address -> {
         if (!running) return;
-
-        final String address = String.valueOf(msg);
         if (address == null || address.isBlank()) return;
 
         // register once per device+address (does not prevent two devices using same address)

@@ -64,6 +64,13 @@ import static com.framed.core.utils.RemoteUtils.parseAndDispatchAsync;
  */
 
 public class NioUdpTransport implements Transport {
+
+  /**
+   * Receive-buffer size. A datagram larger than this is truncated by the kernel and the remainder
+   * discarded, so this bounds the size of a single publishable message on the UDP transport.
+   */
+  private static final int MAX_DATAGRAM_BYTES = 64 * 1024;
+
   Logger logger = Logger.getLogger(getClass().getName());
 
   private final Selector selector;
@@ -90,24 +97,41 @@ public class NioUdpTransport implements Transport {
 
   /**
    * Starts the selector loop on a background thread.
-   * <p>When the channel is readable, a datagram is decoded as UTF-8, parsed as JSON,
-   * and dispatched to handlers based on its {@code address} field and message type.</p>
-   * <p><b>Implementation note:</b> The received buffer is reused per-iteration. Ensure
-   * {@link DatagramChannel#receive(java.nio.ByteBuffer)} populates the buffer before decoding.</p>
+   * <p>When the channel is readable, every datagram queued on it is drained in turn: each is
+   * decoded as UTF-8, parsed as JSON, and dispatched to handlers based on its {@code address} field
+   * and message type. Draining to exhaustion is required, not an optimisation — the selector
+   * reports readiness once per arrival, so a datagram left unread keeps the key ready and spins
+   * this loop.</p>
+   * <p>A datagram that fails to parse is logged and skipped; it does not stop the loop. Payloads
+   * above {@value #MAX_DATAGRAM_BYTES} bytes are truncated by the kernel and will therefore be
+   * skipped as malformed.</p>
+   * <p><b>Threading:</b> runs on a single thread borrowed from the transport's cached pool for the
+   * transport's lifetime; handler invocation is handed off to that same pool, so handlers never
+   * block the receive loop.</p>
    */
   @Override
   public void start() {
     workerPool.submit(() -> {
-      ByteBuffer buffer = ByteBuffer.allocate(4096);
+      ByteBuffer buffer = ByteBuffer.allocate(MAX_DATAGRAM_BYTES);
       while (running) {
         try {
           selector.select();
           for (SelectionKey key : selector.selectedKeys()) {
-            if (key.isReadable()) {
+            if (!key.isReadable()) continue;
+            // Drain every datagram the channel has: the selector reports readiness once, and any
+            // left unread would keep the key ready and spin this loop.
+            while (true) {
               buffer.clear();
+              if (channel.receive(buffer) == null) break;   // nothing further queued
               buffer.flip();
-              String jsonStr = charset.decode(buffer).toString();
-              parseAndDispatchAsync(jsonStr, handlers, workerPool);
+              String jsonStr = charset.decode(buffer).toString().trim();
+              if (jsonStr.isEmpty()) continue;
+              try {
+                parseAndDispatchAsync(jsonStr, handlers, workerPool);
+              } catch (RuntimeException malformed) {
+                // A truncated or corrupt datagram must not take the receive loop down with it.
+                logger.warning("UDP receive failed: " + malformed);
+              }
             }
           }
           selector.selectedKeys().clear();

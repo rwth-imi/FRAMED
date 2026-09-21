@@ -1,5 +1,5 @@
 {
-  "devices": [
+  "Devices": [
     {
       "class": "com.framed.communicator.driver.protocol.medibus.MedibusProtocol",
       "id": "Oxylog-3000-Plus-00",
@@ -13,7 +13,7 @@
       "multiplier": "10"
     }
   ],
-  "writers": [
+  "Writers": [
     {
       "class": "com.framed.communicator.io.raw.RawByteWriter",
       "id": "Raw-Byte-Writer",
