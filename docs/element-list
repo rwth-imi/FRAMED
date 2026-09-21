@@ -6,6 +6,7 @@ com.framed.communicator.driver.parser.medibus
 com.framed.communicator.driver.parser.python
 com.framed.communicator.driver.protocol.medibus
 com.framed.communicator.driver.protocol.medibus.utils
+com.framed.communicator.driver.protocol.mimic
 com.framed.communicator.driver.protocol.replay
 com.framed.communicator.io.parsed
 com.framed.communicator.io.raw
@@ -14,6 +15,13 @@ com.framed.core.local
 com.framed.core.remote
 com.framed.core.spi
 com.framed.core.utils
+com.framed.interop.gate
+com.framed.interop.hl7
+com.framed.interop.hl7.hl7v2
+com.framed.interop.hl7.mllp
+com.framed.interop.mapping
+com.framed.interop.mqtt
+com.framed.interop.sdc
 com.framed.io.dispatch
 com.framed.io.parser
 com.framed.io.protocol
