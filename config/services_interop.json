@@ -37,6 +37,7 @@
       "devices": ["PC60FW", "Oxylog-3000-Plus-00"],
       "channels": [],
       "speed": 1.0,
+      "repeat": 1,
       "startDelaySeconds": 10,
       "graceSeconds": 5,
       "exitOnCompletion": false

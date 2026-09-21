@@ -1,7 +1,0 @@
-{
-  "type": "TCP",
-  "port": @PY_PORT@,
-  "peers": [
-    { "host": "127.0.0.1", "port": @JAVA_PORT@ }
-  ]
-}
