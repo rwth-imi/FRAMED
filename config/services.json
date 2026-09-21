@@ -3,21 +3,23 @@
     {
       "class": "com.framed.streamer.dispatcher.JsonlDispatcher",
       "id": "Json-Lines",
-      "devices": ["MIMIC-3000003"],
+      "devices": ["Oxylog-3000-Plus-00", "PC60FW"],
       "path": "output/streamer/",
-      "fileName": "mimic.jsonl"
+      "fileName": "replay.jsonl"
     }
   ],
   "Devices": [
     {
-      "class": "com.framed.communicator.driver.protocol.mimic.MimicReplayProtocol",
-      "id": "MIMIC-Replay",
-      "recordPath": "/home/nils/Documents/Entwicklung/safety-box/physionet.org/files/mimic3wdb/1.0/30/3000003/3000003.hea",
-      "deviceID": "MIMIC-3000003",
-      "className": "Waveform",
+      "class": "com.framed.communicator.driver.protocol.replay.ReplayProtocol",
+      "id": "Replay",
+      "filePath": "data/replay/p01-VC1-clean-0.jsonl",
+      "devices": ["Oxylog-3000-Plus-00", "PC60FW"],
       "channels": [],
       "speed": 1.0,
-      "maxSeconds": 300
+      "repeat": 1,
+      "startDelaySeconds": 2,
+      "graceSeconds": 5,
+      "exitOnCompletion": true
     }
   ]
 }

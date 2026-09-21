@@ -11,7 +11,7 @@
     {
       "class": "com.framed.communicator.driver.protocol.mimic.MimicReplayProtocol",
       "id": "MIMIC-Replay",
-      "recordPath": "/home/nils/Documents/Entwicklung/safety-box/physionet.org/files/mimic3wdb/1.0/30/3000003/3000003.hea",
+      "recordPath": "data/mimic/3000003.hea",
       "deviceID": "MIMIC-3000003",
       "className": "Waveform",
       "channels": [],

@@ -65,7 +65,7 @@
       "bucket": "safety-box",
       "id": "InfluxDB",
       "url": "http://localhost:8086",
-      "token": "ThoKiNpWG1QpK8NjBayxWiXq2vwj4L7q-0NvisFVpp-af9tt1qh8ohL00V_pRDksSKTt7hqLkOKRQ6GKxFmKzg==",
+      "token": "<influxdb-api-token>",
       "org": "IMI-MSE",
       "devices":
       [
