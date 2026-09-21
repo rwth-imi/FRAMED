@@ -1,0 +1,51 @@
+# Requests a Software Heritage "Save Code Now" visit whenever a release tag is pushed.
+#
+# FAIR4RS F1/F1.1/F1.2 and A1/A2 rest on the archive holding the tagged state: SWHIDs are
+# only resolvable once SWH has actually visited the origin. Doing this from CI means a
+# release cannot be tagged and then forgotten about.
+#
+# GitHub origins are on the SWH allow-list, so the request is accepted straight away rather
+# than queued for moderation, and no account or token is needed. The visit itself is
+# asynchronous — this job confirms the request was accepted, not that loading has finished.
+# Poll the same endpoint (or the origin's Permalinks panel) to pick up the `swh:1:snp:`
+# snapshot hash needed for the qualified identifiers recorded in CHANGELOG.md.
+
+name: Archive in Software Heritage
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Request Save Code Now
+        run: |
+          curl -sS --fail-with-body -X POST \
+            "https://archive.softwareheritage.org/api/1/origin/save/git/url/${{ github.server_url }}/${{ github.repository }}/" \
+            | tee save-request.json
+          echo
+
+      # The save request is queued, not completed, when the POST returns. Give the loader a
+      # few minutes and report where it got to, so the run's log records the outcome rather
+      # than just the submission. A still-pending visit is normal and not a failure.
+      - name: Report visit status
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            sleep 60
+            status=$(curl -sS \
+              "https://archive.softwareheritage.org/api/1/origin/save/git/url/${{ github.server_url }}/${{ github.repository }}/" \
+              | grep -o '"save_task_status": *"[^"]*"' | tail -1)
+            echo "attempt ${attempt}: ${status}"
+            case "${status}" in
+              *succeeded*) echo "::notice::Software Heritage visit succeeded"; exit 0 ;;
+              *failed*)    echo "::error::Software Heritage visit failed"; exit 1 ;;
+            esac
+          done
+          echo "::notice::Visit still pending after 6 minutes; SWH will finish it asynchronously."
