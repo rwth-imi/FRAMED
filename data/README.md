@@ -7,10 +7,10 @@ need a download, because that dataset may not be redistributed.
 
 A JSON-Lines recording of one volume-controlled ventilation run on a **patient
 simulator (manikin)**: a Dräger Oxylog 3000 Plus over Medibus and a Viatom PC-60FW
-pulse oximeter, captured with FRAMED's own `RawByteWriter`/`MedibusParsedWriter` path.
+pulse oximeter.
 
 **Provenance: simulation data. No human subject is involved, and the file contains no
-personal data** within the meaning of Art. 4(1) GDPR. The `p01` prefix numbers the
+personal data**. The `p01` prefix numbers the
 *simulation run*, not a person.
 
 | | |
@@ -42,6 +42,4 @@ wget -r -N -c -np -nH --cut-dirs=6 -P data/mimic \
   https://physionet.org/files/mimic3wdb/1.0/30/3000003/
 ```
 
-Access requires a PhysioNet credentialed account and a signed data use agreement. The
-profiles are unusable, but harmless, without it. `MimicPacingBenchmark` takes its record
-via `-Dmimic.record=` instead and *skips* rather than fails when the flag is absent.
+`MimicPacingBenchmark` takes its record via `-Dmimic.record=` instead and *skips* rather than fails when the flag is absent.
