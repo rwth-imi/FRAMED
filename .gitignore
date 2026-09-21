@@ -1,6 +1,5 @@
 .idea/
 .editorconfig
-.mvn/
 /output/*
 !output/.gitkeep
 target/
@@ -10,6 +9,11 @@ commlog/
 benchmark/
 __pycache__/
 config/services.json.bench-backup
+
+# Editor and diagram-tool leftovers. These were committed once; Software Heritage
+# archives whatever it finds, so keep them out permanently.
+*.bak
+.$*
 ARCHITECTURE.md
 CLAUDE.md
 CHANGELOG.md
