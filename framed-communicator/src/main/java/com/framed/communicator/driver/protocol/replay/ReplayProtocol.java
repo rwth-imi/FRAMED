@@ -66,6 +66,25 @@ import java.util.logging.Logger;
  * no schedule, and each event is stamped with the instant it is actually published. That mode
  * measures throughput, and deliberately does not reproduce the recording's timing.</p>
  *
+ * <h2>Repetition</h2>
+ * <p>{@code repeat} replays the recording that many times back to back. Pass {@code r} of
+ * {@code repeat} shifts every stamp by {@code r × cycle}, where {@code cycle} is the recording's
+ * own span plus one seam gap, so the emitted stream is a concatenation rather than an overlay:
+ * stamps stay strictly ordered across the seam and no instant is ever emitted twice. The seam gap
+ * is the smallest positive interval between two distinct recorded stamps, so it is never wider
+ * than a transition the recording already contains. The offset is applied in <em>recorded</em>
+ * time and then divided by {@code speed} like any other, so a seam occupies
+ * {@code seamGap / speed} of wall clock.</p>
+ * <p>Repetition exists because a speed multiplier alone cannot hold a benchmark's sample size.
+ * Compressing a recording onto wall clock shortens the run but not a downstream reactor's window,
+ * which is denominated in seconds and therefore eats {@code window × speed} of recorded session
+ * before the first result appears — at high speed that is most of the recording. Repeating the
+ * recording proportionally to {@code speed} keeps the wall-clock duration, and so the usable
+ * fraction, constant across a sweep.</p>
+ * <p>The seam is a discontinuity in the <em>signal</em>, not just the clock: the recording's last
+ * sample is followed by its first. That is harmless for throughput measurement but makes a
+ * repeated run unsuitable for comparison against a single-pass control.</p>
+ *
  * <h2>Configuration keys</h2>
  * <ul>
  *   <li>{@code filePath} &mdash; the {@code .jsonl} recording to replay.</li>
@@ -73,6 +92,8 @@ import java.util.logging.Logger;
  *   <li>{@code channels} &mdash; channel identifiers to replay; empty replays every channel.</li>
  *   <li>{@code speed} &mdash; wall-clock speed multiplier ({@code 1.0} = real time, {@code 0} = as
  *       fast as possible).</li>
+ *   <li>{@code repeat} &mdash; how many times to replay the recording back to back; {@code 1} plays
+ *       it once. Values below {@code 1} are treated as {@code 1}.</li>
  *   <li>{@code startDelaySeconds} &mdash; delay before the first event, leaving remote peers and
  *       sinks time to come up.</li>
  *   <li>{@code graceSeconds} &mdash; how long to keep running after the last event, so downstream
@@ -97,6 +118,7 @@ public class ReplayProtocol extends Protocol {
   private final Set<String> devices = new HashSet<>();
   private final Set<String> channels = new HashSet<>();
   private final double speed;
+  private final int repeatCount;
   private final long startDelayMillis;
   private final long graceMillis;
   private final boolean exitOnCompletion;
@@ -116,12 +138,14 @@ public class ReplayProtocol extends Protocol {
    * @param devices           device identifiers to replay; others in the file are skipped
    * @param channels          channel identifiers to replay; empty replays every channel
    * @param speed             wall-clock speed multiplier; {@code <= 0} replays as fast as possible
+   * @param repeat            how many times to replay the recording back to back; below {@code 1}
+   *                          is treated as {@code 1}
    * @param startDelaySeconds delay before the first event is published
    * @param graceSeconds      how long to keep running after the last event
    * @param exitOnCompletion  whether to terminate the JVM once the grace period has elapsed
    */
   public ReplayProtocol(String id, EventBus eventBus, String filePath, JSONArray devices,
-                        JSONArray channels, double speed, double startDelaySeconds,
+                        JSONArray channels, double speed, int repeat, double startDelaySeconds,
                         double graceSeconds, boolean exitOnCompletion) {
     super(id, eventBus);
     this.filePath = Path.of(filePath);
@@ -132,6 +156,7 @@ public class ReplayProtocol extends Protocol {
       this.channels.add(String.valueOf(channel));
     }
     this.speed = speed;
+    this.repeatCount = Math.max(1, repeat);
     this.startDelayMillis = Math.max(0L, Math.round(startDelaySeconds * 1000.0));
     this.graceMillis = Math.max(0L, Math.round(graceSeconds * 1000.0));
     this.exitOnCompletion = exitOnCompletion;
@@ -206,8 +231,9 @@ public class ReplayProtocol extends Protocol {
         return;
       }
       events.sort(Comparator.comparing(ReplayEvent::timestamp));
-      LOGGER.info("Loaded %d events from %s; replaying at speed %s."
-              .formatted(events.size(), filePath, speed <= 0 ? "max" : "%.3f×".formatted(speed)));
+      LOGGER.info("Loaded %d events from %s; replaying at speed %s, repeat %d."
+              .formatted(events.size(), filePath, speed <= 0 ? "max" : "%.3f×".formatted(speed),
+                      repeatCount));
 
       announceAddresses(events);
       if (!sleepMillis(ANNOUNCE_SETTLE_MILLIS)) return;
@@ -251,36 +277,77 @@ public class ReplayProtocol extends Protocol {
     long count = 0;
     this.published = 0;
 
-    for (ReplayEvent event : events) {
-      if (Thread.currentThread().isInterrupted()) break;
+    // One pass per repetition, shifting recorded time by a whole cycle each time. The events list
+    // is walked again rather than copied: a sweep repeats the recording once per unit of speed, so
+    // materialising the concatenation would cost hundreds of megabytes on the very JVM whose
+    // latency is being measured.
+    long seamGapNanos = seamGapNanos(events);
+    long cycleNanos = Duration.between(firstRecorded, events.get(events.size() - 1).timestamp())
+            .toNanos() + seamGapNanos;
 
-      Instant emit;
-      if (speed > 0) {
-        long offsetNanos = Math.round(
-                Duration.between(firstRecorded, event.timestamp()).toNanos() / speed);
-        emit = replayStart.plusNanos(offsetNanos);
-        long delay = Duration.between(Instant.now(), emit).toMillis();
-        if (delay > 0 && !sleepMillis(delay)) break;
-      } else {
-        emit = Instant.now().truncatedTo(ChronoUnit.MICROS);
+    replay:
+    for (int repetition = 0; repetition < repeatCount; repetition++) {
+      long cycleOffsetNanos = repetition * cycleNanos;
+
+      for (ReplayEvent event : events) {
+        if (Thread.currentThread().isInterrupted()) break replay;
+
+        Instant emit;
+        if (speed > 0) {
+          long offsetNanos = Math.round(
+                  (Duration.between(firstRecorded, event.timestamp()).toNanos() + cycleOffsetNanos)
+                          / speed);
+          emit = replayStart.plusNanos(offsetNanos);
+          long delay = Duration.between(Instant.now(), emit).toMillis();
+          if (delay > 0 && !sleepMillis(delay)) break replay;
+        } else {
+          emit = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        }
+
+        long lag = Duration.between(emit, Instant.now()).toMillis();
+        lagSumMillis += lag;
+        lagMaxMillis = Math.max(lagMaxMillis, lag);
+        count++;
+        this.published = count;
+
+        publishEvent(event, emit);
       }
-
-      long lag = Duration.between(emit, Instant.now()).toMillis();
-      lagSumMillis += lag;
-      lagMaxMillis = Math.max(lagMaxMillis, lag);
-      count++;
-      this.published = count;
-
-      publishEvent(event, emit);
     }
 
     long wallMillis = Math.max(1L, Duration.between(replayStart, Instant.now()).toMillis());
-    double recordedSpan = Duration.between(firstRecorded, events.get(events.size() - 1).timestamp())
-            .toNanos() / 1e9;
-    double targetHz = speed > 0 && recordedSpan > 0 ? events.size() / (recordedSpan / speed) : 0.0;
+    // First-to-last across every pass: whole cycles for the repetitions, minus the trailing seam
+    // gap that no event occupies. At repeat = 1 this is exactly the recording's own span, so the
+    // reported target rate is unchanged by the existence of this feature.
+    double recordedSpan = (repeatCount * (double) cycleNanos - seamGapNanos) / 1e9;
+    long offered = (long) events.size() * repeatCount;
+    double targetHz = speed > 0 && recordedSpan > 0 ? offered / (recordedSpan / speed) : 0.0;
     stats = new ReplayStats(count, wallMillis / 1000.0, count * 1000.0 / wallMillis, targetHz,
             count == 0 ? 0.0 : (double) lagSumMillis / count,
             count == 0 ? 0L : lagMaxMillis);
+  }
+
+  /**
+   * The gap inserted between the last event of one repetition and the first of the next.
+   *
+   * <p>Chosen as the smallest positive interval between two consecutive distinct recorded
+   * timestamps, so the seam is never wider than a transition the recording itself contains. A gap
+   * is needed at all because a zero-width one would make the last stamp of a pass collide with the
+   * first stamp of the next, breaking the strict ordering the replay clock guarantees; making it
+   * the tightest observed cadence keeps it from registering as a pause to a downstream staleness
+   * timer, on a recording of any density. Recordings whose events all share one instant have no
+   * observable cadence, so they fall back to one millisecond.</p>
+   *
+   * @param events the recording, already sorted by timestamp
+   * @return the seam gap in nanoseconds, always positive
+   */
+  private static long seamGapNanos(List<ReplayEvent> events) {
+    long smallest = Long.MAX_VALUE;
+    for (int i = 1; i < events.size(); i++) {
+      long delta = Duration.between(events.get(i - 1).timestamp(), events.get(i).timestamp())
+              .toNanos();
+      if (delta > 0 && delta < smallest) smallest = delta;
+    }
+    return smallest == Long.MAX_VALUE ? Duration.ofMillis(1).toNanos() : smallest;
   }
 
   private void publishEvent(ReplayEvent event, Instant emitTimestamp) {
