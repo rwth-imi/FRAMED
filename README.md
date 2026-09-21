@@ -11,9 +11,10 @@
 
 [![Java CI with Maven](https://github.com/rwth-imi/FRAMED/actions/workflows/maven.yml/badge.svg)](https://github.com/rwth-imi/FRAMED/actions/workflows/maven.yml)
 [![Docs](https://github.com/rwth-imi/FRAMED/actions/workflows/docs.yml/badge.svg)](https://rwth-imi.github.io/FRAMED/docs/)
-![Version](https://img.shields.io/badge/version-1.0.0--SNAPSHOT-blue)
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Java](https://img.shields.io/badge/Java-21-orange)
 [![License](https://img.shields.io/badge/license-GPL--2.0-blue)](https://github.com/rwth-imi/FRAMED/blob/master/LICENSE)
+[![Archived in Software Heritage](https://archive.softwareheritage.org/badge/origin/https://github.com/rwth-imi/FRAMED/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/rwth-imi/FRAMED)
 
 FRAMED is a service-oriented software framework for acquiring, transforming, and reacting to
 data streams from multiple sources — medical devices, sensors, replay files, and more. You
@@ -89,7 +90,7 @@ Then depend on the SDK from your own project:
 <dependency>
   <groupId>com.framed</groupId>
   <artifactId>framed-core</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.0</version>
 </dependency>
 ```
 
@@ -379,7 +380,7 @@ Build the runnable assembly and run it from a directory containing `config/`:
 
 ```bash
 mvn -pl framed-app -am package    # builds framed-app/target/framed-app-*-fat.jar
-java -jar framed-app/target/framed-app-1.0.0-SNAPSHOT-fat.jar
+java -jar framed-app/target/framed-app-1.0.0-fat.jar
 ```
 
 `Main` reads `config/services.json` + `config/communication.json` (relative to the working
@@ -443,7 +444,7 @@ Three ways to get your class onto the launch classpath:
 |---|---|---|
 | **Your own assembly** *(recommended for a separate project)* | Building a project *on* FRAMED | Depend on `framed-core`, keep your services in your module, and build your own fat-jar that reuses `com.framed.orchestrator.Main` (or your own launcher). Run it from a directory with your `config/`. |
 | **Add a module to this monorepo** | Extending FRAMED in-repo | Add your Maven module, make `framed-app` depend on it, rebuild the fat-jar — your classes get shaded in. |
-| **Append your jar at launch** | Quick experiment against the shipped fat-jar | `java -cp "framed-app-1.0.0-SNAPSHOT-fat.jar:my-reactors.jar" com.framed.orchestrator.Main` (run from a dir containing `config/`). |
+| **Append your jar at launch** | Quick experiment against the shipped fat-jar | `java -cp "framed-app-1.0.0-fat.jar:my-reactors.jar" com.framed.orchestrator.Main` (run from a dir containing `config/`). |
 
 The shipped fat-jar runs on the classpath (its `module-info` is stripped), so reflective
 instantiation of your classes is unrestricted. If a custom `Reactor` is loaded, the bundled

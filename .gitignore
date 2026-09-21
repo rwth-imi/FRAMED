@@ -16,11 +16,15 @@ config/services.json.bench-backup
 .$*
 ARCHITECTURE.md
 CLAUDE.md
-CHANGELOG.md
+
+# CHANGELOG.md is deliberately NOT ignored. It is the only place a released version's
+# Software Heritage identifiers are recorded, and FAIR4RS F3 ("metadata include the
+# identifier") and R1.2 (provenance) require that record to travel with the software.
+# There is no SWH equivalent of a Zenodo concept DOI, so this file is the substitute.
 
 # Narrative, planning and derived material: kept locally, not tracked.
-# Same rule as ARCHITECTURE.md / CLAUDE.md / CHANGELOG.md above — the repo tracks
-# source and the tooling that produces these, not the documents themselves.
+# Same rule as ARCHITECTURE.md / CLAUDE.md above — the repo tracks source and the
+# tooling that produces these, not the documents themselves.
 docs/
 INTEROP_PLAN.md
 BENCHMARK_PLAN.md
