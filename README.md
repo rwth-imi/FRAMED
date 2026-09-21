@@ -386,6 +386,20 @@ java -jar framed-app/target/framed-app-1.0.0-SNAPSHOT-fat.jar
 directory), builds the bus, instantiates each section, runs deployment validators, then
 blocks until interrupted (a shutdown hook stops services cleanly).
 
+The shipped `config/services.json` is a **self-contained example**: it replays the committed
+simulator recording `data/replay/p01-VC1-clean-0.jsonl` into a JSON-Lines file under
+`output/streamer/`, with no device, database or network dependency. Run the two commands
+above from the repository root and it works on a fresh clone. Replay is real-time, so the
+run takes ≈ 10.5 minutes and then exits; raise `speed` in the profile to compress it. See
+[`data/README.md`](data/README.md) for the recording's provenance.
+
+`config/` holds further profiles for the real deployments — `services_live.json` (serial
+Medibus + oximeter → InfluxDB + CDSS), `services_replay.json`, `services_data_collection.json`,
+`services_interop.json`, `services_mqtt.json` and the MIMIC-III profiles. These need
+hardware, a broker, a database or a licensed dataset; the credentials in them are
+placeholders (`<influxdb-api-token>`) that you must fill in locally. **Do not commit real
+tokens** — CI rejects credential-shaped literals under `config/`.
+
 > To launch **your own** app jar instead, depend on `framed-core` (+ any concrete modules)
 > and either reuse `com.framed.orchestrator.Main` or call `Manager`/`Factory` yourself.
 > `Manager.instantiate("YourSection")` lets you use custom section names.
