@@ -1,8 +1,9 @@
 # Build & test the FRAMED multi-module Maven reactor (framed-core, -communicator,
-# -streamer, -cdss, -app) on Java 21.
+# -streamer, -cdss, -interop, -app, -benchmark) on Java 21.
 #
 # NOTE: package publishing (deploy to GitHub Packages) is intentionally NOT wired here yet.
-# It is postponed — see docs/reusable-framework-plan.md (Phases 5–6). When enabled, add a
+# Software Heritage archival gives every module a citable SWHID without a package registry,
+# so publishing is a distribution decision rather than a prerequisite. When enabled, add a
 # separate tag-triggered job with `permissions: packages: write` running `mvn -B deploy`.
 
 name: Java CI with Maven
@@ -38,6 +39,18 @@ jobs:
           java -version
           mvn -v
 
+      # The shipped profiles must run from a fresh clone and must not carry credentials.
+      # Both defects were present once and would have been archived permanently by
+      # Software Heritage, so they are gated rather than merely fixed.
+      - name: Check config hygiene
+        run: |
+          if grep -rnE '"[^"]*":[[:space:]]*"(/home/|/Users/|[A-Za-z]:\\\\)' config/; then
+            echo "::error::absolute machine-local path in a shipped config"; exit 1
+          fi
+          if grep -rnE '"token":[[:space:]]*"[A-Za-z0-9_+/=-]{20,}"' config/; then
+            echo "::error::credential-shaped literal in a shipped config"; exit 1
+          fi
+
       # Builds every module, runs all tests, and installs the modules to the local repo
       # (so the dependency-graph step below can resolve the sibling SNAPSHOT artifacts).
       - name: Build & test with Maven
@@ -46,10 +59,6 @@ jobs:
       # Submit the dependency graph only on pushes to the default branch.
       # v5 adds multi-module support; older versions crash on a parent (packaging=pom)
       # reactor with "Cannot read properties of undefined (reading 'forEach')".
-      # ignore-maven-wrapper: the repo's ./mvnw is broken (missing
-      # .mvn/wrapper/maven-wrapper.properties), so force the action to use system Maven.
       - name: Update dependency graph
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         uses: advanced-security/maven-dependency-submission-action@b275d12641ac2d2108b2cbb7598b154ad2f2cee8 # v5.0.0
-        with:
-          ignore-maven-wrapper: 'true'
