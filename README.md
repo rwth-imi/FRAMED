@@ -14,7 +14,7 @@
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Java](https://img.shields.io/badge/Java-21-orange)
 [![License](https://img.shields.io/badge/license-GPL--2.0-blue)](https://github.com/rwth-imi/FRAMED/blob/master/LICENSE)
-[![Archived in Software Heritage](https://archive.softwareheritage.org/badge/origin/https://github.com/rwth-imi/FRAMED/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/rwth-imi/FRAMED)
+
 
 FRAMED is a service-oriented software framework for acquiring, transforming, and reacting to
 data streams from multiple sources — medical devices, sensors, replay files, and more. You
