@@ -8,7 +8,7 @@
 # than queued for moderation, and no account or token is needed. The visit itself is
 # asynchronous — this job confirms the request was accepted, not that loading has finished.
 # Poll the same endpoint (or the origin's Permalinks panel) to pick up the `swh:1:snp:`
-# snapshot hash needed for the qualified identifiers recorded in CHANGELOG.md.
+# snapshot hash needed for the qualified identifiers recorded in docs/CHANGELOG.md.
 
 name: Archive in Software Heritage
 

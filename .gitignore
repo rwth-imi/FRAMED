@@ -18,12 +18,7 @@ ARCHITECTURE.md
 CLAUDE.md
 
 # Maintained locally and committed only when cutting a release, so the tagged tree
-# carries it: `git add -f CHANGELOG.md`. Day-to-day provenance (FAIR4RS R1.2) comes
+# carries it: `git add -f docs/CHANGELOG.md`. Day-to-day provenance (FAIR4RS R1.2) comes
 # from the conventional commit history, not from this file.
-CHANGELOG.md
-
-# Narrative, planning and derived material: kept locally, not tracked.
-# Same rule as ARCHITECTURE.md / CLAUDE.md above — the repo tracks source and the
-# tooling that produces these, not the documents themselves.
-docs/
+docs/CHANGELOG.md
 benchmark/

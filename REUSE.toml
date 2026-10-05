@@ -25,7 +25,8 @@ path = [
     "data/README.md",
     # Untracked day to day, committed at release time — the annotation has to exist
     # before that commit or the REUSE gate fails on it.
-    "CHANGELOG.md",
+    "docs/CHANGELOG.md",
+    "docs/*.md",
     "codemeta.json",
 ]
 precedence = "aggregate"
