@@ -50,7 +50,7 @@ Cite the paper rather than the repository:
 > doi:[10.3233/SHTI260543](https://doi.org/10.3233/SHTI260543)
 
 To cite a specific archived version, use the Software Heritage identifiers recorded in
-[`CHANGELOG.md`](CHANGELOG.md).
+[`CITATION.cff`](CITATION.cff) and [`codemeta.json`](codemeta.json).
 
 ## Contact
 
