@@ -534,7 +534,20 @@ from `communication.json` (`type`, `port`, `peers`).
 | `com.framed:framed-communicator` | ready-made Medibus/Viatom device drivers + replay protocol |
 | `com.framed:framed-streamer` | ready-made InfluxDB / JSON-Lines dispatchers |
 | `com.framed:framed-cdss` | the clinical decision-support reactors (case study) |
+| `com.framed:framed-interop-common` | shared channel↔LOINC/UCUM/MDC mapping + emission gate |
+| `com.framed:framed-interop-hl7` | HL7 v2.x over MLLP — inbound protocol and outbound `ORU^R01` |
+| `com.framed:framed-interop-mqtt` | MQTT bridge (publish/subscribe over a broker) |
+| `com.framed:framed-interop-sdc` | IEEE 11073 SDC provider — **experimental**, see below |
 | `com.framed:framed-app` | runnable assembly (fat-jar + `Main`); not a library |
+| `com.framed:framed-benchmark` | nothing — test sources only, ships no artifact |
+
+Interop bridges are opt-in per standard: depend only on the boundary you need. The default
+fat-jar assembly ships HL7 and MQTT.
+
+> **`framed-interop-sdc` is experimental and should not be relied on.** It is
+> provider-only (it cannot ingest other vendors' SDC devices), binds plain HTTP with no
+> TLS — so it cannot be deployed conformantly — and its tests sit behind `-Psdc`, meaning
+> CI never exercises it. It is published as work in progress, not as a supported bridge.
 
 ## Support 
 Please write an issue.
