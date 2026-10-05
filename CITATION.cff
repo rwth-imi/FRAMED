@@ -1,0 +1,82 @@
+# SPDX-FileCopyrightText: 2025-2026 Institute of Medical Informatics, Medical Faculty, RWTH Aachen
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+cff-version: 1.2.0
+message: "If you use FRAMED, please cite the paper under 'preferred-citation'."
+title: FRAMED
+abstract: >-
+  A service-oriented Java framework for acquiring and integrating multi-rate,
+  multi-device medical event-data streams. Services communicate over an event bus
+  and are wired together from JSON configuration at startup.
+type: software
+version: 1.0.0
+date-released: 2026-10-05
+license: GPL-3.0-or-later
+repository-code: "https://github.com/rwth-imi/FRAMED"
+url: "https://rwth-imi.github.io/FRAMED/docs/"
+
+authors:
+  - family-names: Freyer
+    given-names: Nils
+    orcid: "https://orcid.org/0000-0002-4460-3650"
+    affiliation: "Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+  - family-names: Röhrig
+    given-names: Rainer
+    orcid: "https://orcid.org/0000-0002-0032-5118"
+    affiliation: "Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+  - family-names: Lipprandt
+    given-names: Myriam
+    orcid: "https://orcid.org/0000-0001-9371-0551"
+    affiliation: "Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+
+keywords:
+  - medical informatics
+  - biosignals
+  - medical devices
+  - stream processing
+  - event-driven architecture
+  - clinical decision support
+  - HL7
+  - IEEE 11073 SDC
+  - Java
+
+preferred-citation:
+  type: article
+  title: "An Open-Source Abstraction Framework for Biosignal and Medical Device Data"
+  doi: 10.3233/SHTI260543
+  journal: "Studies in Health Technology and Informatics"
+  volume: 336
+  start: 1808
+  end: 1809
+  year: 2026
+  month: 5
+  publisher:
+    name: "IOS Press"
+  authors:
+    - family-names: Freyer
+      given-names: Nils
+      orcid: "https://orcid.org/0000-0002-4460-3650"
+    - family-names: Röhrig
+      given-names: Rainer
+      orcid: "https://orcid.org/0000-0002-0032-5118"
+    - family-names: Lipprandt
+      given-names: Myriam
+      orcid: "https://orcid.org/0000-0001-9371-0551"
+
+references:
+  # The patient-simulator recording shipped in data/replay/. Authored and licensed
+  # separately from the framework; cite this when the data itself is what you use.
+  - type: data
+    title: "FRAMED replay dataset: simulated ventilation and oximetry recordings"
+    doi: 10.18154/RWTH-2026-06634
+    license: CC-BY-3.0
+    year: 2026
+    authors:
+      - family-names: "von Brevern"
+        given-names: Tobias
+      - family-names: Plata
+        given-names: Christopher
+      - family-names: Freyer
+        given-names: Nils
+        orcid: "https://orcid.org/0000-0002-4460-3650"

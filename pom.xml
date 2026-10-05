@@ -28,6 +28,19 @@
     </license>
   </licenses>
 
+  <developers>
+    <developer>
+      <name>Nils Freyer</name>
+      <url>https://orcid.org/0000-0002-4460-3650</url>
+      <organization>Institute of Medical Informatics, Medical Faculty, RWTH Aachen</organization>
+      <organizationUrl>https://www.medinf.rwth-aachen.de/</organizationUrl>
+      <roles>
+        <role>developer</role>
+        <role>maintainer</role>
+      </roles>
+    </developer>
+  </developers>
+
   <scm>
     <connection>scm:git:https://github.com/rwth-imi/FRAMED.git</connection>
     <developerConnection>scm:git:git@github.com:rwth-imi/FRAMED.git</developerConnection>

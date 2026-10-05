@@ -24,6 +24,7 @@ path = [
     "README.md",
     "CHANGELOG.md",
     "data/README.md",
+    "codemeta.json",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2025-2026 Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
@@ -45,13 +46,13 @@ SPDX-FileCopyrightText = "2025-2026 Institute of Medical Informatics, Medical Fa
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 # Recorded on a patient simulator, not a human subject: measurement output rather than
-# software, so it is released under CC0 to keep the data reusable independently of the
-# framework's copyleft.
+# software, so it carries the dataset's own licence and authorship rather than the
+# framework's. Published separately at doi:10.18154/RWTH-2026-06634.
 [[annotations]]
 path = ["data/replay/**"]
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2025-2026 Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
-SPDX-License-Identifier = "CC0-1.0"
+SPDX-FileCopyrightText = "2025-2026 Tobias von Brevern, Christopher Plata, Nils Freyer; Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+SPDX-License-Identifier = "CC-BY-3.0"
 
 # SDC test fixture: an IEEE 11073 MDIB description used by the interop tests.
 [[annotations]]

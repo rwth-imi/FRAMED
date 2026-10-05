@@ -1,0 +1,144 @@
+{
+  "@context": "https://w3id.org/codemeta/3.0",
+  "@type": "SoftwareSourceCode",
+  "name": "FRAMED",
+  "description": "A service-oriented Java framework for acquiring and integrating multi-rate, multi-device medical event-data streams. Services communicate over an event bus and are wired together from JSON configuration at startup.",
+  "version": "1.0.0",
+  "softwareVersion": "1.0.0",
+  "dateCreated": "2025-01-01",
+  "datePublished": "2026-10-05",
+  "codeRepository": "https://github.com/rwth-imi/FRAMED",
+  "url": "https://rwth-imi.github.io/FRAMED/docs/",
+  "issueTracker": "https://github.com/rwth-imi/FRAMED/issues",
+  "license": "https://spdx.org/licenses/GPL-3.0-or-later",
+  "developmentStatus": "https://www.repostatus.org/#active",
+  "applicationCategory": "Medical informatics",
+  "isAccessibleForFree": true,
+  "programmingLanguage": [
+    {
+      "@type": "ComputerLanguage",
+      "name": "Java",
+      "version": "21"
+    }
+  ],
+  "runtimePlatform": ["Java 21"],
+  "operatingSystem": ["Linux", "Windows", "macOS"],
+  "softwareRequirements": [
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "org.json:json",
+      "name": "JSON in Java"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "com.fazecast:jSerialComm",
+      "name": "jSerialComm",
+      "runtimePlatform": "Java 21"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "com.influxdb:influxdb-client-java",
+      "name": "InfluxDB Java client"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "org.eclipse.paho:org.eclipse.paho.client.mqttv3",
+      "name": "Eclipse Paho MQTT client"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "org.somda.sdc:glue",
+      "name": "SDCri (IEEE 11073 SDC reference implementation)"
+    }
+  ],
+  "keywords": [
+    "medical informatics",
+    "biosignals",
+    "medical devices",
+    "stream processing",
+    "event-driven architecture",
+    "clinical decision support",
+    "HL7",
+    "IEEE 11073 SDC",
+    "Java"
+  ],
+  "author": [
+    {
+      "@type": "Person",
+      "givenName": "Nils",
+      "familyName": "Freyer",
+      "@id": "https://orcid.org/0000-0002-4460-3650",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+      }
+    },
+    {
+      "@type": "Person",
+      "givenName": "Rainer",
+      "familyName": "Röhrig",
+      "@id": "https://orcid.org/0000-0002-0032-5118",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+      }
+    },
+    {
+      "@type": "Person",
+      "givenName": "Myriam",
+      "familyName": "Lipprandt",
+      "@id": "https://orcid.org/0000-0001-9371-0551",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+      }
+    }
+  ],
+  "maintainer": {
+    "@type": "Person",
+    "givenName": "Nils",
+    "familyName": "Freyer",
+    "@id": "https://orcid.org/0000-0002-4460-3650",
+    "affiliation": {
+      "@type": "Organization",
+      "name": "Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+    }
+  },
+  "copyrightHolder": {
+    "@type": "Organization",
+    "name": "Institute of Medical Informatics, Medical Faculty, RWTH Aachen",
+    "url": "https://www.medinf.rwth-aachen.de/"
+  },
+  "referencePublication": {
+    "@type": "ScholarlyArticle",
+    "name": "An Open-Source Abstraction Framework for Biosignal and Medical Device Data",
+    "identifier": "https://doi.org/10.3233/SHTI260543",
+    "@id": "https://doi.org/10.3233/SHTI260543",
+    "isPartOf": {
+      "@type": "PublicationIssue",
+      "name": "Studies in Health Technology and Informatics",
+      "volumeNumber": "336"
+    },
+    "pageStart": "1808",
+    "pageEnd": "1809",
+    "datePublished": "2026-05-21"
+  },
+  "hasPart": {
+    "@type": "Dataset",
+    "name": "FRAMED replay dataset: simulated ventilation and oximetry recordings",
+    "@id": "https://doi.org/10.18154/RWTH-2026-06634",
+    "identifier": "https://doi.org/10.18154/RWTH-2026-06634",
+    "license": "https://spdx.org/licenses/CC-BY-3.0",
+    "description": "Patient-simulator recording shipped in data/replay/ so the default deployment profile runs from a fresh clone. Licensed and authored separately from the framework.",
+    "author": [
+      { "@type": "Person", "givenName": "Tobias", "familyName": "von Brevern" },
+      { "@type": "Person", "givenName": "Christopher", "familyName": "Plata" },
+      {
+        "@type": "Person",
+        "givenName": "Nils",
+        "familyName": "Freyer",
+        "@id": "https://orcid.org/0000-0002-4460-3650"
+      }
+    ]
+  }
+}

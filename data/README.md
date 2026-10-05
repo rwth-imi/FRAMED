@@ -13,6 +13,15 @@ pulse oximeter.
 personal data**. The `p01` prefix numbers the
 *simulation run*, not a person.
 
+**Licence and attribution.** The recording is **not** covered by FRAMED's GPL. It is
+licensed **CC BY 3.0** and authored by **Tobias von Brevern, Christopher Plata and Nils
+Freyer**. Reuse it under those terms, with attribution, independently of the framework.
+
+The dataset is published in its own right at
+**[doi:10.18154/RWTH-2026-06634](https://doi.org/10.18154/RWTH-2026-06634)**; cite that
+rather than the repository when the data itself is what you are using. The copy here
+exists so the default deployment profile runs from a fresh clone.
+
 | | |
 |---|---|
 | Records | 15 920 |
