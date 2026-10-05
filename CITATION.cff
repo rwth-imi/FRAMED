@@ -45,6 +45,36 @@ authors:
     city: Aachen
     country: DE
 
+identifiers:
+  # CFF 1.2.0 permits only bare SWHIDs here (the schema forbids origin/visit/anchor/path
+  # qualifiers), so the resolvable qualified form is carried as a url identifier below.
+  - type: swh
+    value: "swh:1:rel:1556a43e421caededbb3b9422df4514546c48396"
+    description: "Archived release v1.0.0 in Software Heritage"
+  - type: url
+    value: "https://archive.softwareheritage.org/swh:1:rel:1556a43e421caededbb3b9422df4514546c48396;origin=https://github.com/rwth-imi/FRAMED;visit=swh:1:snp:d35b8740db669a91d948dddc986d282f3bba7a40"
+    description: "Qualified, resolvable identifier for the archived v1.0.0 release"
+  - type: swh
+    value: "swh:1:dir:33557b61a6e031b682ba8300609209b0de269540"
+    description: "Module framed-core at v1.0.0"
+  - type: swh
+    value: "swh:1:dir:3eeee5f88772e43b182c8d21f3f2c883eba37848"
+    description: "Module framed-communicator at v1.0.0"
+  - type: swh
+    value: "swh:1:dir:a0fb0a83eae220398bef0606c2dc6aaeb461e440"
+    description: "Module framed-streamer at v1.0.0"
+  - type: swh
+    value: "swh:1:dir:c56523157690a5275ac37bfb301ad66e5157a5fd"
+    description: "Module framed-cdss at v1.0.0"
+  - type: swh
+    value: "swh:1:dir:b76693cf1571f717071b42ddbd1d4f1f4e061248"
+    description: "Module framed-interop at v1.0.0"
+  - type: swh
+    value: "swh:1:dir:ff04ca75d4689dde4a5e694b91533e02f6a21c6d"
+    description: "Module framed-app at v1.0.0"
+  - type: swh
+    value: "swh:1:dir:bbc5a29c6a7b4ed887f5b0c17e502937b7057cbd"
+    description: "Module framed-benchmark at v1.0.0"
 keywords:
   - medical informatics
   - biosignals
