@@ -23,8 +23,8 @@ together over an **event bus**, either declaratively from a JSON config or progr
 The architecture is highly modular and runs on a single edge device or across a distributed
 setup; communication between services flows asynchronously over a `SocketEventBus`.
 
-> ## ⚠️ Intended use — research only
->
+## Intended use — research only
+
 > **FRAMED is research software. It is not a medical device, it is not certified, and it
 > must not be used for clinical decision-making or for the diagnosis, prevention,
 > monitoring, treatment or alleviation of disease.** This applies to the whole framework,
@@ -545,7 +545,7 @@ There are more default protocols to come.
 ## Contributing
 Thank you for considering! Further information is coming soon.
 
-## License ⚖️
+## License
 
 <!-- REUSE-IgnoreStart -->
 **SPDX-License-Identifier: `GPL-3.0-or-later`**
@@ -569,21 +569,6 @@ The full text is in [`LICENSE`](LICENSE).
 > FRAMED and is distributed to others must itself be released under the GPL. Evaluate this
 > before building a closed-source or separately-licensed product on FRAMED.
 
-### Third-party dependencies
-
-All runtime dependencies are GPL-3.0-compatible:
-
-| Dependency | Module | Licence |
-|---|---|---|
-| `org.json:json` | all | Public Domain |
-| `com.fazecast:jSerialComm` | `framed-communicator` | Apache-2.0 **or** LGPL-3.0 |
-| `com.influxdb:influxdb-client-java` | `framed-streamer` | MIT |
-| `org.eclipse.paho:…mqttv3` | `framed-interop-mqtt` | EPL-2.0 / EDL-1.0 |
-| `org.somda.sdc:glue` | `framed-interop-sdc` | MIT |
-
-Apache-2.0 and LGPL-3.0 are compatible with GPLv3 but **not** with GPLv2, which is why
-FRAMED is licensed under version 3 rather than the version 2 used before 1.0.0.
-
 ## Cite As
 
 Freyer N, Röhrig R, Lipprandt M. An Open-Source Abstraction Framework for Biosignal and Medical Device Data. Stud Health Technol Inform. 2026 May 21;336:1808-1809. doi: 10.3233/SHTI260543. PMID: 42175214.
@@ -601,7 +586,7 @@ Freyer N, Röhrig R, Lipprandt M. An Open-Source Abstraction Framework for Biosi
 
 ## Project status
 
-Running. ✅ Version 1.0.0 — see [`CHANGELOG.md`](CHANGELOG.md).
+Running. ✅ Version 1.0.0
 
 ## Authors and licence
 

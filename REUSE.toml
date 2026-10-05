@@ -47,12 +47,13 @@ SPDX-License-Identifier = "GPL-3.0-or-later"
 
 # Recorded on a patient simulator, not a human subject: measurement output rather than
 # software, so it carries the dataset's own licence and authorship rather than the
-# framework's. Published separately at doi:10.18154/RWTH-2026-06634.
+# framework's. Dedicated to the public domain under CC0 so the sample stays reusable
+# independently of the framework's copyleft. Published at doi:10.18154/RWTH-2026-06634.
 [[annotations]]
 path = ["data/replay/**"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2025-2026 Tobias von Brevern, Christopher Plata, Nils Freyer; Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
-SPDX-License-Identifier = "CC-BY-3.0"
+SPDX-License-Identifier = "CC0-1.0"
 
 # SDC test fixture: an IEEE 11073 MDIB description used by the interop tests.
 [[annotations]]

@@ -85,7 +85,7 @@ references:
   - type: data
     title: "FRAMED replay dataset: simulated ventilation and oximetry recordings"
     doi: 10.18154/RWTH-2026-06634
-    license: CC-BY-3.0
+    license: CC0-1.0
     year: 2026
     authors:
       - family-names: "von Brevern"

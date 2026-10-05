@@ -169,7 +169,7 @@
     "name": "FRAMED replay dataset: simulated ventilation and oximetry recordings",
     "@id": "https://doi.org/10.18154/RWTH-2026-06634",
     "identifier": "https://doi.org/10.18154/RWTH-2026-06634",
-    "license": "https://spdx.org/licenses/CC-BY-3.0",
+    "license": "https://spdx.org/licenses/CC0-1.0",
     "description": "Patient-simulator recording shipped in data/replay/ so the default deployment profile runs from a fresh clone. Licensed and authored separately from the framework.",
     "author": [
       {
