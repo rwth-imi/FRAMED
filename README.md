@@ -23,6 +23,21 @@ together over an **event bus**, either declaratively from a JSON config or progr
 The architecture is highly modular and runs on a single edge device or across a distributed
 setup; communication between services flows asynchronously over a `SocketEventBus`.
 
+> ## ⚠️ Intended use — research only
+>
+> **FRAMED is research software. It is not a medical device, it is not certified, and it
+> must not be used for clinical decision-making or for the diagnosis, prevention,
+> monitoring, treatment or alleviation of disease.** This applies to the whole framework,
+> including the decision-support reactors in `framed-cdss`, which exist to demonstrate the
+> reactor model rather than to support care.
+>
+> Software with a medical purpose can qualify as a medical device under EU law
+> (Regulation (EU) 2017/745). Placing FRAMED, or anything derived from it, into clinical
+> use is a regulatory undertaking that rests entirely with whoever does so — including
+> conformity assessment, clinical evaluation and a quality management system. Nothing here
+> has been built or validated to that standard, and no warranty is given (see
+> [`LICENSE`](LICENSE)).
+
 ## Documentation
 
 - This guide (below) — using FRAMED as a framework.
@@ -584,5 +599,17 @@ Freyer N, Röhrig R, Lipprandt M. An Open-Source Abstraction Framework for Biosi
 }
 ```
 
-## Project status 
-Running. ✅
+## Project status
+
+Running. ✅ Version 1.0.0 — see [`CHANGELOG.md`](CHANGELOG.md).
+
+## Authors and licence
+
+Authors, the institutional rightsholder and citation details are in
+[`AUTHORS.md`](AUTHORS.md); machine-readable equivalents are in
+[`CITATION.cff`](CITATION.cff) and [`codemeta.json`](codemeta.json).
+
+## Funding
+
+This work was partially funded by the German Federal Ministry of Research, Technology and
+Space (BMFTR) through the project **fit4translation** (FKZ 01ZZ2310A).

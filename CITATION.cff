@@ -3,7 +3,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 cff-version: 1.2.0
-message: "If you use FRAMED, please cite the paper under 'preferred-citation'."
+message: >-
+  If you use FRAMED, please cite the paper under 'preferred-citation'. FRAMED is
+  research software: it is not a medical device and must not be used for clinical
+  decision-making. Partially funded by BMFTR, project fit4translation (FKZ 01ZZ2310A).
 title: FRAMED
 abstract: >-
   A service-oriented Java framework for acquiring and integrating multi-rate,
@@ -21,14 +24,26 @@ authors:
     given-names: Nils
     orcid: "https://orcid.org/0000-0002-4460-3650"
     affiliation: "Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+    address: "Pauwelsstraße 30"
+    post-code: "52074"
+    city: Aachen
+    country: DE
   - family-names: Röhrig
     given-names: Rainer
     orcid: "https://orcid.org/0000-0002-0032-5118"
     affiliation: "Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+    address: "Pauwelsstraße 30"
+    post-code: "52074"
+    city: Aachen
+    country: DE
   - family-names: Lipprandt
     given-names: Myriam
     orcid: "https://orcid.org/0000-0001-9371-0551"
     affiliation: "Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+    address: "Pauwelsstraße 30"
+    post-code: "52074"
+    city: Aachen
+    country: DE
 
 keywords:
   - medical informatics

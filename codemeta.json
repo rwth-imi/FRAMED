@@ -21,8 +21,14 @@
       "version": "21"
     }
   ],
-  "runtimePlatform": ["Java 21"],
-  "operatingSystem": ["Linux", "Windows", "macOS"],
+  "runtimePlatform": [
+    "Java 21"
+  ],
+  "operatingSystem": [
+    "Linux",
+    "Windows",
+    "macOS"
+  ],
   "softwareRequirements": [
     {
       "@type": "SoftwareApplication",
@@ -70,7 +76,14 @@
       "@id": "https://orcid.org/0000-0002-4460-3650",
       "affiliation": {
         "@type": "Organization",
-        "name": "Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+        "name": "Institute of Medical Informatics, Medical Faculty, RWTH Aachen",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Pauwelsstraße 30",
+          "postalCode": "52074",
+          "addressLocality": "Aachen",
+          "addressCountry": "DE"
+        }
       }
     },
     {
@@ -80,7 +93,14 @@
       "@id": "https://orcid.org/0000-0002-0032-5118",
       "affiliation": {
         "@type": "Organization",
-        "name": "Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+        "name": "Institute of Medical Informatics, Medical Faculty, RWTH Aachen",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Pauwelsstraße 30",
+          "postalCode": "52074",
+          "addressLocality": "Aachen",
+          "addressCountry": "DE"
+        }
       }
     },
     {
@@ -90,7 +110,14 @@
       "@id": "https://orcid.org/0000-0001-9371-0551",
       "affiliation": {
         "@type": "Organization",
-        "name": "Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+        "name": "Institute of Medical Informatics, Medical Faculty, RWTH Aachen",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Pauwelsstraße 30",
+          "postalCode": "52074",
+          "addressLocality": "Aachen",
+          "addressCountry": "DE"
+        }
       }
     }
   ],
@@ -101,13 +128,27 @@
     "@id": "https://orcid.org/0000-0002-4460-3650",
     "affiliation": {
       "@type": "Organization",
-      "name": "Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+      "name": "Institute of Medical Informatics, Medical Faculty, RWTH Aachen",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Pauwelsstraße 30",
+        "postalCode": "52074",
+        "addressLocality": "Aachen",
+        "addressCountry": "DE"
+      }
     }
   },
   "copyrightHolder": {
     "@type": "Organization",
     "name": "Institute of Medical Informatics, Medical Faculty, RWTH Aachen",
-    "url": "https://www.medinf.rwth-aachen.de/"
+    "url": "https://www.medinf.rwth-aachen.de/",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Pauwelsstraße 30",
+      "postalCode": "52074",
+      "addressLocality": "Aachen",
+      "addressCountry": "DE"
+    }
   },
   "referencePublication": {
     "@type": "ScholarlyArticle",
@@ -131,8 +172,16 @@
     "license": "https://spdx.org/licenses/CC-BY-3.0",
     "description": "Patient-simulator recording shipped in data/replay/ so the default deployment profile runs from a fresh clone. Licensed and authored separately from the framework.",
     "author": [
-      { "@type": "Person", "givenName": "Tobias", "familyName": "von Brevern" },
-      { "@type": "Person", "givenName": "Christopher", "familyName": "Plata" },
+      {
+        "@type": "Person",
+        "givenName": "Tobias",
+        "familyName": "von Brevern"
+      },
+      {
+        "@type": "Person",
+        "givenName": "Christopher",
+        "familyName": "Plata"
+      },
       {
         "@type": "Person",
         "givenName": "Nils",
@@ -140,5 +189,15 @@
         "@id": "https://orcid.org/0000-0002-4460-3650"
       }
     ]
+  },
+  "funding": "fit4translation (FKZ 01ZZ2310A)",
+  "funder": {
+    "@type": "Organization",
+    "name": "Bundesministerium für Forschung, Technologie und Raumfahrt (BMFTR)",
+    "alternateName": "German Federal Ministry of Research, Technology and Space"
+  },
+  "audience": {
+    "@type": "Audience",
+    "audienceType": "Research use only. Not a medical device; not for clinical decision-making."
   }
 }
