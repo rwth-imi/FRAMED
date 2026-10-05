@@ -11,6 +11,29 @@
 
   <name>FRAMED (parent)</name>
   <description>Service-oriented framework for acquiring and integrating data from multiple sources.</description>
+  <url>https://github.com/rwth-imi/FRAMED</url>
+  <inceptionYear>2025</inceptionYear>
+
+  <organization>
+    <name>Institute of Medical Informatics, Medical Faculty, RWTH Aachen</name>
+    <url>https://www.medinf.rwth-aachen.de/</url>
+  </organization>
+
+  <licenses>
+    <license>
+      <name>GPL-3.0-or-later</name>
+      <url>https://www.gnu.org/licenses/gpl-3.0.txt</url>
+      <distribution>repo</distribution>
+      <comments>GNU General Public License v3.0 or later (SPDX: GPL-3.0-or-later)</comments>
+    </license>
+  </licenses>
+
+  <scm>
+    <connection>scm:git:https://github.com/rwth-imi/FRAMED.git</connection>
+    <developerConnection>scm:git:git@github.com:rwth-imi/FRAMED.git</developerConnection>
+    <url>https://github.com/rwth-imi/FRAMED</url>
+    <tag>HEAD</tag>
+  </scm>
 
   <modules>
     <module>framed-core</module>

@@ -13,7 +13,7 @@
 [![Docs](https://github.com/rwth-imi/FRAMED/actions/workflows/docs.yml/badge.svg)](https://rwth-imi.github.io/FRAMED/docs/)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Java](https://img.shields.io/badge/Java-21-orange)
-[![License](https://img.shields.io/badge/license-GPL--2.0-blue)](https://github.com/rwth-imi/FRAMED/blob/master/LICENSE)
+[![License](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](https://github.com/rwth-imi/FRAMED/blob/master/LICENSE)
 [![Archived in Software Heritage](https://archive.softwareheritage.org/badge/origin/https://github.com/rwth-imi/FRAMED/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/rwth-imi/FRAMED)
 
 FRAMED is a service-oriented software framework for acquiring, transforming, and reacting to
@@ -531,18 +531,43 @@ There are more default protocols to come.
 Thank you for considering! Further information is coming soon.
 
 ## License ⚖️
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, version 2.
+
+<!-- REUSE-IgnoreStart -->
+**SPDX-License-Identifier: `GPL-3.0-or-later`**
+<!-- REUSE-IgnoreEnd -->
+
+FRAMED is free software: you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation, either version 3
+of the License, or (at your option) any later version.
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+The full text is in [`LICENSE`](LICENSE).
+
+> **Note for integrators.** The GPL is a strong-copyleft licence: software that links
+> FRAMED and is distributed to others must itself be released under the GPL. Evaluate this
+> before building a closed-source or separately-licensed product on FRAMED.
+
+### Third-party dependencies
+
+All runtime dependencies are GPL-3.0-compatible:
+
+| Dependency | Module | Licence |
+|---|---|---|
+| `org.json:json` | all | Public Domain |
+| `com.fazecast:jSerialComm` | `framed-communicator` | Apache-2.0 **or** LGPL-3.0 |
+| `com.influxdb:influxdb-client-java` | `framed-streamer` | MIT |
+| `org.eclipse.paho:…mqttv3` | `framed-interop-mqtt` | EPL-2.0 / EDL-1.0 |
+| `org.somda.sdc:glue` | `framed-interop-sdc` | MIT |
+
+Apache-2.0 and LGPL-3.0 are compatible with GPLv3 but **not** with GPLv2, which is why
+FRAMED is licensed under version 3 rather than the version 2 used before 1.0.0.
 
 ## Cite As
 

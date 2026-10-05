@@ -51,6 +51,12 @@ jobs:
             echo "::error::credential-shaped literal in a shipped config"; exit 1
           fi
 
+      # Every file must carry copyright and licence information, either as an SPDX header
+      # or through REUSE.toml. An archived release whose licence is unclear per-file fails
+      # FAIR4RS R1.1 regardless of what LICENSE says.
+      - name: Check REUSE compliance
+        uses: fsfe/reuse-action@676e2d560c9a403aa252096d99fcab3e1132b0f5 # v6.0.0
+
       # Builds every module, runs all tests, and installs the modules to the local repo
       # (so the dependency-graph step below can resolve the sibling SNAPSHOT artifacts).
       - name: Build & test with Maven

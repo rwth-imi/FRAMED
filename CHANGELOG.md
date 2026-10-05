@@ -21,7 +21,7 @@ core identifier names the object but not where to find it.
 
 | Version | Date | Release (`rel`) | Revision (`rev`) | Tree (`dir`) |
 |---|---|---|---|---|
-| 1.0.0 | _pending tag_ | _pending_ | _pending_ | _pending_ |
+| 1.0.0 | 2026-10-05 | _pending_ | _pending_ | _pending_ |
 
 **Qualified identifier for 1.0.0** — _pending archival; add the `visit=swh:1:snp:…`
 snapshot once the Save Code Now request reports `succeeded`._
@@ -53,11 +53,43 @@ On release: rename [Unreleased] to [X.Y.Z] - YYYY-MM-DD, add a fresh empty
 
 _Nothing yet._
 
-## [1.0.0] - 2026-09-21
+## [1.0.0] - 2026-10-05
 
 The inaugural release: the first immutable, citable state of FRAMED. Version `1.0.0`
 replaces `1.0.0-SNAPSHOT` across all twelve reactor modules — a `-SNAPSHOT` version is
 mutable by definition and cannot satisfy FAIR4RS F1.2 (an identifier per version).
+
+### Changed — licence (affects everyone redistributing FRAMED)
+
+- **FRAMED is now `GPL-3.0-or-later`**, previously GPL-2.0 ("version 2", i.e. GPL-2.0-only).
+  `LICENSE` carries the GPLv3 text, and every source file carries an SPDX header.
+
+  The previous licence was not self-consistent. `com.fazecast:jSerialComm` is compile-scope
+  in `framed-communicator` and dual-licensed Apache-2.0 **or** LGPL-3.0; neither arm can be
+  combined with GPL-2.0-only, and the shipped fat-jar bundles that library's bytecode
+  directly. Apache-2.0 and LGPL-3.0 are both GPLv3-compatible, so version 3 resolves it.
+
+  All other runtime dependencies were already compatible: `org.json` (Public Domain),
+  `influxdb-client-java` (MIT), `org.somda.sdc:glue` (MIT), Eclipse Paho (EPL-2.0/EDL-1.0).
+
+  FRAMED remains strong copyleft: software linking it and distributed to others must also
+  be GPL. The README states this for integrators.
+
+### Added — licensing metadata
+
+- **REUSE Specification 3.3 compliance** (FAIR4RS R1.1). `LICENSES/` holds the full
+  `GPL-3.0-or-later` and `CC0-1.0` texts; all 132 Java files carry
+  `SPDX-FileCopyrightText` and `SPDX-License-Identifier` headers; `REUSE.toml` covers the
+  files that cannot hold a comment (configs, images, JSONL, XML fixtures). `reuse lint`
+  reports 178/178 files covered, and CI now enforces it.
+- **Copyright holder recorded**: Institute of Medical Informatics, Medical Faculty,
+  RWTH Aachen. No source file previously stated who holds copyright in FRAMED.
+- **Sample data released separately as `CC0-1.0`** — `data/replay/` is patient-simulator
+  measurement output, not software, and CC0 keeps it reusable independently of the
+  framework's copyleft.
+- **Parent POM metadata** (FAIR4RS F2, R1): `url`, `inceptionYear`, `organization`,
+  `licenses` with the SPDX identifier, and `scm`. Software Heritage's indexer reads the
+  POM, so these populate the archived record.
 
 ### Module identifiers
 

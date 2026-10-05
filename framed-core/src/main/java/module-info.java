@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025-2026 Institute of Medical Informatics, Medical Faculty, RWTH Aachen
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 /**
  * FRAMED core SDK: the event bus, service model, remote transports, orchestrator, and the
  * abstract extension points consumers implement (Protocol, Parser, Writer, Dispatcher, Reactor).

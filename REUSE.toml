@@ -1,0 +1,68 @@
+version = 1
+SPDX-PackageName = "FRAMED"
+SPDX-PackageSupplier = "Institute of Medical Informatics, Medical Faculty, RWTH Aachen <https://www.medinf.rwth-aachen.de/>"
+SPDX-PackageDownloadLocation = "https://github.com/rwth-imi/FRAMED"
+
+# Java sources carry their own SPDX headers; everything else is covered here, because
+# JSON, XML, PNG and JSONL either cannot hold a comment or would be made unreadable by one.
+# REUSE would otherwise want a `.license` sidecar next to each of these files.
+
+[[annotations]]
+path = [
+    "pom.xml",
+    "**/pom.xml",
+    ".github/workflows/**",
+    ".gitignore",
+    "REUSE.toml",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025-2026 Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = [
+    "README.md",
+    "CHANGELOG.md",
+    "data/README.md",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025-2026 Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Deployment profiles and the channel-to-code mapping. Configuration rather than code, but
+# it is authored material and ships with the framework.
+[[annotations]]
+path = ["config/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025-2026 Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Logo, architecture diagrams and the drawio sources behind them.
+[[annotations]]
+path = ["images/**", "src/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025-2026 Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Recorded on a patient simulator, not a human subject: measurement output rather than
+# software, so it is released under CC0 to keep the data reusable independently of the
+# framework's copyleft.
+[[annotations]]
+path = ["data/replay/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025-2026 Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+SPDX-License-Identifier = "CC0-1.0"
+
+# SDC test fixture: an IEEE 11073 MDIB description used by the interop tests.
+[[annotations]]
+path = ["framed-interop/sdc/src/test/resources/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025-2026 Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Service-loader registration files: single-line class names with no comment syntax.
+[[annotations]]
+path = ["**/META-INF/services/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025-2026 Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+SPDX-License-Identifier = "GPL-3.0-or-later"

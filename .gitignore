@@ -14,6 +14,7 @@ config/services.json.bench-backup
 # archives whatever it finds, so keep them out permanently.
 *.bak
 .$*
+lastsession.txt
 ARCHITECTURE.md
 CLAUDE.md
 

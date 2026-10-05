@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025-2026 Institute of Medical Informatics, Medical Faculty, RWTH Aachen
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.framed.interop.mqtt;
 
 import com.framed.core.local.LocalEventBus;
