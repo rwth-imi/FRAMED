@@ -99,7 +99,7 @@
       ],
       "inputChannel": "Measurement.Oxylog-3000-Plus-00.etCO2.parsed",
       "outputChannels": ["etCO2-Limit"],
-      "limits": [0,25,30,40]
+      "limits": [0, 25, 35, 45]
     },
     {
       "class": "com.framed.cdss.reactors.LimitClassificationReactor",
@@ -125,7 +125,7 @@
       ],
       "inputChannel": "Percentage_float.PC60FW.PI.parsed",
       "outputChannels": ["PI-Limit"],
-      "limits": [0.2, 20]
+      "limits": [1]
     },
     {
       "class": "com.framed.cdss.reactors.LimitClassificationReactor",
@@ -138,7 +138,7 @@
       ],
       "inputChannel": "S/F-Value",
       "outputChannels": ["S/F-Limit"],
-      "limits": [1.48, 2.35, 3.15]
+      "limits": [148, 235, 315]
     },
     {
       "class": "com.framed.cdss.reactors.LimitClassificationReactor",
@@ -172,7 +172,7 @@
       ],
       "inputChannel": "Percentage_int.PC60FW.SpO2.parsed",
       "outputChannels": ["SpO2-Trend"],
-      "windowSize": 10,
+      "windowSize": 8,
       "persistWindows": 1,
       "delta": 3,
       "direction": "DOWN"
@@ -188,7 +188,7 @@
       ],
       "inputChannel": "Measurement.Oxylog-3000-Plus-00.etCO2.parsed",
       "outputChannels": ["etCO2-Trend"],
-      "windowSize": 10,
+      "windowSize": 8,
       "persistWindows": 1,
       "delta": 4,
       "direction": "DOWN"
@@ -236,7 +236,7 @@
       "rrEstimationChannel": "EstimatedRR",
       "rrSettingsChannel": "Settings.Oxylog-3000-Plus-00.RR.parsed",
       "outputChannels": ["RRMismatchClassification"],
-      "varLimit": 4
+      "varLimit": 3
     }
   ]
 }
