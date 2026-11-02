@@ -109,6 +109,14 @@
         <version>${project.version}</version>
       </dependency>
       <dependency>
+        <!-- Shared test fixtures (InMemoryEventBus, JsonFixtures) for the leaf modules' tests. -->
+        <groupId>com.framed</groupId>
+        <artifactId>framed-core</artifactId>
+        <version>${project.version}</version>
+        <type>test-jar</type>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
         <!-- Shared test fixtures (ReplayFixture) for the interop bridge simulations. -->
         <groupId>com.framed</groupId>
         <artifactId>framed-interop-common</artifactId>
