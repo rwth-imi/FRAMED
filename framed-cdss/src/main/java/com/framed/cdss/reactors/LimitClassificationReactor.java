@@ -104,7 +104,7 @@ public class LimitClassificationReactor extends Reactor {
    * Example:
    *  [90, 93, 96, 100]
    */
-  List<Float> limits;
+  List<Double> limits;
 
 
   /**
@@ -194,9 +194,10 @@ public class LimitClassificationReactor extends Reactor {
         throw new IllegalStateException("Missing value for channel: %s".formatted(channel));
       }
 
-      int value = switch (raw) {
-        case Integer i -> i;
-        case Number n -> n.intValue();
+      // compared as a real number (Definition 7); truncating to int would shift every
+      // fractional bound, e.g. PI 0.5 <= 0 or S/F 2.9 <= 2.35
+      double value = switch (raw) {
+        case Number n -> n.doubleValue();
         default -> throw new ClassCastException("Non-numeric value on channel: %s".formatted(raw));
       };
 

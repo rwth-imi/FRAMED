@@ -30,15 +30,15 @@ public class CDSSUtils {
         return firingRules;
     }
 
-    public static List<Float> parseLimitsJson(JSONArray limitsList) {
-        List<Float> bounds = new java.util.ArrayList<>();
+    public static List<Double> parseLimitsJson(JSONArray limitsList) {
+        List<Double> bounds = new java.util.ArrayList<>();
 
         for (Object o : limitsList) {
             Number n = (Number) o;
-            bounds.add(n.floatValue());
+            bounds.add(n.doubleValue());
         }
 
-        bounds.sort(Float::compare);
+        bounds.sort(Double::compare);
 
 
         return bounds;
