@@ -5,6 +5,7 @@
 package com.framed.communicator.driver.protocol.replay;
 
 import com.framed.core.EventBus;
+import com.framed.core.utils.MonotonicClock;
 import com.framed.io.protocol.Protocol;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -62,6 +63,9 @@ import java.util.logging.Logger;
  *       {@code now − timestamp} at a sink is an emit&rarr;sink latency (for a sink sharing the
  *       producer's clock) rather than the age of the recording.</li>
  * </ul>
+ * <p>The schedule is computed from {@link MonotonicClock}, the clock a reactor's
+ * {@link com.framed.arn.FiringRecorder} measures with, so stamp and measurement cannot be
+ * separated by a wall-clock step during the run.</p>
  * <p>The stamp is the <em>scheduled</em> emit time, not the actual one, so any lag of the replay
  * thread itself is included in that latency instead of being hidden by re-stamping. The lag is
  * reported separately by {@link #stats()} and in the summary logged at the end of the replay.</p>
@@ -275,7 +279,7 @@ public class ReplayProtocol extends Protocol {
     // Truncated to microseconds because that is the resolution Timer.formatter renders: a start
     // instant with nanoseconds would be rounded on the wire, and the recorded intervals — which
     // this recording carries to the microsecond — would no longer be reproduced exactly.
-    Instant replayStart = Instant.now().truncatedTo(ChronoUnit.MICROS);
+    Instant replayStart = MonotonicClock.now().truncatedTo(ChronoUnit.MICROS);
     long lagSumMillis = 0;
     long lagMaxMillis = Long.MIN_VALUE;
     long count = 0;
@@ -302,13 +306,13 @@ public class ReplayProtocol extends Protocol {
                   (Duration.between(firstRecorded, event.timestamp()).toNanos() + cycleOffsetNanos)
                           / speed);
           emit = replayStart.plusNanos(offsetNanos);
-          long delay = Duration.between(Instant.now(), emit).toMillis();
+          long delay = Duration.between(MonotonicClock.now(), emit).toMillis();
           if (delay > 0 && !sleepMillis(delay)) break replay;
         } else {
-          emit = Instant.now().truncatedTo(ChronoUnit.MICROS);
+          emit = MonotonicClock.now().truncatedTo(ChronoUnit.MICROS);
         }
 
-        long lag = Duration.between(emit, Instant.now()).toMillis();
+        long lag = Duration.between(emit, MonotonicClock.now()).toMillis();
         lagSumMillis += lag;
         lagMaxMillis = Math.max(lagMaxMillis, lag);
         count++;
@@ -318,7 +322,7 @@ public class ReplayProtocol extends Protocol {
       }
     }
 
-    long wallMillis = Math.max(1L, Duration.between(replayStart, Instant.now()).toMillis());
+    long wallMillis = Math.max(1L, Duration.between(replayStart, MonotonicClock.now()).toMillis());
     // First-to-last across every pass: whole cycles for the repetitions, minus the trailing seam
     // gap that no event occupies. At repeat = 1 this is exactly the recording's own span, so the
     // reported target rate is unchanged by the existence of this feature.

@@ -6,6 +6,7 @@ package com.framed.arn;
 
 import com.framed.core.EventBus;
 import com.framed.core.Service;
+import com.framed.core.utils.MonotonicClock;
 import org.json.JSONObject;
 
 import java.time.*;
@@ -14,7 +15,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static com.framed.arn.RuleUtils.extractTimestamp;
-import static com.framed.arn.RuleUtils.publishResult;
 
 /**
  * A reactive multi-input {@link Service} that evaluates a set of firing rules on incoming
@@ -50,8 +50,9 @@ import static com.framed.arn.RuleUtils.publishResult;
  *       <li>all rules are evaluated against a stable snapshot of latest data + seq counters;</li>
  *       <li>every satisfied rule updates its per-channel pointers;</li>
  *       <li>a single snapshot is created;</li>
- *       <li>{@link #reactionFunction(Map)} is called once;</li>
- *       <li>latency is published according to all three modes (A, B, C2).</li>
+ *       <li>{@link #reactionFunction(Map)} is called once, provided the snapshot's logical
+ *           timestamp is newer than the last firing (logical-time gate);</li>
+ *       <li>the evaluation's timing is handed to the {@link FiringRecorder}.</li>
  *     </ul>
  *   </li>
  * </ul>
@@ -65,20 +66,19 @@ import static com.framed.arn.RuleUtils.publishResult;
  *
  * This snapshot is immutable and provided to {@link #reactionFunction(Map)}.
  *
- * <h2>Latency publishing modes</h2>
- * After a firing, the reactor publishes:
- * <ol>
- *   <li><b>(A) Per-channel latency</b>: For every input channel.</li>
- *   <li><b>(B) One global latency</b>: Based on the earliest channel timestamp.</li>
- *   <li><b>(C2) Rule-participation latency</b>: Only for channels whose delta ≥ 1
- *       for at least one satisfied rule.</li>
- * </ol>
- *
- * The latency messages are deduplicated per timestamp to avoid double publications.
+ * <h2>Timing measurement</h2>
+ * Every evaluation that satisfies at least one rule is reported to the {@link FiringRecorder}
+ * obtained from {@link FiringRecorders#current()} at construction, as a {@link FiringRecord}.
+ * The record holds the trigger channel, arrival, decision and reaction instants, and the consumed
+ * inputs. Evaluations rejected by the logical-time gate are reported as
+ * {@link FiringRecord.Outcome#GATED}. Nothing is published on the event bus for measurement, so
+ * the measurement adds no bus load. With the default no-op recorder, no clock is read.
  *
  * <h2>Thread safety</h2>
- * All rule evaluation and delta accounting is done under a single lock, while
- * {@link #reactionFunction(Map)} is executed outside the lock.
+ * All rule evaluation and delta accounting is done under a single lock. For atomic reactors
+ * {@link #reactionFunction(Map)} runs inside that lock; for non-atomic reactors it runs after the
+ * lock is released, so several reactions of one reactor may overlap. The recorder is called after
+ * the lock is released.
  */
 public abstract class Reactor extends Service {
   private final boolean atomic;
@@ -120,8 +120,21 @@ public abstract class Reactor extends Service {
   /** Output channels this reactor may publish to. */
   protected final List<String> outputChannels;
 
-  /** Tracks timestamps previously published for latency reporting. */
-  private final Map<String, Instant> lastTsPublishedByChannel = new ConcurrentHashMap<>();
+  /** Receives the timing of every evaluation; read once at construction. */
+  private final FiringRecorder recorder;
+
+  /**
+   * Arrival of the latest message per input channel, paired with that message so a reader can
+   * tell whether the arrival belongs to the message it sees. Written only when recording.
+   */
+  private final Map<String, Arrival> arrivalByChannel = new ConcurrentHashMap<>();
+
+  /** Evaluations of this reactor so far; guarded by {@link #evalLock}. */
+  private long evaluationCount;
+
+  /** A message and the instant it entered this reactor's handler. */
+  private record Arrival(Object msg, Instant at) {
+  }
 
   /** Compiled rules: channel → structured FiringRule. */
   private final List<Map<String, FiringRule>> compiledRules = new ArrayList<>();
@@ -180,6 +193,7 @@ public abstract class Reactor extends Service {
     super(eventBus);
     this.id = id;
     this.atomic = atomic;
+    this.recorder = FiringRecorders.current();
     this.firingRules = firingRules;
     this.inputChannels = List.copyOf(inputChannels);
     this.outputChannels = List.copyOf(outputChannels);
@@ -229,9 +243,15 @@ public abstract class Reactor extends Service {
    * </ul>
    */
   private void onMessage(String channel, Object msg) {
+    Instant arrival = null;
+    if (recorder.enabled()) {
+      arrival = MonotonicClock.now();
+      // written before the message, so a reader that sees the new message also finds its arrival
+      arrivalByChannel.put(channel, new Arrival(msg, arrival));
+    }
     latestByChannel.put(channel, msg);
     channelSeq.merge(channel, 1L, Long::sum);
-    evaluateRules();
+    evaluateRules(channel, msg, arrival);
   }
 
     /**
@@ -242,12 +262,23 @@ public abstract class Reactor extends Service {
    *   • Update lastConsumedSeqByRule only for channels with real deltas.
    *   • Preserve true AND semantics for multi-input rules.
    */
-  private void evaluateRules() {
+  private void evaluateRules(String triggerChannel, Object triggerMsg, Instant triggerArrival) {
     Snapshot snapshotToFire = null;
     boolean shouldFire = false;
+    final boolean recording = recorder.enabled();
+    long evaluation = 0;
+    Instant gateTs = null;
+    Instant decision = null;
+    Instant reactStart = null;
+    Instant reactEnd = null;
+    Snapshot evaluated = null;
+    List<FiringRecord.ConsumedInput> consumed = List.of();
 
     evalLock.lock();
     try {
+      evaluation = ++evaluationCount;
+      gateTs = lastLogicalFireTs;
+
       // --- Build stable snapshot of state at call ---
       Map<String, Long> seqAtCall = new HashMap<>();
       Map<String, Object> latestAtCall = new HashMap<>();
@@ -301,9 +332,19 @@ public abstract class Reactor extends Service {
         }
       }
 
+      if (satisfiedRules.isEmpty() && recording) {
+        recorder.countNoRule(id);
+      }
+
       // after evaluating satisfiedRules
       if (!satisfiedRules.isEmpty()) {
         Snapshot snap = buildSnapshotFrom(latestAtCall);
+        evaluated = snap;
+        if (recording) {
+          // before the pointers advance: afterwards the consumed deltas are gone
+          consumed = pendingInputs(satisfiedRules, seqAtCall, latestAtCall);
+          decision = MonotonicClock.now();
+        }
 
         // LIFO logical-time gate
         if (snap.logicalTs.isAfter(lastLogicalFireTs)) {
@@ -333,8 +374,9 @@ public abstract class Reactor extends Service {
             }
           }
           if (atomic) {
+            if (recording) reactStart = MonotonicClock.now();
             reactionFunction(snapshotToFire.values);
-            publishAllLatencyModes(snapshotToFire.values);
+            if (recording) reactEnd = MonotonicClock.now();
           }
         }
       }
@@ -342,12 +384,59 @@ public abstract class Reactor extends Service {
       evalLock.unlock();
     }
 
-    // --- Fire and publish latency outside lock ---
+    // --- Fire outside lock (non-atomic) ---
     if (!atomic && shouldFire && snapshotToFire != null) {
+      if (recording) reactStart = MonotonicClock.now();
       reactionFunction(snapshotToFire.values);
-      publishAllLatencyModes(snapshotToFire.values);
+      if (recording) reactEnd = MonotonicClock.now();
     }
 
+    if (recording && evaluated != null) {
+      recorder.record(new FiringRecord(
+              id,
+              evaluation,
+              shouldFire ? FiringRecord.Outcome.FIRED : FiringRecord.Outcome.GATED,
+              atomic,
+              triggerChannel,
+              extractTimestamp(triggerMsg),
+              triggerArrival,
+              evaluated.logicalTs,
+              gateTs,
+              decision,
+              reactStart,
+              reactEnd,
+              consumed));
+    }
+  }
+
+  /**
+   * Collects the inputs that carry new data for at least one satisfied rule, using the same
+   * newness test as rule evaluation (sequence delta for {@code AT_LEAST}, a strictly newer
+   * timestamp otherwise). Must be called under {@link #evalLock}, before the consumed pointers
+   * advance.
+   */
+  private List<FiringRecord.ConsumedInput> pendingInputs(List<Integer> satisfiedRules,
+                                                         Map<String, Long> seqAtCall,
+                                                         Map<String, Object> latestAtCall) {
+    Map<String, FiringRecord.ConsumedInput> pending = new LinkedHashMap<>();
+    for (int ruleIndex : satisfiedRules) {
+      for (var e : compiledRules.get(ruleIndex).entrySet()) {
+        String ch = e.getKey();
+        if (pending.containsKey(ch)) continue;
+        Object latest = latestAtCall.get(ch);
+        Instant ts = extractTimestamp(latest);
+        long seq = seqAtCall.getOrDefault(ch, 0L);
+        boolean isNew = e.getValue().type() == RuleType.AT_LEAST
+                ? seq > lastConsumedSeqByRule.get(ruleIndex).getOrDefault(ch, 0L)
+                : ts != null && ts.isAfter(lastConsumedTsByRule.get(ruleIndex).get(ch));
+        if (isNew) {
+          Arrival arrival = arrivalByChannel.get(ch);
+          Instant at = arrival != null && arrival.msg() == latest ? arrival.at() : null;
+          pending.put(ch, new FiringRecord.ConsumedInput(ch, seq, ts, at));
+        }
+      }
+    }
+    return new ArrayList<>(pending.values());
   }
 
   /**
@@ -461,146 +550,5 @@ public abstract class Reactor extends Service {
    */
   protected boolean valueMatchesExpected(Object actual, String expected) {
     return Objects.equals(Objects.toString(actual, null), expected);
-  }
-
-  // --------------------------------------------------------------------------
-  // LATENCY PUBLISHING (A + B + C2)
-  // --------------------------------------------------------------------------
-
-  /**
-   * Publishes latency in all three modes:
-   * <ol>
-   *   <li>(A) per channel latency</li>
-   *   <li>(B) global latency (earliest timestamp)</li>
-   *   <li>(C2) rule-participation latency (channels with delta >= 1)</li>
-   * </ol>
-   */
-  private void publishAllLatencyModes(Map<String, Object> snapshot) {
-    Instant now = Instant.now();
-
-    publishPerChannelLatency(snapshot, now);
-    publishGlobalLatency(snapshot, now);
-    publishRuleParticipationLatency(snapshot, now);
-  }
-
-  /**
-   * (A) Publishes latency per input channel.
-   */
-  private void publishPerChannelLatency(Map<String, Object> snapshot, Instant benchmarkTs) {
-    for (String ch : inputChannels) {
-      String timeKey = "%s-timestamp".formatted(ch);
-      Object v = snapshot.get(timeKey);
-      if (!(v instanceof Instant ts)) {
-        // No timestamp present for this channel in the snapshot → nothing to do
-        continue;
-      }
-
-      // Guard: datapoint claims to be in the future (clock skew or bad source)
-      if (ts.isAfter(benchmarkTs)) {
-        logger.warning("Timestamp from future: %s > %s".formatted(ts, benchmarkTs));
-        continue;
-      }
-
-      Instant lastPublished = lastTsPublishedByChannel.get(ch);
-
-      // Skip if we already published this exact datapoint OR a newer one.
-      // (Older or equal timestamps should not be republished.)
-      if (lastPublished != null && !ts.isAfter(lastPublished)) {
-        continue;  // <-- IMPORTANT: was 'return' before, which aborted the whole method
-      }
-
-      double seconds = Duration.between(ts, benchmarkTs).toNanos() / 1_000_000_000d;
-
-      publishResult(
-              eventBus,
-              seconds,
-              "Latency",
-              List.of("Latency-%s.%s".formatted(ch, id)),
-              benchmarkTs
-      );
-
-      lastTsPublishedByChannel.put(ch, ts);
-    }
-  }
-
-  /**
-   * (B) Publishes a global latency value using the earliest timestamp
-   * across all channels in the snapshot.
-   */
-  private void publishGlobalLatency(Map<String, Object> snapshot, Instant benchmarkTs) {
-    Instant earliest = null;
-
-    for (String ch : inputChannels) {
-      Instant ts = (Instant) snapshot.get("%s-timestamp".formatted(ch));
-      if (ts != null) {
-        if (earliest == null || ts.isBefore(earliest)) {
-          earliest = ts;
-        }
-      }
-    }
-
-    // No channel in the snapshot carried a timestamp → nothing to publish.
-    if (earliest == null) {
-      return;
-    }
-
-    if (earliest.isAfter(benchmarkTs)) {
-      logger.warning("Timestamp from future: %s > %s".formatted(earliest, benchmarkTs));
-      return;
-    }
-
-    double seconds = Duration.between(earliest, benchmarkTs).toNanos() / 1_000_000_000d;
-
-    publishResult(
-            eventBus,
-            seconds,
-            "Latency-Global",
-            List.of("Latency-Global.%s".formatted(id)),
-            benchmarkTs
-    );
-  }
-
-  /**
-   * (C) Publishes latency only for channels that contributed delta >= 1
-   * in at least one satisfied rule during this evaluation.
-   */
-  private void publishRuleParticipationLatency(Map<String, Object> snapshot, Instant benchmarkTs) {
-    // Determine participating channels (delta >= 1 for satisfied rules)
-    Set<String> participating = new HashSet<>();
-
-    for (int i = 0; i < compiledRules.size(); i++) {
-      Map<String, Long> lastPtr = lastConsumedSeqByRule.get(i);
-      Map<String, FiringRule> rule = compiledRules.get(i);
-
-      for (var e : rule.entrySet()) {
-        String ch = e.getKey();
-        long last = lastPtr.get(ch);
-        long cur = channelSeq.get(ch);
-
-        if (cur - last >= 1) {
-          participating.add(ch);
-        }
-      }
-    }
-
-    // Publish latency for participating channels only
-    for (String ch : participating) {
-      String timeKey = "%s-timestamp".formatted(ch);
-      Instant ts = (Instant) snapshot.get(timeKey);
-      if (ts.isAfter(benchmarkTs)){
-        logger.warning("Timestamp from future: %s > %s".formatted(ts, benchmarkTs));
-        continue;
-      }
-
-      double seconds = Duration.between(ts, benchmarkTs).toNanos() / 1_000_000_000d;
-
-      publishResult(
-              eventBus,
-              seconds,
-              "Latency-RuleParticipation",
-              List.of("Latency-Rule-%s.%s".formatted(ch, id)),
-              benchmarkTs
-      );
-    }
   }
 }
