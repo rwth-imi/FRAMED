@@ -51,7 +51,8 @@ import static com.framed.arn.RuleUtils.extractTimestamp;
  *       <li>every satisfied rule updates its per-channel pointers;</li>
  *       <li>a single snapshot is created;</li>
  *       <li>{@link #reactionFunction(Map)} is called once, provided the snapshot's logical
- *           timestamp is newer than the last firing (logical-time gate);</li>
+ *           timestamp is newer than the last firing (logical-time gate), or equal to it for a
+ *           reactor that opts in via {@link #firesOnEqualLogicalTime()};</li>
  *       <li>the evaluation's timing is handed to the {@link FiringRecorder}.</li>
  *     </ul>
  *   </li>
@@ -214,6 +215,29 @@ public abstract class Reactor extends Service {
   }
 
   /**
+   * Whether the logical-time gate also admits a snapshot whose logical timestamp <b>equals</b>
+   * that of the last firing. The default, {@code false}, fires at most once per logical instant:
+   * when one source instant reaches this reactor over several paths (e.g. several classifiers
+   * fed by the same sample), only the first arrival fires and the others are gated, so the
+   * firing sees the other paths' values of the previous instant until the next, newer firing.
+   *
+   * <p>Returning {@code true} re-evaluates on every such arrival, so the last firing for an
+   * instant reflects every path. Because a snapshot's logical timestamp is the maximum over all
+   * held inputs, it does not decrease while every channel's timestamps are monotonic; the gate
+   * then admits <em>every</em> evaluation that satisfies a rule, including a late arrival of an
+   * older instant from a slower path (its snapshot carries the newer held timestamp, which is
+   * also the timestamp of the outputs). Duplicates still never fire: a channel re-delivering a
+   * timestamp it already delivered satisfies no rule, because rule newness is strictly per
+   * channel. Called under the evaluation lock; the result must be constant for the lifetime of
+   * the reactor.</p>
+   *
+   * @return {@code true} to fire on an equal logical timestamp
+   */
+  protected boolean firesOnEqualLogicalTime() {
+    return false;
+  }
+
+  /**
    * Called once per evaluation cycle when any rule is satisfied.
    *
    * @param latestSnapshot immutable snapshot of latest channel values and timestamps
@@ -346,8 +370,10 @@ public abstract class Reactor extends Service {
           decision = MonotonicClock.now();
         }
 
-        // LIFO logical-time gate
-        if (snap.logicalTs.isAfter(lastLogicalFireTs)) {
+        // LIFO logical-time gate (optionally admitting the same instant again)
+        boolean admitted = snap.logicalTs.isAfter(lastLogicalFireTs)
+                || (firesOnEqualLogicalTime() && snap.logicalTs.equals(lastLogicalFireTs));
+        if (admitted) {
           lastLogicalFireTs = snap.logicalTs;
           snapshotToFire = snap;
           shouldFire = true;
