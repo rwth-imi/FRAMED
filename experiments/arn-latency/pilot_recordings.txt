@@ -1,0 +1,16 @@
+# Pilot: one recording per patient profile, balanced over mode (PC/VC), setting (1/2),
+# condition (clean/knick) and repetition (0/1). p04-PC2-knick-* are avoided (ventilator dropout).
+p01-PC1-clean-0
+p02-VC1-knick-0
+p03-PC2-clean-1
+p04-VC2-knick-1
+p05-PC1-knick-0
+p06-VC1-clean-1
+p07-PC2-knick-1
+p08-VC2-clean-0
+p09-PC1-clean-1
+p10-VC2-knick-0
+# Control-vs-control: second replay of three of them (repetition r1).
+p02-VC1-knick-0
+p06-VC1-clean-1
+p09-PC1-clean-1
