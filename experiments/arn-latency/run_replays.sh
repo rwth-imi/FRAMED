@@ -17,7 +17,9 @@
 #                                        replay's actual send instant per event (_emits.csv)
 #                  gc/<run>.log          JVM GC log
 #                  config/<run>_*.json   the exact services.json and communication.json of the run
-#                plus <OUT_ROOT>/<LABEL>_runs.csv (one row per run) and <LABEL>_manifest.txt
+#                plus <OUT_ROOT>/<LABEL>_runs.csv (one row per run), <LABEL>_manifest.txt and
+#                <LABEL>_progress.txt (runs done / total, ETA; rewritten after every run, so
+#                `cat` or `watch cat` shows how far a detached run is)
 #   LIST         file with one recording name per line (without .jsonl; '#' comments allowed).
 #                A name listed k times is replayed k times (repetitions r0, r1, ...), which gives
 #                control-vs-control pairs. Default: every recording under REPLAY_ROOT except
@@ -256,6 +258,26 @@ run_one() {
 declare -A seen=()
 failures=0
 skipped=0
+read -r -a pass_list <<< "$PASSES"
+TOTAL=$(( ${#ENTRIES[@]} * ${#pass_list[@]} ))
+PROGRESS="$OUT_ROOT/${LABEL}_progress.txt"
+done_n=0; ran_n=0; ran_secs=0; started_at="$(date -u +%FT%TZ)"
+
+hms() { printf '%dh%02dm' $(( $1 / 3600 )) $(( $1 % 3600 / 60 )); }
+# One line after every run; the ETA averages the runs replayed in this invocation (skipped
+# runs take no time and are left out of the average).
+progress() {
+  local line pct eta="?" finish="?"
+  pct=$(( 100 * done_n / TOTAL ))
+  if (( ran_n > 0 )); then
+    local left=$(( (TOTAL - done_n) * ran_secs / ran_n ))
+    eta="$(hms "$left")"; finish="$(date -d "+${left} sec" '+%a %H:%M')"
+  fi
+  line="[$done_n/$TOTAL ${pct}%] ran $ran_n (avg $(( ran_n ? ran_secs / ran_n : 0 ))s), skipped $skipped, failed $failures | remaining $eta, finish ~$finish | last: $1"
+  echo "$line"
+  printf '%s\nlabel %s, started %s, updated %s\n' "$line" "$LABEL" "$started_at" "$(date -u +%FT%TZ)" \
+    > "$PROGRESS.tmp" && mv "$PROGRESS.tmp" "$PROGRESS"
+}
 for i in "${!ENTRIES[@]}"; do
   rec="${ENTRIES[$i]}"
   rep="${seen[$rec]:-0}"; seen[$rec]=$((rep + 1))
@@ -263,7 +285,11 @@ for i in "${!ENTRIES[@]}"; do
   if (( i % 2 == 1 && ${#order[@]} == 2 )); then order=("${order[1]}" "${order[0]}"); fi
   for mode in "${order[@]}"; do
     case "$mode" in atomic|non_atomic) ;; *) echo "Unknown pass: $mode" >&2; exit 1 ;; esac
+    t0=$SECONDS; skipped_before=$skipped
     run_one "$mode" "$rec" "$rep" || failures=$((failures + 1))
+    done_n=$((done_n + 1))
+    if (( skipped == skipped_before )); then ran_n=$((ran_n + 1)); ran_secs=$((ran_secs + SECONDS - t0)); fi
+    progress "$mode ${rec}_r${rep}"
   done
 done
 
