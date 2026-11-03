@@ -177,4 +177,23 @@ class InterpretationReactorTest {
     // a firing from another thread must not block on a leaked lock
     assertTimeoutPreemptively(Duration.ofSeconds(2), () -> publish(DISL, 0));
   }
+
+  /**
+   * One source instant reaches the interpreter over several classifier paths with the same
+   * timestamp; each arrival fires, so the last status of the instant sees every path.
+   */
+  @Test
+  void everyPathOfTheSameInstantFires() {
+    normal().forEach(this::publish);
+    bus.clearPublished();
+    ZonedDateTime t = T0.plusSeconds(++second);
+    bus.publish(SPO2_LIMIT, dp(1, t));
+    bus.publish(DISL, dp(1, t));
+    List<Object> statuses = bus.getPublished().stream()
+            .filter(p -> p.channel().equals(STATUS))
+            .map(p -> ((JSONObject) p.message()).get("value"))
+            .toList();
+    assertEquals(List.of("NO_WARNING", "WARNING"), statuses,
+            "the dislocation of the same instant is interpreted immediately");
+  }
 }
