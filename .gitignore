@@ -22,3 +22,9 @@ CLAUDE.md
 # from the conventional commit history, not from this file.
 docs/CHANGELOG.md
 benchmark/
+
+# Generated experiment outputs (results, logs); the scripts are tracked.
+experiments/*/out/
+# Local working notes of the latency experiments (kept untracked)
+experiments/arn-latency/replay_discussion.md
+experiments/arn-latency/benchmark_literature.md
