@@ -177,4 +177,62 @@ class ReactorFiringRecorderTest {
     assertEquals(1, bus.getPublished().stream().filter(p -> p.channel().equals(OUT)).count(),
             "the reactor still fires");
   }
+
+  /** {@link EchoReactor} that opts into firing on an equal logical timestamp. */
+  static final class SameInstantReactor extends Reactor {
+    SameInstantReactor(InMemoryEventBus bus, String id, List<Map<String, String>> rules) {
+      super(bus, id, rules, List.of(A, B), List.of(OUT), true);
+    }
+
+    @Override
+    protected boolean firesOnEqualLogicalTime() {
+      return true;
+    }
+
+    @Override
+    public void reactionFunction(Map<String, Object> snapshot) {
+      publishResult(eventBus, 1, id, List.of(OUT), lastLogicalFireTs);
+    }
+  }
+
+  private List<FiringRecord.Outcome> outcomes() {
+    return recorder.records.stream().map(FiringRecord::outcome).toList();
+  }
+
+  /** Default gate: a second path carrying the same instant does not fire. */
+  @Test
+  void sameInstantOverASecondPathIsGatedByDefault() {
+    new EchoReactor(bus, "default", List.of(Map.of(A, "*"), Map.of(B, "*")), true);
+
+    bus.publish(A, dp(1, T0.plusSeconds(1)));
+    bus.publish(B, dp(2, T0.plusSeconds(1)));
+
+    assertEquals(List.of(FiringRecord.Outcome.FIRED, FiringRecord.Outcome.GATED), outcomes());
+  }
+
+  /**
+   * Opt-in gate: every path of an instant fires, and so does a late arrival of an older instant
+   * (the snapshot carries the newer held timestamp); a same-channel duplicate does not.
+   */
+  @Test
+  void optInFiresOnEveryNewInputButNotOnADuplicate() {
+    new SameInstantReactor(bus, "same", List.of(Map.of(A, "*"), Map.of(B, "*")));
+
+    bus.publish(A, dp(1, T0.plusSeconds(2)));
+    bus.publish(B, dp(2, T0.plusSeconds(2)));
+    assertEquals(List.of(FiringRecord.Outcome.FIRED, FiringRecord.Outcome.FIRED), outcomes());
+    assertEquals(List.of(B), recorder.records.get(1).consumed().stream()
+            .map(FiringRecord.ConsumedInput::channel).toList(), "second firing consumes B");
+
+    bus.publish(A, dp(3, T0.plusSeconds(2)));   // same channel, same timestamp: not new
+    assertEquals(2, recorder.records.size());
+    assertEquals(1, recorder.noRule.get("same").get());
+
+    bus.publish(A, dp(4, T0.plusSeconds(4)));
+    bus.publish(B, dp(5, T0.plusSeconds(3)));   // late, older path; logical time stays t4
+    FiringRecord late = recorder.records.get(3);
+    assertEquals(FiringRecord.Outcome.FIRED, late.outcome());
+    assertEquals(at(4), late.logicalTs());
+    assertEquals(4, bus.getPublished().stream().filter(p -> p.channel().equals(OUT)).count());
+  }
 }
