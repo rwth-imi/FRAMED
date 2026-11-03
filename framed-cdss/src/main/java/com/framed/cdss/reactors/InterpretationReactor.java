@@ -165,6 +165,21 @@ public class InterpretationReactor extends Reactor {
   }
 
   /**
+   * Fires again when another classification of the same logical instant arrives. One source
+   * sample reaches the interpreter over several classifier paths with the same logical
+   * timestamp; with the default gate only the first arrival would fire, and the other paths'
+   * results of that instant would be used only at the next, newer firing. Re-firing makes the
+   * last firing per instant interpret the complete state, at the cost of several firings (and
+   * status records) per instant.
+   *
+   * @return {@code true}
+   */
+  @Override
+  protected boolean firesOnEqualLogicalTime() {
+    return true;
+  }
+
+  /**
    * Evaluates all inputs, publishes the resulting warnings and one status record on
    * {@value #STATUS_CHANNEL}.
    *
