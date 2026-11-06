@@ -55,10 +55,14 @@
 # order (atomic first on even entries, non-atomic first on odd ones), so slow drifts of the
 # machine do not favour one mode.
 set -euo pipefail
+# never end silently: name the command that aborted the script
+trap 'echo "run_replays.sh: aborted (exit $?) at line $LINENO: $BASH_COMMAND" >&2' ERR
 
-REPLAY_ROOT="$(readlink -f "${1:?usage: $0 <REPLAY_ROOT> <OUT_ROOT> [LIST]}")"
+[[ -d "${1:?usage: $0 <REPLAY_ROOT> <OUT_ROOT> [LIST]}" ]] || { echo "Not a directory: $1 (from $PWD)" >&2; exit 1; }
+REPLAY_ROOT="$(readlink -f "$1")"
 OUT_ROOT="${2:?usage: $0 <REPLAY_ROOT> <OUT_ROOT> [LIST]}"
 LIST="${3:-}"
+[[ -z "$LIST" || -f "$LIST" ]] || { echo "List not found: $LIST (from $PWD)" >&2; exit 1; }
 LABEL="${LABEL:-AMD}"
 PASSES="${PASSES:-atomic non_atomic}"
 EXCLUDE="${EXCLUDE-p04-PC2-knick-0 p04-PC2-knick-1}"
@@ -89,7 +93,9 @@ command -v jq >/dev/null || { echo "jq is required" >&2; exit 1; }
 
 if [[ "${SKIP_BUILD:-0}" != 1 ]]; then
   [[ -x "$JDK_HOME/bin/javac" ]] || { echo "$JDK_HOME has no javac; set JAVA to a full JDK $JAVA_MAJOR or use SKIP_BUILD=1" >&2; exit 1; }
-  (cd "$REPO" && JAVA_HOME="$JDK_HOME" mvn -q -DskipTests package)
+  command -v mvn >/dev/null || { echo "mvn not found on PATH ($PATH); under systemd-run pass --setenv=PATH=\$PATH, or build first and use SKIP_BUILD=1" >&2; exit 1; }
+  echo "building with $JDK_HOME ..."
+  (cd "$REPO" && JAVA_HOME="$JDK_HOME" mvn -q -DskipTests package) || { echo "build failed (see the Maven output above)" >&2; exit 1; }
 fi
 JAR="$(ls "$REPO"/framed-app/target/framed-app-*-fat.jar | head -n1)"
 
@@ -295,4 +301,4 @@ done
 
 echo "finished:    $(date -u +%FT%TZ)" >> "$MANIFEST"
 echo "Done: ${#ENTRIES[@]} list entries, skipped (complete): $skipped, failures: $failures. Runs: $RUNS"
-(( failures == 0 ))
+if (( failures > 0 )); then echo "$failures run(s) failed; see $RUNS and the logs in $OUT_ROOT/.work/" >&2; exit 1; fi
