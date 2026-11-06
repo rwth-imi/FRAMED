@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2025-2026 Institute of Medical Informatics, Medical Faculty, RWTH Aachen
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Python toolchain of the framed-benchmark analyses (Python >= 3.10).
+# analyze_kink.py and analyze_mimic.py need pandas and numpy; tables_study_*.py are standard
+# library only; make_figures.py needs plotly and kaleido. Kaleido 1.x renders through a headless
+# Chrome/Chromium, which pip does not install (see REPRODUCE.md, "Figures").
+pandas==2.3.3
+numpy==2.4.1
+plotly==7.0.0
+kaleido==1.4.0

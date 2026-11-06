@@ -1,0 +1,22 @@
+{
+  "Dispatchers": [
+    {
+      "class": "com.framed.streamer.dispatcher.CountingDispatcher",
+      "id": "Counting",
+      "devices": ["MIMIC-3000125"],
+      "channels": []
+    }
+  ],
+  "Devices": [
+    {
+      "class": "com.framed.communicator.driver.protocol.mimic.MimicReplayProtocol",
+      "id": "MIMIC-Replay",
+      "recordPath": "set by run_mimic.sh",
+      "deviceID": "MIMIC-3000125",
+      "className": "Waveform",
+      "channels": [],
+      "speed": 1.0,
+      "maxSeconds": 60
+    }
+  ]
+}
