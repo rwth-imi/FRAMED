@@ -55,8 +55,10 @@
 # order (atomic first on even entries, non-atomic first on odd ones), so slow drifts of the
 # machine do not favour one mode.
 set -euo pipefail
-# never end silently: name the command that aborted the script
-trap 'echo "run_replays.sh: aborted (exit $?) at line $LINENO: $BASH_COMMAND" >&2' ERR
+REPO="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+# shellcheck source=../common/runlib.sh
+source "$REPO/experiments/common/runlib.sh"
+rl_traps run_replays.sh
 
 [[ -d "${1:?usage: $0 <REPLAY_ROOT> <OUT_ROOT> [LIST]}" ]] || { echo "Not a directory: $1 (from $PWD)" >&2; exit 1; }
 REPLAY_ROOT="$(readlink -f "$1")"
@@ -68,35 +70,12 @@ PASSES="${PASSES:-atomic non_atomic}"
 EXCLUDE="${EXCLUDE-p04-PC2-knick-0 p04-PC2-knick-1}"
 JAVA_OPTS="${JAVA_OPTS:--Xms1g -Xmx1g -XX:+UseG1GC}"
 PORT="${PORT:-4999}"
-JAVA_MAJOR="${JAVA_MAJOR:-21}"
 
-java_major() { "$1" -version 2>&1 | sed -n '1s/.*version "\([0-9]*\).*/\1/p'; }
-resolve_java() {
-  local c
-  if [[ -n "${JAVA:-}" ]]; then
-    [[ -x "$JAVA" && "$(java_major "$JAVA")" == "$JAVA_MAJOR" ]] && { readlink -f "$JAVA"; return 0; }
-    echo "JAVA=$JAVA is not a Java $JAVA_MAJOR runtime" >&2; return 1
-  fi
-  for c in ${JAVA_HOME:+"$JAVA_HOME/bin/java"} /usr/lib/jvm/temurin-"$JAVA_MAJOR"-*/bin/java \
-           /usr/lib/jvm/*-"$JAVA_MAJOR"-*/bin/java "$(command -v java || true)"; do
-    [[ -x "$c" && "$(java_major "$c")" == "$JAVA_MAJOR" ]] && { readlink -f "$c"; return 0; }
-  done
-  echo "No Java $JAVA_MAJOR runtime found; set JAVA=/path/to/bin/java" >&2; return 1
-}
-JAVA_BIN="$(resolve_java)" || exit 1
-JDK_HOME="$(dirname "$(dirname "$JAVA_BIN")")"
-
-REPO="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+rl_resolve_java || exit 1
 TEMPLATE="$REPO/config/services_replay.json"
 command -v jq >/dev/null || { echo "jq is required" >&2; exit 1; }
-[[ -d "$REPLAY_ROOT" ]] || { echo "Not a directory: $REPLAY_ROOT" >&2; exit 1; }
 
-if [[ "${SKIP_BUILD:-0}" != 1 ]]; then
-  [[ -x "$JDK_HOME/bin/javac" ]] || { echo "$JDK_HOME has no javac; set JAVA to a full JDK $JAVA_MAJOR or use SKIP_BUILD=1" >&2; exit 1; }
-  command -v mvn >/dev/null || { echo "mvn not found on PATH ($PATH); under systemd-run pass --setenv=PATH=\$PATH, or build first and use SKIP_BUILD=1" >&2; exit 1; }
-  echo "building with $JDK_HOME ..."
-  (cd "$REPO" && JAVA_HOME="$JDK_HOME" mvn -q -DskipTests package) || { echo "build failed (see the Maven output above)" >&2; exit 1; }
-fi
+rl_build -DskipTests package || exit 1
 JAR="$(ls "$REPO"/framed-app/target/framed-app-*-fat.jar | head -n1)"
 
 mkdir -p "$OUT_ROOT"
@@ -126,47 +105,12 @@ recording_path() {
 for e in "${ENTRIES[@]}"; do recording_path "$e" >/dev/null; done
 
 # --- provenance ----------------------------------------------------------------------
-pi_temp()      { command -v vcgencmd >/dev/null && vcgencmd measure_temp | tr -dc '0-9.' || echo ""; }
-pi_throttled() { command -v vcgencmd >/dev/null && vcgencmd get_throttled | cut -d= -f2 || echo ""; }
-governor()     { cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo ""; }
-
 MANIFEST="$OUT_ROOT/${LABEL}_manifest.txt"
 RUNS="$OUT_ROOT/${LABEL}_runs.csv"
-COMMIT="$(git -C "$REPO" rev-parse HEAD)"
-DIRTY="$(git -C "$REPO" status --porcelain --untracked-files=no | wc -l)"
-if [[ -f "$MANIFEST" ]]; then
-  # resume: the code must be the one the run started with
-  orig_commit="$(sed -n 's/^git commit:  //p' "$MANIFEST" | head -n1)"
-  orig_dirty="$(sed -n 's/^git dirty:   \([0-9]*\).*/\1/p' "$MANIFEST" | head -n1)"
-  if [[ "$orig_commit" != "$COMMIT" || "$orig_dirty" != "$DIRTY" ]] && [[ "${RESUME_ANYWAY:-0}" != 1 ]]; then
-    echo "Refusing to resume: started at $orig_commit ($orig_dirty modified), now $COMMIT ($DIRTY modified)." >&2
-    echo "Use a new OUT_ROOT, or RESUME_ANYWAY=1." >&2
-    exit 1
-  fi
-  {
-    echo "resumed:     $(date -u +%FT%TZ)  commit $COMMIT, $DIRTY modified"
-    echo "  jar:       $(sha256sum "$JAR" | cut -d' ' -f1)"
-    echo "  java:      $JAVA_BIN ($("$JAVA_BIN" -version 2>&1 | head -n1))"
-  } >> "$MANIFEST"
-else
-{
-  echo "started:     $(date -u +%FT%TZ)"
-  echo "git commit:  $COMMIT"
-  echo "git branch:  $(git -C "$REPO" rev-parse --abbrev-ref HEAD)"
-  echo "git dirty:   $DIRTY tracked files modified"
+manifest_arn() {
   echo "template:    $TEMPLATE ($(sha256sum "$TEMPLATE" | cut -d' ' -f1))"
   echo "jar:         $JAR ($(sha256sum "$JAR" | cut -d' ' -f1))"
-  echo "java:        $("$JAVA_BIN" -version 2>&1 | head -n1)"
   echo "java opts:   $JAVA_OPTS"
-  echo "os:          $(uname -srm)"
-  echo "cpu:         $(lscpu 2>/dev/null | sed -n 's/^Model name:[[:space:]]*//p' | head -n1)"
-  echo "cpus:        $(nproc)"
-  echo "memory:      $(free -h 2>/dev/null | awk '/^Mem:/{print $2}')"
-  echo "governor:    $(governor)"
-  echo "cpu boost:   $(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null || echo n/a)"
-  echo "cpu set:     $(taskset -pc $$ 2>/dev/null | sed 's/.*: //')"
-  echo "java binary: $JAVA_BIN"
-  echo "systemd:     $(systemctl get-default 2>/dev/null) (active: $(systemctl is-active graphical.target 2>/dev/null))"
   echo "replay root: $REPLAY_ROOT"
   echo "passes:      $PASSES"
   echo "list:        ${LIST:-<all minus $EXCLUDE>}"
@@ -174,15 +118,17 @@ else
   printf '%s\n' "${ENTRIES[@]}" | sort -u | while read -r e; do
     p="$(recording_path "$e")"; echo "  $(sha256sum "$p" | cut -d' ' -f1)  ${p#"$REPLAY_ROOT"/}"
   done
-} > "$MANIFEST"
-fi
+}
+resume_arn() { echo "  jar:       $(sha256sum "$JAR" | cut -d' ' -f1)"; }
+RL_SETTINGS="passes=$PASSES; java_opts=$JAVA_OPTS; list=${LIST:-<all minus $EXCLUDE>}"
+rl_manifest "$MANIFEST" manifest_arn resume_arn || exit 1
 [[ -f "$RUNS" ]] || echo "label,mode,recording,rep,run,start_utc,end_utc,exit,load1_before,temp_before,temp_after,throttled_before,throttled_after" > "$RUNS"
 
 # --- resume ---------------------------------------------------------------------------
 # A run is complete when its last attempt exited 0 and every output file exists.
 run_complete() {
   local mode="$1" run="$2" pass_dir="$3" code f
-  code="$(awk -F, -v l="$LABEL" -v m="$mode" -v r="$run" '$1==l && $2==m && $5==r {e=$8} END {print e}' "$RUNS")"
+  code="$(rl_last_exit "$RUNS" "label=$LABEL" "mode=$mode" "run=$run")"
   [[ "$code" == 0 ]] || return 1
   for f in firings inputs summary emits; do [[ -s "$pass_dir/metrics/${run}_$f.csv" ]] || return 1; done
   for f in services communication; do [[ -s "$pass_dir/config/${run}_$f.json" ]] || return 1; done
@@ -212,7 +158,7 @@ run_one() {
   local run="${rec}_r${rep}"
   local work="$OUT_ROOT/.work/${LABEL}_${mode}_${run}"
   if [[ -f "$RUNS" ]] && run_complete "$mode" "$run" "$pass_dir"; then
-    echo "--- skip ${LABEL} ${mode} ${run} (complete)"; skipped=$((skipped + 1)); return 0
+    echo "--- skip ${LABEL} ${mode} ${run} (complete)"; return 10
   fi
   clean_partial "$pass_dir" "$run"
   rm -rf "$work"
@@ -242,9 +188,8 @@ run_one() {
   cp "$work/config/services.json" "$pass_dir/config/${run}_services.json"
   cp "$work/config/communication.json" "$pass_dir/config/${run}_communication.json"
 
-  local load temp0 thr0 start code=0
-  load="$(cut -d' ' -f1 /proc/loadavg)"; temp0="$(pi_temp)"; thr0="$(pi_throttled)"
-  start="$(date -u +%FT%TZ)"
+  local code=0
+  rl_host_before
   echo "==> $(date +%T) ${LABEL} ${mode} ${run}"
   # shellcheck disable=SC2086
   (cd "$work" && timeout 40m "$JAVA_BIN" $JAVA_OPTS \
@@ -252,7 +197,8 @@ run_one() {
       "-Dframed.arn.metrics.dir=$pass_dir/metrics" "-Dframed.arn.metrics.run=${run}" \
       "-Dframed.replay.emitLog=$pass_dir/metrics/${run}_emits.csv" \
       -jar "$JAR" > "$work/framed.log" 2>&1) || code=$?
-  echo "$LABEL,$mode,$rec,$rep,$run,$start,$(date -u +%FT%TZ),$code,$load,$temp0,$(pi_temp),$thr0,$(pi_throttled)" >> "$RUNS"
+  local after; after="$(rl_host_after)"
+  echo "$LABEL,$mode,$rec,$rep,$run,$RL_START,${after%%,*},$code,$RL_LOAD,$RL_TEMP0,$(cut -d, -f2 <<< "$after"),$RL_THR0,$(cut -d, -f3 <<< "$after")" >> "$RUNS"
   if (( code != 0 )); then
     echo "!! ${mode} ${run} exited with ${code}; log kept in $work/framed.log" >&2
   else
@@ -262,28 +208,8 @@ run_one() {
 }
 
 declare -A seen=()
-failures=0
-skipped=0
 read -r -a pass_list <<< "$PASSES"
-TOTAL=$(( ${#ENTRIES[@]} * ${#pass_list[@]} ))
-PROGRESS="$OUT_ROOT/${LABEL}_progress.txt"
-done_n=0; ran_n=0; ran_secs=0; started_at="$(date -u +%FT%TZ)"
-
-hms() { printf '%dh%02dm' $(( $1 / 3600 )) $(( $1 % 3600 / 60 )); }
-# One line after every run; the ETA averages the runs replayed in this invocation (skipped
-# runs take no time and are left out of the average).
-progress() {
-  local line pct eta="?" finish="?"
-  pct=$(( 100 * done_n / TOTAL ))
-  if (( ran_n > 0 )); then
-    local left=$(( (TOTAL - done_n) * ran_secs / ran_n ))
-    eta="$(hms "$left")"; finish="$(date -d "+${left} sec" '+%a %H:%M')"
-  fi
-  line="[$done_n/$TOTAL ${pct}%] ran $ran_n (avg $(( ran_n ? ran_secs / ran_n : 0 ))s), skipped $skipped, failed $failures | remaining $eta, finish ~$finish | last: $1"
-  echo "$line"
-  printf '%s\nlabel %s, started %s, updated %s\n' "$line" "$LABEL" "$started_at" "$(date -u +%FT%TZ)" \
-    > "$PROGRESS.tmp" && mv "$PROGRESS.tmp" "$PROGRESS"
-}
+rl_progress_init $(( ${#ENTRIES[@]} * ${#pass_list[@]} )) "$OUT_ROOT/${LABEL}_progress.txt"
 for i in "${!ENTRIES[@]}"; do
   rec="${ENTRIES[$i]}"
   rep="${seen[$rec]:-0}"; seen[$rec]=$((rep + 1))
@@ -291,14 +217,13 @@ for i in "${!ENTRIES[@]}"; do
   if (( i % 2 == 1 && ${#order[@]} == 2 )); then order=("${order[1]}" "${order[0]}"); fi
   for mode in "${order[@]}"; do
     case "$mode" in atomic|non_atomic) ;; *) echo "Unknown pass: $mode" >&2; exit 1 ;; esac
-    t0=$SECONDS; skipped_before=$skipped
-    run_one "$mode" "$rec" "$rep" || failures=$((failures + 1))
-    done_n=$((done_n + 1))
-    if (( skipped == skipped_before )); then ran_n=$((ran_n + 1)); ran_secs=$((ran_secs + SECONDS - t0)); fi
-    progress "$mode ${rec}_r${rep}"
+    rl_unit_start; code=0
+    run_one "$mode" "$rec" "$rep" || code=$?
+    case "$code" in 0) outcome=ran ;; 10) outcome=skipped ;; *) outcome=failed ;; esac
+    rl_progress_step "$outcome" "$mode ${rec}_r${rep}"
   done
 done
 
 echo "finished:    $(date -u +%FT%TZ)" >> "$MANIFEST"
-echo "Done: ${#ENTRIES[@]} list entries, skipped (complete): $skipped, failures: $failures. Runs: $RUNS"
-if (( failures > 0 )); then echo "$failures run(s) failed; see $RUNS and the logs in $OUT_ROOT/.work/" >&2; exit 1; fi
+echo "Done: ${#ENTRIES[@]} list entries, skipped (complete): $RL_SKIPPED, failures: $RL_FAILED. Runs: $RUNS"
+if (( RL_FAILED > 0 )); then echo "$RL_FAILED run(s) failed; see $RUNS and the logs in $OUT_ROOT/.work/" >&2; exit 1; fi

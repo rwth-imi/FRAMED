@@ -138,7 +138,7 @@ That is the **identical command**, i.e. the same working directory, `OUT_ROOT`, 
 - each resume is appended to the manifest with a timestamp, the jar's SHA-256 and the Java version;
 - the progress file then shows the earlier runs as `skipped`.
 
-Resuming is refused if the git commit or the number of modified tracked files has changed since the start, because a run must not mix code versions; `RESUME_ANYWAY=1` overrides this. Do not rebuild the jar before resuming. To start over, use a new `OUT_ROOT`.
+Resuming is refused if the git commit, the number of modified tracked files or the run settings (`PASSES`, `JAVA_OPTS`, the list; the manifest's `settings:` line) have changed since the start, because a run must not mix code versions or designs; `RESUME_ANYWAY=1` overrides this. Do not rebuild the jar before resuming. To start over, use a new `OUT_ROOT`.
 
 The runs after a resume belong to a new session, so host state may shift absolute latencies (see Section 5). Atomic and non-atomic stay paired per recording. The `resumed:` timestamps in the manifest separate the sessions.
 
