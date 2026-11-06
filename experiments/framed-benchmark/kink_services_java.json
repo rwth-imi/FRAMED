@@ -1,0 +1,31 @@
+{
+  "Dispatchers": [
+    {
+      "class": "com.framed.streamer.dispatcher.CountingDispatcher",
+      "id": "Counting",
+      "devices": ["CDSS"],
+      "channels": ["Kink", "Kink-Probability"]
+    },
+    {
+      "class": "com.framed.streamer.dispatcher.JsonlDispatcher",
+      "id": "Classification-Capture",
+      "devices": ["CDSS"],
+      "path": "capture/",
+      "fileName": "classifications.jsonl"
+    }
+  ],
+  "Devices": [
+    {
+      "class": "com.framed.communicator.driver.protocol.replay.ReplayProtocol",
+      "id": "Kink-Replay",
+      "filePath": "set by run_kink.sh",
+      "devices": ["Oxylog-3000-Plus-00", "PC60FW"],
+      "channels": [],
+      "speed": 1.0,
+      "repeat": 1,
+      "startDelaySeconds": 15,
+      "graceSeconds": 20,
+      "exitOnCompletion": true
+    }
+  ]
+}

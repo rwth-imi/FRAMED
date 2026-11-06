@@ -1,0 +1,84 @@
+# Units of the kink-over-TCP study (run_kink.sh). One unit per line:
+#   <kind> <recording> <speed> [dispatch]
+#   kind      pair = distributed run + single-process control; dist / ctrl = one of them
+#   speed     replay speed (1 = real time; 0 = flat out, distributed run only)
+#   dispatch  bus dispatch mode of the control (default PER_HANDLER, as deployed)
+# A unit listed k times is run k times (repetitions r0, r1, ...).
+#
+# Recordings: the held-out participants p08, p09 and p10 of the kink model
+# (kink_logreg_heldout_v2: fitted on p01-p07 only), all 48 recordings.
+
+pair p08-PC1-clean-0 1
+pair p08-PC1-clean-1 1
+pair p08-PC1-knick-0 1
+pair p08-PC1-knick-0 1   # control repetition
+pair p08-PC1-knick-1 1
+pair p08-PC2-clean-0 1
+pair p08-PC2-clean-1 1
+pair p08-PC2-knick-0 1
+pair p08-PC2-knick-1 1
+pair p08-VC1-clean-0 1
+pair p08-VC1-clean-1 1
+pair p08-VC1-knick-0 1
+pair p08-VC1-knick-1 1
+pair p08-VC2-clean-0 1
+pair p08-VC2-clean-1 1
+pair p08-VC2-clean-1 1   # control repetition
+pair p08-VC2-knick-0 1
+pair p08-VC2-knick-1 1
+pair p09-PC1-clean-0 1
+pair p09-PC1-clean-1 1
+pair p09-PC1-knick-0 1
+pair p09-PC1-knick-1 1
+pair p09-PC2-clean-0 1
+pair p09-PC2-clean-1 1
+pair p09-PC2-knick-0 1
+pair p09-PC2-knick-1 1
+pair p09-PC2-knick-1 1   # control repetition
+pair p09-VC1-clean-0 1
+pair p09-VC1-clean-0 1   # control repetition
+pair p09-VC1-clean-1 1
+pair p09-VC1-knick-0 1
+pair p09-VC1-knick-1 1
+pair p09-VC2-clean-0 1
+pair p09-VC2-clean-1 1
+pair p09-VC2-knick-0 1
+pair p09-VC2-knick-1 1
+pair p10-PC1-clean-0 1
+pair p10-PC1-clean-1 1
+pair p10-PC1-knick-0 1
+pair p10-PC1-knick-1 1
+pair p10-PC2-clean-0 1
+pair p10-PC2-clean-1 1
+pair p10-PC2-clean-1 1   # control repetition
+pair p10-PC2-knick-0 1
+pair p10-PC2-knick-1 1
+pair p10-VC1-clean-0 1
+pair p10-VC1-clean-1 1
+pair p10-VC1-knick-0 1
+pair p10-VC1-knick-0 1   # control repetition
+pair p10-VC1-knick-1 1
+pair p10-VC2-clean-0 1
+pair p10-VC2-clean-1 1
+pair p10-VC2-knick-0 1
+pair p10-VC2-knick-1 1
+
+# Speed sweep on the reference recording: does the path keep up at 10x, 60x and flat out?
+# At 10x and 60x the recording is replayed 10 and 60 times back to back, so the run lasts as long
+# as a real-time one at 10x / 60x the event rate (run_kink.sh); the controls replay the same
+# timeline. Flat out (0) replays it once. The verdicts at speed != 1 legitimately differ from real
+# time (the 6 s window spans more recorded time).
+pair p10-VC1-knick-0 10
+pair p10-VC1-knick-0 10
+pair p10-VC1-knick-0 10
+pair p10-VC1-knick-0 60
+pair p10-VC1-knick-0 60
+pair p10-VC1-knick-0 60
+dist p10-VC1-knick-0 0
+dist p10-VC1-knick-0 0
+dist p10-VC1-knick-0 0
+
+# Dispatch contrast: two SEQUENTIAL controls (reproducible by construction) next to the
+# PER_HANDLER control-vs-control pair of the repetition above.
+ctrl p10-VC1-knick-0 1 SEQUENTIAL
+ctrl p10-VC1-knick-0 1 SEQUENTIAL
