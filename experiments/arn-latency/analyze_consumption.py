@@ -32,7 +32,26 @@ A13 (Interpreter) is reported as a check. Its
 value is expected to be below 100 %: when several paths of one instant arrive at once, one
 firing can consume them together (recorded as no-rule evaluations).
 
-**2. Outputs per firing.** ``outputs / FIRED``: the bus outputs divided by the firings recorded
+**2. Input consumption, for OR rules (A4, A10, A12, A13).** ``compl_in = consumed / input
+updates``: of the input records a reactor received on the bus over the whole run (device channels
+de-duplicated exactly as above, CDSS channels not), the share that a FIRED evaluation consumed
+(``metrics/<run>_inputs.csv``). This follows the firing semantics of an OR rule: one firing may
+consume several updates that arrive together, so the output count is not expected to equal the
+input count, but no update may be skipped. It is the completeness measure for A13, whose outputs
+are coalesced by design (see above). The difference between inputs and outputs decomposes exactly
+into
+
+* ``coalesced``: inputs consumed by a firing together with others (``sum(consumed_n) − FIRED``);
+* ``skipped_same_ts``: records whose timestamp equals that of a consumed record on the same
+  channel (rejected by the per-channel newness test);
+* ``skipped_late``: records with a distinct timestamp that no firing consumed, i.e. that arrived
+  after a newer record of the same channel (reordering).
+
+Timestamps are compared at microsecond resolution, the precision of the bus timestamps. The
+recorder's per-channel sequence numbers are not used: a firing can consume a value before its
+sequence number is incremented, so they undercount.
+
+**3. Outputs per firing.** ``outputs / FIRED``: the bus outputs divided by the firings recorded
 off the bus (``metrics/<run>_summary.csv``). This isolates the reactor itself: anything below 1
 is a firing that published nothing, i.e. the warm-up early returns of windowed reactors. The
 Interpreter is counted by its ``Interpretation-Status`` records, one per firing.
@@ -43,7 +62,10 @@ Outputs (``--out``):
 - ``consumption_per_run.csv``: expected, observed and completeness per reactor and run;
 - ``consumption.csv``: completeness per platform, mode and reactor (sums over runs, plus the median
   and minimum of the per-run completeness);
-- ``outputs_per_firing.csv``: outputs, FIRED and their ratio per reactor and run.
+- ``outputs_per_firing.csv``: outputs, FIRED and their ratio per reactor and run;
+- ``input_consumption_per_run.csv``, ``input_consumption.csv``: input-side completeness of the OR
+  reactors per run and per platform and mode, with the share of firings that consumed more than
+  one input update.
 
 Usage::
 
@@ -143,6 +165,41 @@ def expected(rule: str, spec: dict, inputs: pd.DataFrame, rr_set: float) -> floa
     raise ValueError(rule)
 
 
+def input_consumption(r: Run, specs: dict, d: pd.DataFrame) -> list[dict]:
+    """Input-side completeness of the OR reactors in one run (see module docstring, measure 2)."""
+    rec = pd.read_csv(r.metrics("inputs"))
+    fir = pd.read_csv(r.metrics("firings"))
+    rows = []
+    for rid, spec in specs.items():
+        if RULES[rid] != "or":
+            continue
+        mine = rec[rec["reactor"] == rid]
+        fired = fir[(fir["reactor"] == rid) & (fir["outcome"] == "FIRED")]
+        received = consumed = same_ts = late = foreign = 0
+        for cls, dev, ch in spec["inputs"]:
+            name = ch if dev == "CDSS" else f"{cls}.{dev}.{ch}.parsed"
+            bus = d[(d.className == cls) & (d.deviceID == dev) & (d.channelID == ch)]
+            per_ts = (bus["timestamp"].astype("int64") // 1_000).value_counts()
+            got = set((mine.loc[mine["channel"] == name, "ts_ns"] // 1_000).tolist())
+            hit = per_ts.index.isin(list(got))
+            received += int(per_ts.sum())
+            consumed += int(hit.sum())                       # one record per consumed timestamp
+            same_ts += int((per_ts - 1).sum())               # further records of a timestamp
+            late += int((~hit).sum())                        # distinct timestamps never consumed
+            foreign += len(got - set(per_ts.index))
+        n_fired = len(fired)
+        rows.append({**r.key, "label": LABELS[rid], "reactor": rid, "input_updates": received,
+                     "consumed": consumed, "skipped_same_ts": same_ts, "skipped_late": late,
+                     "consumed_not_on_bus": foreign,
+                     "completeness": consumed / received if received else np.nan,
+                     "fired": n_fired, "coalesced": int(fired["consumed_n"].sum()) - n_fired,
+                     "multi_input_firings": int((fired["consumed_n"] > 1).sum())})
+        if foreign:
+            print(f"WARNING {r.pass_dir.name}/{r.run} {rid}: {foreign} consumed inputs not on the bus",
+                  file=sys.stderr)
+    return rows
+
+
 def consumption_of_run(r: Run, fallback_config: Path | None) -> dict:
     """Counts, expected/observed and outputs/FIRED of one run."""
     config = r.config() if r.config().is_file() else fallback_config
@@ -152,7 +209,7 @@ def consumption_of_run(r: Run, fallback_config: Path | None) -> dict:
     path = r.replay()
     if path is None:
         print(f"WARNING {r.pass_dir.name}/{r.run}: no replay output", file=sys.stderr)
-        return {"counts": [], "per_run": [], "per_firing": []}
+        return {"counts": [], "per_run": [], "per_firing": [], "inputs": []}
 
     df = load_replay(path)
     df = df[(df.className != "Annotation_test") & ~df.className.astype(str).str.contains("Latency")]
@@ -198,7 +255,8 @@ def consumption_of_run(r: Run, fallback_config: Path | None) -> dict:
         o = outs.get(row["reactor"], 0)
         per_firing.append({**r.key, "label": LABELS.get(row["reactor"]), "reactor": row["reactor"],
                            "outputs": o, "fired": fired, "outputs_per_firing": o / fired if fired else np.nan})
-    return {"counts": counts, "per_run": per_run, "per_firing": per_firing}
+    return {"counts": counts, "per_run": per_run, "per_firing": per_firing,
+            "inputs": input_consumption(r, specs, d)}
 
 
 def main() -> int:
@@ -239,11 +297,27 @@ def main() -> int:
     table = table.reset_index()
     table.to_csv(args.out / "consumption.csv", index=False)
 
+    inp = pd.DataFrame([x for res in results for x in res["inputs"]])
+    inp.to_csv(args.out / "input_consumption_per_run.csv", index=False)
+    itab = inp.groupby(keys)[["input_updates", "consumed", "skipped_same_ts", "skipped_late",
+                              "consumed_not_on_bus", "fired", "coalesced",
+                              "multi_input_firings"]].sum()
+    itab["runs"] = inp.groupby(keys).size()
+    itab["completeness_pct"] = 100.0 * itab["consumed"] / itab["input_updates"]
+    itab["run_min_pct"] = 100.0 * inp.groupby(keys)["completeness"].min()
+    itab["multi_input_firing_pct"] = 100.0 * itab["multi_input_firings"] / itab["fired"]
+    itab["diff"] = itab["input_updates"] - itab["consumed"]
+    itab = itab.reset_index()
+    itab.to_csv(args.out / "input_consumption.csv", index=False)
+
     with pd.option_context("display.width", 220, "display.max_columns", 30,
                            "display.float_format", "{:.2f}".format):
         print("\nConsumption completeness [%] (sum observed / sum expected); A13 as a check")
         p = table.pivot_table(index="label", columns="mode", values="completeness_pct")
         print(p.reindex(order_labels(table["label"])).to_string())
+        print("\nInput consumption completeness of the OR reactors [%] (consumed / input updates)")
+        p = itab.pivot_table(index="label", columns="mode", values="completeness_pct")
+        print(p.reindex(order_labels(itab["label"])).to_string(float_format="{:.4f}".format))
         print("\nOutputs per firing (min over runs)")
         p = per_firing.pivot_table(index="label", columns="mode", values="outputs_per_firing", aggfunc="min")
         print(p.reindex(order_labels(per_firing["label"].dropna())).to_string(float_format="{:.4f}".format))

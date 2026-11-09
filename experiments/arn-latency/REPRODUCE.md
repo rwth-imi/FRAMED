@@ -10,7 +10,9 @@ The experiments replay every recording of the ventilation and pulse-oximetry dat
 | `analyze_latency.py` | latency per reactor and its decomposition, gating, Interpreter latency per status, control vs control, warm-up |
 | `analyze_ordering.py` | out-of-order events per output and device channel |
 | `analyze_consumption.py` | consumption completeness (observed / expected outputs) and outputs per firing |
-| `framed_runs.py` | helpers shared by the three analyses |
+| `plot_latency_distribution.py` | per-reactor latency CDF, tail CDF and histogram; overlays several results roots |
+| `plot_ordering.py` | reactor-level out-of-order rate (ppm) per platform, from `ordering.csv` |
+| `framed_runs.py` | helpers shared by the analyses |
 | `diagnose_v03.py` | diagnosis of the earlier v03 latency data; not needed for new runs |
 
 ## 1. Requirements
@@ -26,7 +28,7 @@ On a Raspberry Pi, `vcgencmd` is used if available; the user needs to be in the 
 **Disk space:** ≈ 14 MB per run, i.e. ≈ 4.6 GB for the full experiment per platform.
 
 **Evaluation:**
-- Python ≥ 3.10 with pandas and numpy;
+- Python ≥ 3.10 with pandas and numpy; `plot_latency_distribution.py` and `plot_ordering.py` additionally need plotly and kaleido (tested: plotly 7.0.0, kaleido 1.4.0) plus a Chrome/Chromium for static export;
 - tested with Python 3.12.3, pandas 2.3.3, numpy 2.4.1.
 
 **Data:** the dataset (doi:10.18154/RWTH-2026-06634), unpacked e.g. to `data/replay/data/`. The runner searches the folder recursively for `<recording>.jsonl`.
@@ -189,22 +191,27 @@ Per FIRED evaluation (ms):
 | `transport_net` / `scheduling` / `execution` | decomposition: send → arrival → decision → reaction end |
 | `end_to_end` | reaction end − logical timestamp of the snapshot |
 | `rule_wait` | decision − arrival, per consumed input |
-| `consumption` | reaction end − input timestamp, at the input's first consumption |
+| `consumption` | reaction end − input timestamp, at the input's first consumption (includes the replay's wake-up delay) |
+| `consumption_net` | reaction end − actual send instant of that input, at its first consumption |
+
+Inputs first taken by a GATED evaluation are excluded from `consumption` and `consumption_net`: nothing was published, and the next firing that still holds the value can be seconds later.
 | `replay_lag` | actual − scheduled send instant (the replay's own delay) |
 
 **Statistics:**
 - the first `--warmup-s` seconds (default 30) are excluded;
-- n, p50, p90, p99, p99.9 and max are computed per run;
-- these are aggregated over runs as the median, with a bootstrap 95 % CI.
+- n, mean, std, p50, p90, p99, p99.9 and max are computed per run;
+- these are aggregated over runs as the median, with a bootstrap 95 % CI;
+- `summary.csv` also gives the pooled mean and std over all samples (`mean_pooled`, `std_pooled`, sample std), as reported in the v03 manuscript.
 
-Pooled standard deviations are not reported, because they are dominated by a few deferred samples.
+Mean and std are dominated by a few deferred samples; the percentiles are the primary measure.
 
 **Files:**
 - `summary.csv`, `per_run.csv`;
 - `evaluations.csv` (fired / gated / no-rule, gated share);
 - `interpreter_status.csv` (Interpreter latency per WARNING / NO_WARNING / SUPPRESSED);
 - `control.csv` (run-to-run differences: control vs control next to atomic vs non-atomic);
-- `warmup_sensitivity.csv`.
+- `warmup_sensitivity.csv`;
+- `consumption_net.csv` (`consumption` and `consumption_net` per reactor side by side, with the wake-up correction `wakeup_p50`).
 
 ### Ordering correctness (`analyze_ordering.py`)
 
@@ -232,9 +239,37 @@ Inputs are counted from the reactor's join start, i.e. the latest first timestam
 
 A13 (Interpreter) is reported as a check only. Its value is below 100 % by design, because one firing can consume several paths of an instant that arrive together.
 
+**Input-side completeness (OR rules: A4, A10, A12, A13):** the input records a reactor received on the bus over the whole run (device channels de-duplicated as above, CDSS channels not), and the share of them that a FIRED evaluation consumed (`metrics/<run>_inputs.csv`). The difference between inputs and outputs is split into `coalesced` (consumed together with other inputs in one firing), `skipped_same_ts` (timestamp equal to a consumed record on the same channel) and `skipped_late` (distinct timestamp never consumed: arrived after a newer record). This follows the semantics of an OR rule, where one firing may consume several updates arriving together, and is the completeness measure for A13. Timestamps are compared at microsecond resolution. The recorder's sequence numbers are not used, because a firing can consume a value before its sequence number is incremented.
+
 **Outputs per firing:** bus outputs / FIRED evaluations of the recorder. Values below 1 are the warm-up of windowed reactors.
 
-**Files:** `consumption.csv`, `consumption_per_run.csv`, `consumption_counts_per_run.csv`, `outputs_per_firing.csv`.
+**Files:** `consumption.csv`, `consumption_per_run.csv`, `consumption_counts_per_run.csv`, `outputs_per_firing.csv`, `input_consumption.csv`, `input_consumption_per_run.csv`.
+
+### Latency distributions (`plot_latency_distribution.py`)
+
+One figure file per reactor and plot kind, for assembling sub-plot graphics; one line per platform (colour) and execution mode (solid = atomic, dashed = non-atomic). Repeat `--root` to overlay platforms:
+
+```bash
+python plot_latency_distribution.py --root out/full-amd --root out/full-pi \
+  --out out/comparison [--metric trigger_net] [--kind cdf ccdf hist] [--workers 8]
+```
+
+- the latency is computed with `analyze_latency.py`'s own loader, with the same warm-up exclusion (`--warmup-s`, default 30);
+- `--metric`: `trigger_net` (default), `trigger`, `end_to_end`, `transport_net`, `scheduling`, `execution`, `consumption` or `consumption_net`;
+- the samples of all runs of a platform and mode are pooled on a logarithmic grid (`--bins-per-decade`, default 50), so a run is weighted by its number of firings. This differs from `summary.csv`, which takes the median of per-run percentiles;
+- all figures of a metric share one x range in whole decades, ticked and labelled 10^n (`--xrange per-reactor` fits each figure instead); histograms are summed into `--hist-bins-per-decade` bins (default 10);
+- outputs: `<cdf|ccdf|hist>_<metric>/A01 … A13.{pdf,svg,png}`, a separate `legend.*` in each folder (`--panel-legend` draws it into every figure), and the binned counts `latency_bins_<metric>.csv`; `--from-bins` re-plots from that file without re-reading the runs;
+- `--formats`, `--width`, `--height` (default 520 × 380), `--title` (prints the reactor above each figure; off by default, the file name `A01`…`A13` identifies it).
+
+### Out-of-order rate (`plot_ordering.py`)
+
+Reads `analysis/ordering.csv` of each root (run `analyze_ordering.py` first) and plots one panel per platform with a bar per reactor that had at least one out-of-order event on any platform; every bar is labelled `out_of_order/total`, zero bars included:
+
+```bash
+python plot_ordering.py --root out/full-amd --root out/full-pi --out out/comparison [--mode NON_ATOMIC]
+```
+
+Outputs: `ordering_<mode>.{pdf,svg,png}` and the plotted table `ordering_<mode>.csv`.
 
 ## 5. Checks before trusting a result
 
