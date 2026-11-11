@@ -48,6 +48,14 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2025-2026 Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
+# Experiment material without a comment syntax: run lists, configuration templates, guides and
+# the data dictionary of the supplementary tables.
+[[annotations]]
+path = ["experiments/**/*.md", "experiments/**/*.txt", "experiments/**/*.json", "experiments/**/*.csv"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025-2026 Institute of Medical Informatics, Medical Faculty, RWTH Aachen"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
 # Recorded on a patient simulator, not a human subject: measurement output rather than
 # software, so it carries the dataset's own licence and authorship rather than the
 # framework's. Dedicated to the public domain under CC0 so the sample stays reusable
