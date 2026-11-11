@@ -12,6 +12,8 @@ The experiments replay every recording of the ventilation and pulse-oximetry dat
 | `analyze_consumption.py` | consumption completeness (observed / expected outputs) and outputs per firing |
 | `plot_latency_distribution.py` | per-reactor latency CDF, tail CDF and histogram; overlays several results roots |
 | `plot_ordering.py` | reactor-level out-of-order rate (ppm) per platform, from `ordering.csv` |
+| `export_supplement.py` | combines the analysis tables of all platforms into the supplementary material |
+| `data_dictionary_*.csv` | data dictionary of the supplementary tables (notes, metrics, columns); rendered to `S0_data_dictionary.xlsx` |
 | `framed_runs.py` | helpers shared by the analyses |
 | `diagnose_v03.py` | diagnosis of the earlier v03 latency data; not needed for new runs |
 
@@ -199,7 +201,7 @@ Inputs first taken by a GATED evaluation are excluded from `consumption` and `co
 
 **Statistics:**
 - the first `--warmup-s` seconds (default 30) are excluded;
-- n, mean, std, p50, p90, p99, p99.9 and max are computed per run;
+- n, mean, std, p50, p90, p99, p99.9 and max are computed per run (the 99.9th percentile is named `p999` in column names);
 - these are aggregated over runs as the median, with a bootstrap 95 % CI;
 - `summary.csv` also gives the pooled mean and std over all samples (`mean_pooled`, `std_pooled`, sample std), as reported in the v03 manuscript.
 
@@ -211,7 +213,8 @@ Mean and std are dominated by a few deferred samples; the percentiles are the pr
 - `interpreter_status.csv` (Interpreter latency per WARNING / NO_WARNING / SUPPRESSED);
 - `control.csv` (run-to-run differences: control vs control next to atomic vs non-atomic);
 - `warmup_sensitivity.csv`;
-- `consumption_net.csv` (`consumption` and `consumption_net` per reactor side by side, with the wake-up correction `wakeup_p50`).
+- `consumption_net.csv` (`consumption` and `consumption_net` per reactor side by side, with the wake-up correction `wakeup_p50`);
+- `load_per_run.csv`, `load.csv` (median and maximum over runs): load indicators, since CPU usage is not recorded. They give the offered load (`device_events_per_s`), `firings_per_s` and the mean reaction time per firing (`exec_us_per_firing`). They also give the wall time spent in reactor evaluation as a share of one core: `exec_share_pct` = Σ(reaction end − start) / run duration, and `busy_share_pct` = the same plus Σ(firing decision − trigger arrival). These are wall-time intervals, not CPU time: lock waits and descheduling are included, while the event bus, replay, sink and JVM are excluded. GC pauses (`gc_pauses`, `gc_pause_ms_total`, `gc_pause_ms_max`, `gc_pause_share_pct`) are parsed from `gc/<run>.log`. Columns ending in `_steady` cover only the firings after `--warmup-s`, the window of the latency statistics. `load.csv` also pools them over all firings of all runs (`*_steady_pooled`): firings/s, decision + reaction time per firing, share of one core, and the mean `trigger_net` latency.
 
 ### Ordering correctness (`analyze_ordering.py`)
 
@@ -258,7 +261,7 @@ python plot_latency_distribution.py --root out/full-amd --root out/full-pi \
 - `--metric`: `trigger_net` (default), `trigger`, `end_to_end`, `transport_net`, `scheduling`, `execution`, `consumption` or `consumption_net`;
 - the samples of all runs of a platform and mode are pooled on a logarithmic grid (`--bins-per-decade`, default 50), so a run is weighted by its number of firings. This differs from `summary.csv`, which takes the median of per-run percentiles;
 - all figures of a metric share one x range in whole decades, ticked and labelled 10^n (`--xrange per-reactor` fits each figure instead); histograms are summed into `--hist-bins-per-decade` bins (default 10);
-- outputs: `<cdf|ccdf|hist>_<metric>/A01 … A13.{pdf,svg,png}`, a separate `legend.*` in each folder (`--panel-legend` draws it into every figure), and the binned counts `latency_bins_<metric>.csv`; `--from-bins` re-plots from that file without re-reading the runs;
+- outputs: `<cdf|ccdf|hist>_<metric>/A01 … A13.{pdf,svg,png}`, a separate `legend.*` in each folder (every figure also has the legend inside its plot area; `--no-panel-legend` omits it), and the binned counts `latency_bins_<metric>.csv`; `--from-bins` re-plots from that file without re-reading the runs;
 - `--formats`, `--width`, `--height` (default 520 × 380), `--title` (prints the reactor above each figure; off by default, the file name `A01`…`A13` identifies it).
 
 ### Out-of-order rate (`plot_ordering.py`)
@@ -270,6 +273,18 @@ python plot_ordering.py --root out/full-amd --root out/full-pi --out out/compari
 ```
 
 Outputs: `ordering_<mode>.{pdf,svg,png}` and the plotted table `ordering_<mode>.csv`.
+
+### Supplementary material (`export_supplement.py`)
+
+Run after the three analyses, with one `--root` per platform:
+
+```bash
+python export_supplement.py --root out/full-amd --root out/full-pi --out out/supplement
+```
+
+Writes `S1_latency.csv` (from `summary.csv`), `S2_completeness_outputs.csv` (`consumption.csv`), `S3_completeness_inputs.csv` (`input_consumption.csv`), `S4_ordering.csv` (`ordering.csv`), `S5_load.csv` (`load.csv`) and `S6_control.csv` (`control.csv`), each combined over the platforms.
+
+It also writes `S0_data_dictionary.xlsx` (sheets Tables, Notes, Metrics, Columns) and `PROVENANCE.txt` (results roots, manifest commits, jar hashes, script commit). The dictionary is maintained only in `data_dictionary_notes.csv`, `data_dictionary_metrics.csv` and `data_dictionary_columns.csv`. The script refuses to write when a table has an empty `label`, a column name outside `[A-Za-z0-9_]`, or columns that differ from the dictionary, so a table from an older analysis run or an outdated dictionary is caught.
 
 ## 5. Checks before trusting a result
 
