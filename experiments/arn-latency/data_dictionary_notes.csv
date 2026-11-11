@@ -1,0 +1,11 @@
+Item,Description
+Workload,"158 recordings of 10 min (transport ventilator and pulse oximeter), each replayed in real time once per execution mode on each platform; six recordings were replayed a second time as control repetitions (164 runs per platform and execution mode)."
+Platforms,"AMD: Lenovo T14 Gen 4, AMD Ryzen 7 PRO 7840U, 32 GB RAM. PI: Raspberry Pi 5, 16 GB RAM."
+Execution modes,ATOMIC: firing decision and reaction function run under the reactor's evaluation lock. NON_ATOMIC: only the firing decision runs under the lock.
+Reactors,label A1–A13 as in the manuscript; reactor = reactor id in the configuration. Rows not belonging to a reactor are labelled Replay (send delay of the replay) or device (replayed device channels).
+Evaluations,Each arrival of an input update at a reactor triggers an evaluation of its firing rule. FIRED: the rule was satisfied and the reaction function ran (outputs published). GATED: the rule was satisfied but the logical-time gate suppressed the reaction (none occurred in these runs).
+Warm-up,"Latency statistics (S1) and steady-state load indicators (S5, columns *_steady*) exclude the first 30 s of each run. All other values cover the whole run."
+Aggregation over runs,"*_median: statistic computed per run, then the median over runs. *_ci_lo / *_ci_hi: 95 % percentile-bootstrap confidence interval of that median over runs (2,000 resamples). *_pooled: statistic over all samples of all runs taken together. *_max: maximum over runs."
+Percentiles,"p50, p99, p999 = 50th, 99th, 99.9th percentile (linear interpolation). With fewer than 1,000 samples per run (A1–A8, A10), the per-run p999 lies between the two largest values of the run and is close to the run maximum."
+Net latency,"The replay stamps every event with its scheduled send instant. Metrics ending in _net are measured from the actual send instant logged by the replay instead, and thus exclude the replay's own wake-up delay."
+Units,Latencies in ms unless stated otherwise; percentages in %; ppm = per million.

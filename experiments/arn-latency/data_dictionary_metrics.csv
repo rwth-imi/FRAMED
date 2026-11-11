@@ -1,0 +1,12 @@
+Metric,One value per,Definition,Unit
+consumption_net,consumed input (first consumption by a FIRED evaluation),Reaction end − actual send instant of that input; for multi-input reactors includes the time an input waits until the firing rule is satisfied. Metric of Table II in the manuscript.,ms
+consumption,consumed input (first consumption by a FIRED evaluation),Reaction end − timestamp (scheduled send instant) of that input; includes the replay's wake-up delay.,ms
+trigger_net,FIRED evaluation,Reaction end − actual send instant of the triggering input.,ms
+trigger,FIRED evaluation,Reaction end − timestamp of the triggering input.,ms
+transport_net,FIRED evaluation,Arrival of the triggering input at the reactor − its actual send instant (event bus; for downstream reactors including the upstream path).,ms
+transport,FIRED evaluation,Arrival of the triggering input − its timestamp.,ms
+scheduling,FIRED evaluation,Firing decision − arrival of the triggering input (includes waiting for the evaluation lock).,ms
+execution,FIRED evaluation,Reaction end − reaction start (reaction function including publication of its outputs).,ms
+end_to_end,FIRED evaluation,Reaction end − logical timestamp of the snapshot (newest input).,ms
+rule_wait,consumed input of a FIRED evaluation,Firing decision − arrival of that input.,ms
+replay_lag,replayed event (label Replay),"Actual − scheduled send instant of the replay; whole run, no warm-up exclusion.",ms

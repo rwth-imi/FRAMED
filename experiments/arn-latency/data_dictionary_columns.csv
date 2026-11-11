@@ -1,0 +1,101 @@
+Table,Column,Description,Unit
+S1,platform,"Platform (AMD, PI).",
+S1,mode,"Execution mode (ATOMIC, NON_ATOMIC).",
+S1,label,"Reactor label A1–A13 (Replay, device: see Notes).",
+S1,reactor,Reactor id in the configuration.,
+S1,metric,Latency metric (see sheet Metrics).,
+S1,runs,Number of runs aggregated.,count
+S1,n,"Number of samples summed over all runs after warm-up exclusion (one sample per FIRED evaluation or consumed input, see Metrics).",count
+S1,mean_pooled,Mean over all samples of all runs.,ms
+S1,std_pooled,Sample standard deviation over all samples of all runs.,ms
+S1,mean_median,"Per-run mean, median over runs.",ms
+S1,std_median,"Per-run sample standard deviation, median over runs.",ms
+S1,p50_median,"Per-run 50th percentile, median over runs.",ms
+S1,p50_ci_lo,Lower bound of the 95 % bootstrap CI of p50_median.,ms
+S1,p50_ci_hi,Upper bound of the 95 % bootstrap CI of p50_median.,ms
+S1,p99_median,"Per-run 99th percentile, median over runs.",ms
+S1,p99_ci_lo,Lower bound of the 95 % bootstrap CI of p99_median.,ms
+S1,p99_ci_hi,Upper bound of the 95 % bootstrap CI of p99_median.,ms
+S1,p999_median,"Per-run 99.9th percentile, median over runs.",ms
+S1,max_median,"Per-run maximum, median over runs.",ms
+S2,platform,"Platform (AMD, PI).",
+S2,mode,"Execution mode (ATOMIC, NON_ATOMIC).",
+S2,label,"Reactor label A1–A13 (Replay, device: see Notes).",
+S2,reactor,Reactor id in the configuration.,
+S2,expected,"Outputs expected from the reactor's inputs under its firing rule, summed over runs (inputs counted from the reactor's join start; device channels de-duplicated on identical records).",count
+S2,observed,"Reactor outputs on the bus, summed over runs.",count
+S2,runs,Number of runs.,count
+S2,completeness_pct,Output-based consumption completeness: 100 · observed / expected.,%
+S2,run_median_pct,"Per-run completeness, median over runs.",%
+S2,run_min_pct,"Per-run completeness, minimum over runs.",%
+S2,diff,expected − observed.,count
+S3,platform,"Platform (AMD, PI).",
+S3,mode,"Execution mode (ATOMIC, NON_ATOMIC).",
+S3,label,"Reactor label A1–A13 (Replay, device: see Notes).",
+S3,reactor,Reactor id in the configuration.,
+S3,input_updates,"Input records received on the bus, summed over runs (whole run; device channels de-duplicated on identical records).",count
+S3,consumed,Input records consumed by a FIRED evaluation.,count
+S3,skipped_same_ts,Input records whose timestamp equals that of a consumed record on the same channel (rejected as not newer).,count
+S3,skipped_late,Input records with a distinct timestamp that no firing consumed (arrived after a newer record of the same channel).,count
+S3,consumed_not_on_bus,Consumed inputs not found on the bus (consistency check; expected 0).,count
+S3,fired,FIRED evaluations (for A13 equal to its status outputs).,count
+S3,coalesced,Inputs consumed together with other inputs in one firing (consumed − fired).,count
+S3,multi_input_firings,Firings that consumed more than one input.,count
+S3,runs,Number of runs.,count
+S3,completeness_pct,Input-side completeness: 100 · consumed / input_updates.,%
+S3,run_min_pct,"Per-run input-side completeness, minimum over runs.",%
+S3,multi_input_firing_pct,100 · multi_input_firings / fired.,%
+S3,diff,input_updates − consumed (= skipped_same_ts + skipped_late).,count
+S4,platform,"Platform (AMD, PI).",
+S4,mode,"Execution mode (ATOMIC, NON_ATOMIC).",
+S4,scope,reactor: reactor outputs; device: replayed device channels.,
+S4,label,"Reactor label A1–A13, or device.",
+S4,className,Producing reactor id (scope reactor) or device message class (scope device).,
+S4,out_of_order,"Events whose timestamp is earlier than that of the previous event on the same channel, in the order received by the data sink; summed over runs.",count
+S4,ties,Events whose timestamp equals that of the previous event on the same channel (not out of order).,count
+S4,total,"Events, summed over runs.",count
+S4,runs,Number of runs.,count
+S4,runs_with_ooo,Runs with at least one out-of-order event.,count
+S4,ordering_correctness_pct,100 · (1 − out_of_order / total).,%
+S4,out_of_order_ppm,10^6 · out_of_order / total.,ppm
+S5,platform,"Platform (AMD, PI).",
+S5,mode,"Execution mode (ATOMIC, NON_ATOMIC).",
+S5,runs,Number of runs.,count
+S5,duration_s_median,Run duration: last − first actual send instant of the replay. Per run; median over runs.,s
+S5,device_events_per_s_median,Replayed device events per second (offered load). Per run; median over runs.,1/s
+S5,firings_per_s_median,FIRED evaluations of all reactors per second. Per run; median over runs.,1/s
+S5,exec_us_per_firing_median,Mean reaction-function time per firing. Per run; median over runs.,µs
+S5,exec_share_pct_median,"Summed reaction-function time / run duration (wall time, share of one core). Per run; median over runs.",%
+S5,busy_share_pct_median,"Summed reaction-function time plus firing-decision time (decision − trigger arrival) / run duration (wall time, share of one core). Per run; median over runs.",%
+S5,gc_pauses_median,JVM garbage-collection pauses per run. Per run; median over runs.,count
+S5,gc_pause_ms_total_median,Summed garbage-collection pause time per run. Per run; median over runs.,ms
+S5,gc_pause_ms_max_median,Longest garbage-collection pause per run. Per run; median over runs.,ms
+S5,gc_pause_share_pct_median,Summed pause time / run duration. Per run; median over runs.,%
+S5,firings_per_s_steady_median,"As firings_per_s, after warm-up exclusion. Per run; median over runs.",1/s
+S5,busy_us_per_firing_steady_median,"Mean reaction-function plus firing-decision time per firing, after warm-up exclusion. Per run; median over runs.",µs
+S5,busy_share_pct_steady_median,"As busy_share_pct, after warm-up exclusion. Per run; median over runs.",%
+S5,latency_mean_ms_steady_median,"Mean trigger_net latency per firing, after warm-up exclusion. Per run; median over runs.",ms
+S5,duration_s_max,Run duration: last − first actual send instant of the replay. Per run; maximum over runs.,s
+S5,device_events_per_s_max,Replayed device events per second (offered load). Per run; maximum over runs.,1/s
+S5,firings_per_s_max,FIRED evaluations of all reactors per second. Per run; maximum over runs.,1/s
+S5,exec_us_per_firing_max,Mean reaction-function time per firing. Per run; maximum over runs.,µs
+S5,exec_share_pct_max,"Summed reaction-function time / run duration (wall time, share of one core). Per run; maximum over runs.",%
+S5,busy_share_pct_max,"Summed reaction-function time plus firing-decision time (decision − trigger arrival) / run duration (wall time, share of one core). Per run; maximum over runs.",%
+S5,gc_pauses_max,JVM garbage-collection pauses per run. Per run; maximum over runs.,count
+S5,gc_pause_ms_total_max,Summed garbage-collection pause time per run. Per run; maximum over runs.,ms
+S5,gc_pause_ms_max_max,Longest garbage-collection pause per run. Per run; maximum over runs.,ms
+S5,gc_pause_share_pct_max,Summed pause time / run duration. Per run; maximum over runs.,%
+S5,firings_per_s_steady_max,"As firings_per_s, after warm-up exclusion. Per run; maximum over runs.",1/s
+S5,busy_us_per_firing_steady_max,"Mean reaction-function plus firing-decision time per firing, after warm-up exclusion. Per run; maximum over runs.",µs
+S5,busy_share_pct_steady_max,"As busy_share_pct, after warm-up exclusion. Per run; maximum over runs.",%
+S5,latency_mean_ms_steady_max,"Mean trigger_net latency per firing, after warm-up exclusion. Per run; maximum over runs.",ms
+S5,firings_per_s_steady_pooled,"As firings_per_s, after warm-up exclusion. Pooled over all firings of all runs.",1/s
+S5,busy_us_per_firing_steady_pooled,"Mean reaction-function plus firing-decision time per firing, after warm-up exclusion. Pooled over all firings of all runs.",µs
+S5,busy_share_pct_steady_pooled,"As busy_share_pct, after warm-up exclusion. Pooled over all firings of all runs.",%
+S5,latency_mean_ms_steady_pooled,"Mean trigger_net latency per firing, after warm-up exclusion. Pooled over all firings of all runs.",ms
+S6,platform,"Platform (AMD, PI).",
+S6,recording,Recording replayed.,
+S6,reactor,Reactor id.,
+S6,contrast,control (ATOMIC) / control (NON_ATOMIC): two identical replays of the same recording and mode; atomic vs non-atomic: first replay in each mode.,
+S6,d_p50,Absolute difference of the per-run 50th percentile of trigger_net between the two runs.,ms
+S6,d_p99,Absolute difference of the per-run 99th percentile of trigger_net between the two runs.,ms
