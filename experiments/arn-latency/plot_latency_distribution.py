@@ -33,8 +33,8 @@ counted in the outermost bins and reported on stderr.
 Outputs (``<kind>`` ∈ cdf, ccdf, hist; ``<fmt>`` from ``--formats``, default pdf, svg, png):
 
 - ``<kind>_<metric>/A01.<fmt>`` … ``A13.<fmt>``: one figure per reactor;
-- ``<kind>_<metric>/legend.<fmt>``: the shared legend as a separate file (``--panel-legend``
-  draws it into every figure instead);
+- ``<kind>_<metric>/legend.<fmt>``: the shared legend as a separate file; every figure also
+  carries it inside its plot area, in a corner the curves leave empty (``--no-panel-legend`` omits it);
 - ``latency_bins_<metric>.csv``: the binned counts per platform, mode and reactor (the table
   behind every figure).
 
@@ -123,6 +123,15 @@ def collect(roots: list[Path], metric: str, warmup_s: float, edges: np.ndarray,
     return pd.concat(rows, ignore_index=True)
 
 
+# Legend inside the plot area, in the corner the curves leave empty: a CDF has risen at the right,
+# a tail CDF has fallen at the left; a histogram never reaches the bottom (fractions >= 1/n), so its
+# legend is a compact horizontal strip along the x axis.
+LEGEND_POS = {
+    "cdf": dict(x=0.98, xanchor="right", y=0.04, yanchor="bottom"),
+    "ccdf": dict(x=0.02, xanchor="left", y=0.04, yanchor="bottom"),
+    "hist": dict(x=0.5, xanchor="center", y=0.01, yanchor="bottom", orientation="h",
+                 entrywidth=0.5, entrywidthmode="fraction"),
+}
 DISPLAY = {"AMD": "AMD Ryzen 7 PRO", "PI": "Raspberry Pi 5"}
 INK, MUTED, GRID = "#22221f", "#55554f", "#e4e3df"
 FONT = "Arial, Helvetica, sans-serif"
@@ -209,7 +218,8 @@ def plot(bins: pd.DataFrame, metric: str, kind: str, out: Path, platforms: list[
                      ticktext=["0", "0.25", "0.5", "0.75", "1"])
     else:
         top = 0 if kind == "ccdf" else int(np.ceil(np.log10(ys_all.max())))
-        yaxis = decade_axis(y_floor, top)
+        # a histogram's inside legend gets its own empty decade below the smallest fraction
+        yaxis = decade_axis(y_floor - (2 if kind == "hist" and panel_legend else 0), top)
 
     xtitle = METRIC_TITLE.get(metric, f"{metric} latency (ms)")
     for label in labels:
@@ -232,8 +242,9 @@ def plot(bins: pd.DataFrame, metric: str, kind: str, out: Path, platforms: list[
         fig.update_layout(
             template="plotly_white", width=width, height=height, font=dict(family=FONT, color=INK),
             title=title, showlegend=panel_legend,
-            legend=dict(orientation="h", x=0, y=-0.28, yanchor="top", font=dict(size=13)),
-            margin=dict(l=78, r=16, t=46 if titles else 16, b=(110 if panel_legend else 64)),
+            legend=dict(**{"orientation": "v", **LEGEND_POS[kind]}, font=dict(size=12),
+                        bgcolor="rgba(255,255,255,0.85)", bordercolor=GRID, borderwidth=1),
+            margin=dict(l=78, r=16, t=46 if titles else 16, b=64),
             plot_bgcolor="white", paper_bgcolor="white")
         stem = f"A{int(label[1:]):02d}"
         for fmt in formats:
@@ -273,7 +284,8 @@ def main() -> int:
     ap.add_argument("--hist-bins-per-decade", type=int, default=10,
                     help="histogram bin width; the fine grid is summed into these bins")
     ap.add_argument("--xrange", choices=["common", "per-reactor"], default="common")
-    ap.add_argument("--panel-legend", action="store_true", help="draw the legend into every figure")
+    ap.add_argument("--no-panel-legend", dest="panel_legend", action="store_false",
+                    help="omit the legend inside each figure (a separate legend file is always written)")
     ap.add_argument("--title", action="store_true", help="print the reactor (e.g. 'A9 · Tube dislocation') above each figure")
     ap.add_argument("--from-bins", action="store_true",
                     help="re-plot from an existing latency_bins_<metric>.csv in --out")
