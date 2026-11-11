@@ -93,7 +93,7 @@ def main() -> int:
         .apply(lambda g: len(g.drop_duplicates()))
     agg["runs_with_ooo"] = run_flags
     agg = agg.reset_index()
-    agg.insert(3, "label", agg["className"].map(LABELS).where(agg["scope"] == "reactor"))
+    agg.insert(3, "label", agg["className"].map(LABELS).where(agg["scope"] == "reactor", "device"))
     agg["ordering_correctness_pct"] = 100.0 * (1 - agg["out_of_order"] / agg["total"])
     agg["out_of_order_ppm"] = 1e6 * agg["out_of_order"] / agg["total"]
     agg.to_csv(args.out / "ordering.csv", index=False)

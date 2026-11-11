@@ -26,7 +26,8 @@ include the replay thread's wake-up delay. ``ReplayProtocol`` logs the actual se
 every event (``metrics/<run>_emits.csv``); the ``*_net`` metrics subtract it. Downstream
 reactors inherit the source sample's timestamp, so their triggering instant is matched to the
 first send of that scheduled instant. ``replay_lag`` (send − schedule, reactor ``Replay``)
-quantifies the delay itself.
+quantifies the delay itself (label ``Replay``; computed over all replayed events of the run,
+without warm-up exclusion).
 
 Per consumed input of a FIRED evaluation:
 
@@ -45,7 +46,8 @@ published nothing, and the next FIRED evaluation that still holds the value in i
 seconds later, which would be reported as consumption latency although the input was taken
 promptly. Gated evaluations are reported in ``evaluations.csv``.
 
-Summaries are computed **per run** (n, mean, std, p50, p90, p99, p99.9, max) and then aggregated
+Summaries are computed **per run** (n, mean, std, p50, p90, p99, p99.9, max; the 99.9th percentile
+is named ``p999`` in all column names) and then aggregated
 over runs: the median of the per-run values, with a percentile-bootstrap 95 % CI over runs.
 ``summary.csv`` additionally reports the **pooled** mean and standard deviation over all samples
 of all runs (``mean_pooled``, ``std_pooled``; sample std, ddof = 1), as reported in the v03
@@ -60,11 +62,36 @@ Further outputs:
   SUPPRESSED), joined by firing order;
 - ``control.csv``: for recordings replayed more than once, the run-to-run differences
   (control vs control) next to the atomic vs non-atomic differences;
+- ``load_per_run.csv``, ``load.csv``: load indicators per run and per platform and mode (median
+  and maximum over runs), see below;
 - ``warmup_sensitivity.csv``: trigger-latency summaries with and without the first
   ``--warmup-s`` seconds of each run;
 - ``consumption_net.csv``: the ``consumption`` and ``consumption_net`` rows of ``summary.csv``
-  side by side per reactor (median over runs of the per-run p50, p99, p99.9 and max), with
+  side by side per reactor (median over runs of the per-run p50, p99, p999 and max), with
   the wake-up correction ``consumption − consumption_net`` at p50.
+
+**Load indicators** (``load*.csv``). CPU usage was not recorded; these columns indicate how far the
+reactor network is from saturation at the replayed load, per run over its whole duration
+(``duration_s`` = last − first actual send instant of the replay, from ``emits.csv``):
+
+- ``device_events_per_s``: replayed events per second (offered load);
+- ``firings_per_s``: FIRED evaluations of all reactors per second;
+- ``exec_us_per_firing``: mean ``react_end − react_start`` per FIRED evaluation (reaction function
+  including publication of its outputs);
+- ``exec_share_pct``: Σ(``react_end − react_start``) / duration, over all reactors;
+- ``busy_share_pct``: the same plus Σ(``decision − trigger_arrival``), i.e. the wall time spent in
+  reactor evaluation as a share of one core.
+
+The same quantities restricted to the steady state (firings after the first ``--warmup-s`` seconds,
+the window of the latency statistics) carry the suffix ``_steady``; ``latency_mean_ms_steady`` is
+the mean ``trigger_net`` over those firings. ``load.csv`` reports the median and maximum over runs
+and, for the steady state, the value **pooled** over all firings of all runs (``*_pooled``).
+
+These are wall-time intervals, not CPU time: the decision interval includes waiting for the
+evaluation lock and descheduling, and the work outside the reactors (event bus, replay, sink,
+JVM) and evaluations without a satisfied rule (no timing recorded) are not included. GC pauses
+come from ``gc/<run>.log`` (unified JVM logging, lines ``GC(n) Pause … <ms>ms``):
+``gc_pauses``, ``gc_pause_ms_total``, ``gc_pause_ms_max``, ``gc_pause_share_pct``.
 
 Usage::
 
@@ -75,6 +102,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -83,7 +111,7 @@ import pandas as pd
 
 from framed_runs import LABELS, ORDER, STATUS_CHANNEL, Run, discover
 
-QUANTILES = {"p50": 0.5, "p90": 0.9, "p99": 0.99, "p99.9": 0.999}
+QUANTILES = {"p50": 0.5, "p90": 0.9, "p99": 0.99, "p999": 0.999}
 
 
 def summarise(values: np.ndarray) -> dict:
@@ -171,6 +199,42 @@ def load_run(r: Run):
     return f, fired, j, first_consumed, s, lag
 
 
+GC_PAUSE = re.compile(r"GC\(\d+\) Pause .* (\d+(?:\.\d+)?)ms\s*$")
+
+
+def load_indicators(r: Run, f: pd.DataFrame, fired_all: pd.DataFrame, warmup_s: float) -> dict:
+    """Load indicators of one run (module docstring, *Load indicators*)."""
+    e = pd.read_csv(r.metrics("emits"), usecols=["emitted_ns"])
+    duration = (e["emitted_ns"].max() - e["emitted_ns"].min()) / 1e9
+    fired = f[f["outcome"] == "FIRED"]
+    exec_s = (fired["react_end_ns"] - fired["react_start_ns"]).sum() / 1e9
+    sched_s = (fired["decision_ns"] - fired["trigger_arrival_ns"]).sum() / 1e9
+    st = fired_all[fired_all["t_rel_s"] >= warmup_s]
+    window = max(f["t_rel_s"].max() - warmup_s, 0.0)
+    st_busy = ((st["react_end_ns"] - st["react_start_ns"]).sum()
+               + (st["decision_ns"] - st["trigger_arrival_ns"]).sum()) / 1e9
+    steady = {"window_s_steady": window, "firings_steady": len(st), "busy_s_steady": st_busy,
+              "latency_sum_ms_steady": float(st["trigger_net"].sum()),
+              "latency_n_steady": int(st["trigger_net"].notna().sum()),
+              "firings_per_s_steady": len(st) / window if window else np.nan,
+              "busy_us_per_firing_steady": 1e6 * st_busy / len(st) if len(st) else np.nan,
+              "busy_share_pct_steady": 100 * st_busy / window if window else np.nan,
+              "latency_mean_ms_steady": float(st["trigger_net"].mean())}
+    gc_log = r.pass_dir / "gc" / f"{r.run}.log"
+    pauses = []
+    if gc_log.exists():
+        with open(gc_log, encoding="utf-8", errors="replace") as fh:
+            pauses = [float(m.group(1)) for line in fh if (m := GC_PAUSE.search(line))]
+    return {**r.key, "duration_s": duration, "device_events": len(e), "firings": len(fired),
+            "device_events_per_s": len(e) / duration, "firings_per_s": len(fired) / duration,
+            "exec_us_per_firing": 1e6 * exec_s / len(fired) if len(fired) else np.nan,
+            "exec_share_pct": 100 * exec_s / duration,
+            "busy_share_pct": 100 * (exec_s + sched_s) / duration,
+            "gc_log": gc_log.exists(), "gc_pauses": len(pauses),
+            "gc_pause_ms_total": float(sum(pauses)), "gc_pause_ms_max": max(pauses, default=0.0),
+            "gc_pause_share_pct": 100 * sum(pauses) / 1e3 / duration, **steady}
+
+
 def interpreter_statuses(r: Run) -> list[str]:
     """The Interpreter's status records in publication order (one per firing)."""
     path = r.replay()
@@ -197,10 +261,11 @@ def main() -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(args.seed)
 
-    per_run, evals, status_rows, warm = [], [], [], []
+    per_run, evals, status_rows, warm, load = [], [], [], [], []
     for r in discover(args.root):
         key = r.key
         f, fired, j, first, s, lag = load_run(r)
+        load.append(load_indicators(r, f, fired, args.warmup_s))
         per_run.append({**key, "reactor": "Replay", "metric": "replay_lag",
                         **summarise(lag.to_numpy(float))})
         steady = fired[fired["t_rel_s"] >= args.warmup_s]
@@ -250,16 +315,16 @@ def main() -> int:
         return 1
 
     per_run = pd.DataFrame(per_run)
-    per_run.insert(0, "label", per_run["reactor"].map(LABELS))
+    per_run.insert(0, "label", per_run["reactor"].map(LABELS).fillna(per_run["reactor"]))
     per_run.to_csv(args.out / "per_run.csv", index=False)
 
     rows = []
     for (platform, mode, reactor, metric), g in per_run.groupby(["platform", "mode", "reactor", "metric"]):
-        row = {"platform": platform, "mode": mode, "label": LABELS.get(reactor), "reactor": reactor,
+        row = {"platform": platform, "mode": mode, "label": LABELS.get(reactor, reactor), "reactor": reactor,
                "metric": metric, "runs": len(g), "n": int(g["n"].sum())}
         row["mean_pooled"], row["std_pooled"] = pooled_mean_std(
             g["n"].to_numpy(float), g["mean"].to_numpy(float), g["std"].to_numpy(float))
-        for q in ("mean", "std", "p50", "p99", "p99.9", "max"):
+        for q in ("mean", "std", "p50", "p99", "p999", "max"):
             vals = g[q].to_numpy(float)
             row[f"{q}_median"] = float(np.nanmedian(vals)) if np.any(~np.isnan(vals)) else np.nan
             if q in ("p50", "p99"):
@@ -276,14 +341,31 @@ def main() -> int:
     pd.DataFrame(status_rows).to_csv(args.out / "interpreter_status.csv", index=False)
     pd.DataFrame(warm).to_csv(args.out / "warmup_sensitivity.csv", index=False)
 
+    load = pd.DataFrame(load)
+    load.to_csv(args.out / "load_per_run.csv", index=False)
+    cols = ["duration_s", "device_events_per_s", "firings_per_s", "exec_us_per_firing",
+            "exec_share_pct", "busy_share_pct", "gc_pauses", "gc_pause_ms_total",
+            "gc_pause_ms_max", "gc_pause_share_pct", "firings_per_s_steady",
+            "busy_us_per_firing_steady", "busy_share_pct_steady", "latency_mean_ms_steady"]
+    lg = load.groupby(["platform", "mode"])[cols]
+    load_tab = lg.median().add_suffix("_median").join(lg.max().add_suffix("_max"))
+    load_tab.insert(0, "runs", load.groupby(["platform", "mode"]).size())
+    pooled = load.groupby(["platform", "mode"])[["window_s_steady", "firings_steady", "busy_s_steady",
+                                                   "latency_sum_ms_steady", "latency_n_steady"]].sum()
+    load_tab["firings_per_s_steady_pooled"] = pooled["firings_steady"] / pooled["window_s_steady"]
+    load_tab["busy_us_per_firing_steady_pooled"] = 1e6 * pooled["busy_s_steady"] / pooled["firings_steady"]
+    load_tab["busy_share_pct_steady_pooled"] = 100 * pooled["busy_s_steady"] / pooled["window_s_steady"]
+    load_tab["latency_mean_ms_steady_pooled"] = pooled["latency_sum_ms_steady"] / pooled["latency_n_steady"]
+    load_tab.reset_index().to_csv(args.out / "load.csv", index=False)
+
     # consumption latency gross vs net of the replay wake-up delay, side by side
     keys = ["platform", "mode", "label", "reactor"]
     cons = agg[agg["metric"].isin(["consumption", "consumption_net"])]
     cons = cons.pivot_table(index=keys, columns="metric",
                             values=["n", "mean_pooled", "std_pooled", "mean_median", "std_median",
-                                    "p50_median", "p99_median", "p99.9_median", "max_median"])
+                                    "p50_median", "p99_median", "p999_median", "max_median"])
     cons.columns = [f"{m}_{v.removesuffix('_median')}" for v, m in cons.columns]
-    stats = ["n", "mean_pooled", "std_pooled", "mean", "std", "p50", "p99", "p99.9", "max"]
+    stats = ["n", "mean_pooled", "std_pooled", "mean", "std", "p50", "p99", "p999", "max"]
     cons = cons[[f"{m}_{q}" for m in ("consumption", "consumption_net") for q in stats
                  if f"{m}_{q}" in cons.columns]].reset_index()
     if {"consumption_p50", "consumption_net_p50"} <= set(cons.columns):
@@ -331,6 +413,13 @@ def main() -> int:
               .reindex([o for o in ORDER if o in set(dec["label"])]).to_string())
         print("\nGated share of rule-satisfying evaluations (median over runs)")
         print(evals.pivot_table(index="reactor", columns="mode", values="gated_share", aggfunc="median").to_string())
+        print("\nLoad indicators (median over runs; wall time, not CPU time)")
+        print(load_tab[[c + "_median" for c in ("device_events_per_s", "firings_per_s", "exec_us_per_firing",
+                                                 "exec_share_pct", "busy_share_pct", "gc_pause_ms_total",
+                                                 "gc_pause_ms_max")]].to_string())
+        print("\nSteady state (after --warmup-s), pooled over all firings of all runs")
+        print(load_tab[["firings_per_s_steady_pooled", "busy_us_per_firing_steady_pooled",
+                        "busy_share_pct_steady_pooled", "latency_mean_ms_steady_pooled"]].to_string())
         if not ctrl.empty:
             print("\nRun-to-run |Δ| of trigger p50/p99 (ms), median over reactors and recordings")
             print(ctrl.groupby("contrast")[["d_p50", "d_p99"]].median().to_string())
