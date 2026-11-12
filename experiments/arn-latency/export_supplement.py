@@ -16,6 +16,7 @@ S3_completeness_inputs.csv     input-side completeness of OR rules          ``in
 S4_ordering.csv                ordering correctness                         ``ordering.csv``
 S5_load.csv                    load indicators                              ``load.csv``
 S6_control.csv                 run-to-run vs atomic/non-atomic differences  ``control.csv``
+S7_firings.csv                 firings, microstep >= 1 firings, discards    ``evaluations_summary.csv``
 S0_data_dictionary.xlsx        sheets Tables, Notes, Metrics, Columns       ``data_dictionary_*.csv``
 PROVENANCE.txt                 roots, run manifests, script commit
 =============================  ===========================================  ========================
@@ -52,6 +53,7 @@ TABLES = {
     "S4_ordering.csv": "ordering.csv",
     "S5_load.csv": "load.csv",
     "S6_control.csv": "control.csv",
+    "S7_firings.csv": "evaluations_summary.csv",
 }
 NAME_OK = re.compile(r"^[A-Za-z0-9_]+$")
 RANK = {k: i for i, k in enumerate(ORDER)}
@@ -62,6 +64,7 @@ TITLES = {
     "S4": "Ordering correctness per reactor output and device channel group",
     "S5": "Load indicators per platform and execution mode",
     "S6": "Run-to-run differences: control repetitions vs. atomic/non-atomic",
+    "S7": "Firings, firings at microstep >= 1 and discarded input updates per reactor",
 }
 
 

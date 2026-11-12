@@ -27,6 +27,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 LABELS = {
@@ -104,12 +105,46 @@ def discover(root: Path) -> list[Run]:
 
 
 def load_replay(path: Path) -> pd.DataFrame:
-    """One bus output in file (= publication) order, with UTC timestamps."""
+    """One bus output in file (= reception) order, with UTC timestamps and the tag's microstep.
+
+    A line without ``microstep`` (device samples of runs recorded before the sink wrote the
+    field) has microstep 0.
+    """
     with open(path, encoding="utf-8") as fh:
         rows = [json.loads(line) for line in fh if line.strip()]
-    df = pd.DataFrame(rows, columns=["className", "value", "deviceID", "channelID", "timestamp"])
+    df = pd.DataFrame(rows, columns=["className", "value", "deviceID", "channelID", "timestamp",
+                                     "microstep"])
     df["timestamp"] = pd.to_datetime(df["timestamp"], format="ISO8601", utc=True)
+    df["microstep"] = pd.to_numeric(df["microstep"], errors="coerce").fillna(0).astype("int64")
     return df
+
+
+def tag_flags(df: pd.DataFrame, keys: list[str]) -> pd.DataFrame:
+    """Per row, the tag ``(timestamp, microstep)`` against earlier rows of the same channel.
+
+    Rows are taken in file order; tags are compared lexicographically (Definitions 2 and 5):
+
+    - ``older``: the tag is strictly smaller than that of the previous row (out of order);
+    - ``equal``: the tag equals that of the previous row;
+    - ``accepted``: the tag is strictly greater than every earlier tag of the channel, i.e. a
+      consumer applying the per-channel logical-time gate in this order would accept it.
+    """
+    t = df["timestamp"].astype("int64").to_numpy()
+    m = df["microstep"].astype("int64").to_numpy()
+    # dense rank of the tag over the frame: equal tags share a rank, order is lexicographic
+    order = np.lexsort((m, t))
+    new = np.ones(len(order), dtype=bool)
+    new[1:] = (np.diff(t[order]) != 0) | (np.diff(m[order]) != 0)
+    rank = np.empty(len(order), dtype="int64")
+    rank[order] = np.cumsum(new)
+    rank = pd.Series(rank, index=df.index)
+    by = [df[k] for k in keys]
+    prev = rank.groupby(by, sort=False).shift()
+    best_before = rank.groupby(by, sort=False).cummax().groupby(by, sort=False).shift()
+    return pd.DataFrame({"older": (rank < prev).to_numpy(),
+                         "equal": (rank == prev).to_numpy(),
+                         "accepted": (best_before.isna() | (rank > best_before)).to_numpy()},
+                        index=df.index)
 
 
 def order_labels(labels) -> list[str]:

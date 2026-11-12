@@ -17,7 +17,7 @@ trigger_net        reaction end − actual send instant of the triggering instan
 transport          arrival of the triggering message − its timestamp
 scheduling         firing decision − arrival of the triggering message
 execution          reaction end − reaction start
-end_to_end         reaction end − logical timestamp of the snapshot (newest input)
+end_to_end         reaction end − timestamp t of the output tag (newest held input)
 transport_net      arrival of the triggering message − actual send instant
 =================  ===========================================================
 
@@ -40,11 +40,11 @@ consumption_net    reaction end − actual send instant of that input, at its fi
                    ``trigger_net``; matched to the send log like the triggering instant)
 =================  ===========================================================
 
-An input's first consumption is taken over *all* recorded evaluations. Inputs first taken by a
-GATED evaluation are excluded from ``consumption`` and ``consumption_net``: that evaluation
-published nothing, and the next FIRED evaluation that still holds the value in its snapshot can be
-seconds later, which would be reported as consumption latency although the input was taken
-promptly. Gated evaluations are reported in ``evaluations.csv``.
+All latencies are measured from the timestamp ``t`` of the source sample's tag (Definition 6);
+microsteps do not enter. An input is identified by (reactor, channel, ``seq``), ``seq`` being
+the channel's accepted-update counter, and its first consumption is taken over all recorded
+evaluations. (Runs recorded with the former reactor-level gate also logged GATED evaluations;
+inputs first taken by one of those are excluded from ``consumption`` and ``consumption_net``.)
 
 Summaries are computed **per run** (n, mean, std, p50, p90, p99, p99.9, max; the 99.9th percentile
 is named ``p999`` in all column names) and then aggregated
@@ -56,8 +56,11 @@ deferred samples (see ``out/diagnose_v03/FINDINGS.md``); the percentiles are the
 
 Further outputs:
 
-- ``evaluations.csv``: fired, gated and no-rule evaluations per reactor and run (recorder
-  summary), with the gated share;
+- ``evaluations.csv``: per reactor and run, FIRED evaluations, those of them with output microstep
+  >= 1 (``fired_m_ge1``: further firings at an already reached timestamp, e.g. one per further path
+  of a source instant), no-rule evaluations and DISCARDED updates (recorder summary and
+  ``firings.csv``), with the discarded share of all received updates;
+- ``evaluations_summary.csv``: the same summed per platform, mode and reactor;
 - ``interpreter_status.csv``: Interpreter trigger latency per status (WARNING, NO_WARNING,
   SUPPRESSED), joined by firing order;
 - ``control.csv``: for recordings replayed more than once, the run-to-run differences
@@ -166,6 +169,10 @@ def load_run(r: Run):
     f = pd.read_csv(r.metrics("firings"))
     i = pd.read_csv(r.metrics("inputs"))
     s = pd.read_csv(r.metrics("summary"))
+    if "logical_m" not in f.columns:    # recorded before tags carried a microstep
+        f["logical_m"] = 0
+    if "discarded" not in s.columns:    # former summary (gated, not discarded): unknown
+        s["discarded"] = np.nan
     t0 = f["trigger_arrival_ns"].min()
     f["t_rel_s"] = (f["trigger_arrival_ns"] - t0) / 1e9
     fired = f[f["outcome"] == "FIRED"].copy()
@@ -286,11 +293,17 @@ def main() -> int:
                              **summarise(sub["trigger_net"].to_numpy(float))})
 
         statuses = interpreter_statuses(r)
+        m_ge1 = fired[fired["logical_m"] >= 1].groupby("reactor").size()
         for _, row in s[s["reactor"] != "*dropped*"].iterrows():
-            fired_n, gated_n = int(row["fired"]), int(row["gated"] or 0)
-            evals.append({**key, "reactor": row["reactor"], "fired": fired_n, "gated": gated_n,
-                          "no_rule": int(row["no_rule"] or 0),
-                          "gated_share": gated_n / (fired_n + gated_n) if fired_n + gated_n else np.nan})
+            fired_n = int(row["fired"])
+            discarded_n = int(row["discarded"]) if pd.notna(row["discarded"]) else np.nan
+            no_rule_n = int(row["no_rule"]) if pd.notna(row["no_rule"]) else 0
+            received = fired_n + no_rule_n + discarded_n
+            evals.append({**key, "label": LABELS.get(row["reactor"], row["reactor"]),
+                          "reactor": row["reactor"], "fired": fired_n,
+                          "fired_m_ge1": int(m_ge1.get(row["reactor"], 0)), "no_rule": no_rule_n,
+                          "discarded": discarded_n,
+                          "discarded_share": discarded_n / received if received > 0 else np.nan})
         dropped = s.loc[s["reactor"] == "*dropped*", "fired"]
         if len(dropped) and int(dropped.iloc[0]) > 0:
             print(f"WARNING {r.pass_dir.name}/{r.run}: {int(dropped.iloc[0])} records dropped", file=sys.stderr)
@@ -338,6 +351,15 @@ def main() -> int:
 
     evals = pd.DataFrame(evals)
     evals.to_csv(args.out / "evaluations.csv", index=False)
+    ekeys = ["platform", "mode", "label", "reactor"]
+    esum = evals.groupby(ekeys)[["fired", "fired_m_ge1", "no_rule", "discarded"]].sum()
+    esum["runs"] = evals.groupby(ekeys).size()
+    esum["fired_m_ge1_pct"] = 100.0 * esum["fired_m_ge1"] / esum["fired"]
+    esum["discarded_ppm"] = 1e6 * esum["discarded"] / (esum["fired"] + esum["no_rule"] + esum["discarded"])
+    esum = esum.reset_index()
+    esum["_order"] = esum["label"].map({k: i for i, k in enumerate(ORDER)})
+    esum = esum.sort_values(["platform", "mode", "_order"]).drop(columns="_order")
+    esum.to_csv(args.out / "evaluations_summary.csv", index=False)
     pd.DataFrame(status_rows).to_csv(args.out / "interpreter_status.csv", index=False)
     pd.DataFrame(warm).to_csv(args.out / "warmup_sensitivity.csv", index=False)
 
@@ -411,8 +433,13 @@ def main() -> int:
         dec = agg[agg["metric"].isin(["transport_net", "scheduling", "execution", "rule_wait"])]
         print(dec.pivot_table(index="label", columns=["metric", "mode"], values="p50_median")
               .reindex([o for o in ORDER if o in set(dec["label"])]).to_string())
-        print("\nGated share of rule-satisfying evaluations (median over runs)")
-        print(evals.pivot_table(index="reactor", columns="mode", values="gated_share", aggfunc="median").to_string())
+        print("\nFirings at microstep >= 1 / all firings (sum over runs)")
+        e = esum.assign(cell=esum["fired_m_ge1"].astype(str) + "/" + esum["fired"].astype(str))
+        print(e.pivot_table(index="label", columns=["platform", "mode"], values="cell", aggfunc="first")
+              .reindex([o for o in ORDER if o in set(e["label"])]).to_string())
+        print("\nDiscarded updates (sum over runs)")
+        print(esum.pivot_table(index="label", columns=["platform", "mode"], values="discarded", aggfunc="sum")
+              .reindex([o for o in ORDER if o in set(esum["label"])]).to_string())
         print("\nLoad indicators (median over runs; wall time, not CPU time)")
         print(load_tab[[c + "_median" for c in ("device_events_per_s", "firings_per_s", "exec_us_per_firing",
                                                  "exec_share_pct", "busy_share_pct", "gc_pause_ms_total",

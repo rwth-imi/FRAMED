@@ -7,6 +7,6 @@ transport_net,FIRED evaluation,Arrival of the triggering input at the reactor �
 transport,FIRED evaluation,Arrival of the triggering input − its timestamp.,ms
 scheduling,FIRED evaluation,Firing decision − arrival of the triggering input (includes waiting for the evaluation lock).,ms
 execution,FIRED evaluation,Reaction end − reaction start (reaction function including publication of its outputs).,ms
-end_to_end,FIRED evaluation,Reaction end − logical timestamp of the snapshot (newest input).,ms
+end_to_end,FIRED evaluation,Reaction end − timestamp t of the output tag (newest held input).,ms
 rule_wait,consumed input of a FIRED evaluation,Firing decision − arrival of that input.,ms
 replay_lag,replayed event (label Replay),"Actual − scheduled send instant of the replay; whole run, no warm-up exclusion.",ms

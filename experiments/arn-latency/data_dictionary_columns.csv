@@ -22,10 +22,12 @@ S2,platform,"Platform (AMD, PI).",
 S2,mode,"Execution mode (ATOMIC, NON_ATOMIC).",
 S2,label,"Reactor label A1–A13 (Replay, device: see Notes).",
 S2,reactor,Reactor id in the configuration.,
-S2,expected,"Outputs expected from the reactor's inputs under its firing rule, summed over runs (inputs counted from the reactor's join start; device channels de-duplicated on identical records).",count
-S2,observed,"Reactor outputs on the bus, summed over runs.",count
+S2,expected,"Outputs expected from the reactor's inputs under its firing rule, summed over runs (inputs counted from the reactor's join start; device channels de-duplicated on identical records; downstream channels: all messages published by the producer, including microstep ≥ 1).",count
+S2,observed,"Accepted reactor outputs, summed over runs: outputs on the bus whose tag (timestamp, microstep) is strictly greater than every earlier tag of the channel in the order received by the data sink, i.e. those a consumer applying the per-channel logical-time gate accepts.",count
+S2,published,"All reactor outputs on the bus, summed over runs.",count
+S2,not_accepted,published − observed: outputs whose tag is not greater than an earlier tag of the channel (out of order or equal).,count
 S2,runs,Number of runs.,count
-S2,completeness_pct,Output-based consumption completeness: 100 · observed / expected.,%
+S2,completeness_pct,Output-based consumption completeness (Definition 4): 100 · observed / expected.,%
 S2,run_median_pct,"Per-run completeness, median over runs.",%
 S2,run_min_pct,"Per-run completeness, minimum over runs.",%
 S2,diff,expected − observed.,count
@@ -34,30 +36,30 @@ S3,mode,"Execution mode (ATOMIC, NON_ATOMIC).",
 S3,label,"Reactor label A1–A13 (Replay, device: see Notes).",
 S3,reactor,Reactor id in the configuration.,
 S3,input_updates,"Input records received on the bus, summed over runs (whole run; device channels de-duplicated on identical records).",count
-S3,consumed,Input records consumed by a FIRED evaluation.,count
-S3,skipped_same_ts,Input records whose timestamp equals that of a consumed record on the same channel (rejected as not newer).,count
-S3,skipped_late,Input records with a distinct timestamp that no firing consumed (arrived after a newer record of the same channel).,count
+S3,consumed,Input records whose tag was consumed by a FIRED evaluation (one per tag).,count
+S3,skipped_same_tag,"Further input records of a consumed tag (timestamp, microstep); only the first record of a tag can be accepted.",count
+S3,skipped_late,Input records of a tag that no firing consumed (discarded as older than the last accepted tag of the channel).,count
 S3,consumed_not_on_bus,Consumed inputs not found on the bus (consistency check; expected 0).,count
 S3,fired,FIRED evaluations (for A13 equal to its status outputs).,count
-S3,coalesced,Inputs consumed together with other inputs in one firing (consumed − fired).,count
+S3,coalesced,Inputs consumed together with other inputs in one firing (Σ consumed inputs per firing − fired).,count
 S3,multi_input_firings,Firings that consumed more than one input.,count
 S3,runs,Number of runs.,count
 S3,completeness_pct,Input-side completeness: 100 · consumed / input_updates.,%
 S3,run_min_pct,"Per-run input-side completeness, minimum over runs.",%
 S3,multi_input_firing_pct,100 · multi_input_firings / fired.,%
-S3,diff,input_updates − consumed (= skipped_same_ts + skipped_late).,count
+S3,diff,input_updates − consumed (= skipped_same_tag + skipped_late).,count
 S4,platform,"Platform (AMD, PI).",
 S4,mode,"Execution mode (ATOMIC, NON_ATOMIC).",
 S4,scope,reactor: reactor outputs; device: replayed device channels.,
 S4,label,"Reactor label A1–A13, or device.",
 S4,className,Producing reactor id (scope reactor) or device message class (scope device).,
-S4,out_of_order,"Events whose timestamp is earlier than that of the previous event on the same channel, in the order received by the data sink; summed over runs.",count
-S4,ties,Events whose timestamp equals that of the previous event on the same channel (not out of order).,count
+S4,out_of_order,"Events whose tag (timestamp, microstep) is lexicographically smaller than that of the previous event on the same channel, in the order received by the data sink (Definition 5); summed over runs.",count
+S4,ties,Events whose tag equals that of the previous event on the same channel (not out of order).,count
 S4,total,"Events, summed over runs.",count
 S4,runs,Number of runs.,count
 S4,runs_with_ooo,Runs with at least one out-of-order event.,count
-S4,ordering_correctness_pct,100 · (1 − out_of_order / total).,%
-S4,out_of_order_ppm,10^6 · out_of_order / total.,ppm
+S4,ordering_correctness_pct,"100 · ord, with ord = 1 − out_of_order / total (Definition 5).",%
+S4,out_of_order_ppm,(1 − ord) · 10^6.,ppm
 S5,platform,"Platform (AMD, PI).",
 S5,mode,"Execution mode (ATOMIC, NON_ATOMIC).",
 S5,runs,Number of runs.,count
@@ -99,3 +101,14 @@ S6,reactor,Reactor id.,
 S6,contrast,control (ATOMIC) / control (NON_ATOMIC): two identical replays of the same recording and mode; atomic vs non-atomic: first replay in each mode.,
 S6,d_p50,Absolute difference of the per-run 50th percentile of trigger_net between the two runs.,ms
 S6,d_p99,Absolute difference of the per-run 99th percentile of trigger_net between the two runs.,ms
+S7,platform,"Platform (AMD, PI).",
+S7,mode,"Execution mode (ATOMIC, NON_ATOMIC).",
+S7,label,"Reactor label A1–A13 (Replay, device: see Notes).",
+S7,reactor,Reactor id in the configuration.,
+S7,fired,"FIRED evaluations, summed over runs.",count
+S7,fired_m_ge1,"FIRED evaluations whose output tag has microstep ≥ 1 (further firings at an already reached timestamp, e.g. one per further path of a source instant).",count
+S7,no_rule,Accepted input updates for which no firing rule was satisfied.,count
+S7,discarded,Input updates rejected by the per-channel logical-time gate (tag not greater than the last accepted tag of the channel).,count
+S7,runs,Number of runs.,count
+S7,fired_m_ge1_pct,100 · fired_m_ge1 / fired.,%
+S7,discarded_ppm,"10^6 · discarded / (fired + no_rule + discarded), i.e. per received input update.",ppm

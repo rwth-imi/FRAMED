@@ -156,11 +156,13 @@ The runs after a resume belong to a new session, so host state may shift absolut
                             temperature and throttling before/after
   <LABEL>_progress.txt      progress and ETA
   <LABEL>_ATOMIC/, <LABEL>_NON_ATOMIC/
-    <epochms>_<run>_replay.jsonl          bus output (inputs and reactor outputs)
-    metrics/<run>_firings.csv             every evaluation: FIRED/GATED, trigger, arrival,
-                                          decision and reaction instants (ns)
-    metrics/<run>_inputs.csv              the inputs consumed per evaluation
-    metrics/<run>_summary.csv             fired / gated / no-rule per reactor; dropped records
+    <epochms>_<run>_replay.jsonl          bus output (inputs and reactor outputs, with the tag's
+                                          microstep)
+    metrics/<run>_firings.csv             every firing and every discarded input update:
+                                          FIRED/DISCARDED, trigger, output and gate tags,
+                                          arrival, decision and reaction instants (ns)
+    metrics/<run>_inputs.csv              the inputs (with their tags) consumed per firing
+    metrics/<run>_summary.csv             fired / discarded / no-rule per reactor; dropped records
     metrics/<run>_emits.csv               scheduled and actual send instant of every replayed event
     config/<run>_services.json            the configuration this run used
     config/<run>_communication.json
@@ -191,13 +193,14 @@ Per FIRED evaluation (ms):
 | `trigger_net` | reaction end − actual send instant of the triggering instant (**primary**) |
 | `trigger` | reaction end − timestamp of the triggering message (includes the replay's wake-up delay) |
 | `transport_net` / `scheduling` / `execution` | decomposition: send → arrival → decision → reaction end |
-| `end_to_end` | reaction end − logical timestamp of the snapshot |
+| `end_to_end` | reaction end − timestamp of the output tag (newest held input) |
 | `rule_wait` | decision − arrival, per consumed input |
 | `consumption` | reaction end − input timestamp, at the input's first consumption (includes the replay's wake-up delay) |
 | `consumption_net` | reaction end − actual send instant of that input, at its first consumption |
 
-Inputs first taken by a GATED evaluation are excluded from `consumption` and `consumption_net`: nothing was published, and the next firing that still holds the value can be seconds later.
 | `replay_lag` | actual − scheduled send instant (the replay's own delay) |
+
+All latencies are measured from the timestamp `t` of the source sample's tag (Definition 6); microsteps do not enter.
 
 **Statistics:**
 - the first `--warmup-s` seconds (default 30) are excluded;
@@ -209,7 +212,7 @@ Mean and std are dominated by a few deferred samples; the percentiles are the pr
 
 **Files:**
 - `summary.csv`, `per_run.csv`;
-- `evaluations.csv` (fired / gated / no-rule, gated share);
+- `evaluations.csv`, `evaluations_summary.csv` (per run, and summed per platform, mode and reactor): FIRED evaluations, those of them at output microstep ≥ 1 (`fired_m_ge1`), no-rule evaluations and DISCARDED input updates;
 - `interpreter_status.csv` (Interpreter latency per WARNING / NO_WARNING / SUPPRESSED);
 - `control.csv` (run-to-run differences: control vs control next to atomic vs non-atomic);
 - `warmup_sensitivity.csv`;
@@ -218,9 +221,7 @@ Mean and std are dominated by a few deferred samples; the percentiles are the pr
 
 ### Ordering correctness (`analyze_ordering.py`)
 
-**Out of order:** an event on a channel whose timestamp is strictly earlier than that of the previous event on the same channel, in the order the sink received them. Equal consecutive timestamps are counted separately as `ties`:
-- the Interpreter publishes one status per classification path of an instant;
-- the recordings contain a few duplicate device timestamps.
+**Out of order (Definition 5):** an event on a channel whose tag `(timestamp, microstep)` is lexicographically smaller than that of the previous event on the same channel, in the order the sink received them. Equal consecutive tags are not out of order and are counted separately as `ties`; reactor output tags strictly increase, so ties occur only on device channels (duplicate device timestamps in the recordings). `ord = 1 − out_of_order / total`; the out-of-order rate is `(1 − ord) · 10^6` ppm. Bus output without a `microstep` field (runs recorded before the sink wrote it) is read as microstep 0.
 
 Scope `reactor` = CDSS outputs; scope `device` = replayed device channels.
 
@@ -228,25 +229,28 @@ Scope `reactor` = CDSS outputs; scope `device` = replayed device channels.
 
 ### Consumption completeness (`analyze_consumption.py`)
 
-**Observed / expected:** the reactor outputs on the bus, divided by the outputs its inputs should produce under its firing semantics, using the run's own configuration.
+**Observed / expected (Definition 4):** the reactor's *accepted* outputs, divided by the outputs its inputs should produce under its firing semantics, using the run's own configuration. An output is accepted if its tag is strictly greater than every earlier tag of the channel in the order the sink received them, i.e. a consumer applying the per-channel logical-time gate accepts it (`published` counts all outputs, `not_accepted` the difference).
 
 | Reactor type | Expected outputs |
 |---|---|
 | single input | input events |
-| OR rules (A4, A10, A12, A13) | sum of input events |
+| OR rules (A4, A10, A12) | sum of input events |
+| Interpreter (A13) | sum of input events over the whole run (it fires on any accepted input, without waiting for the others) |
 | trend (A7, A8) | input events − (windowSize − 1) |
 | dislocation (A9) | min(SpO₂ trend, S/F class) + etCO₂ class events |
 | RR estimator (A11) | waveform events − (windowSize/2 − 1 − 60/RR · 3.125 Hz) |
 
-Inputs are counted from the reactor's join start, i.e. the latest first timestamp of its inputs.
+Inputs are counted from the reactor's join start, i.e. the latest first timestamp of its inputs. Device input channels are de-duplicated on identical records, as before, so first-level completeness is comparable with earlier runs. For a downstream (CDSS) input channel, the input events are all messages its producer published, including those at microstep ≥ 1.
 
-A13 (Interpreter) is reported as a check only. Its value is below 100 % by design, because one firing can consume several paths of an instant that arrive together.
+A13 (Interpreter) is measured on `Interpretation-Status`, which carries exactly one record per firing (`NO_WARNING` / `WARNING`, plus `;SUPPRESSED:<gates>`); its warning channels are not counted.
 
-**Input-side completeness (OR rules: A4, A10, A12, A13):** the input records a reactor received on the bus over the whole run (device channels de-duplicated as above, CDSS channels not), and the share of them that a FIRED evaluation consumed (`metrics/<run>_inputs.csv`). The difference between inputs and outputs is split into `coalesced` (consumed together with other inputs in one firing), `skipped_same_ts` (timestamp equal to a consumed record on the same channel) and `skipped_late` (distinct timestamp never consumed: arrived after a newer record). This follows the semantics of an OR rule, where one firing may consume several updates arriving together, and is the completeness measure for A13. Timestamps are compared at microsecond resolution. The recorder's sequence numbers are not used, because a firing can consume a value before its sequence number is incremented.
+**Input-side completeness (OR rules: A4, A10, A12, A13):** the input records a reactor received on the bus over the whole run (device channels de-duplicated as above, CDSS channels not), and the share whose tag a FIRED evaluation consumed (`metrics/<run>_inputs.csv`). The shortfall is split into `skipped_same_tag` (further records of a consumed tag) and `skipped_late` (records of a tag never consumed: discarded as older than the channel's last accepted tag); `coalesced` counts inputs consumed together with others in one firing. Tags are compared as (timestamp at microsecond resolution, microstep).
 
-**Outputs per firing:** bus outputs / FIRED evaluations of the recorder. Values below 1 are the warm-up of windowed reactors.
+**Discarded updates:** from the recorder (`firings.csv`, outcome `DISCARDED`), per reactor and input channel, split into `discarded_duplicate` (tag equal to the channel's last accepted tag) and `discarded_older` (smaller tag). These count every message the reactor received, without de-duplication.
 
-**Files:** `consumption.csv`, `consumption_per_run.csv`, `consumption_counts_per_run.csv`, `outputs_per_firing.csv`, `input_consumption.csv`, `input_consumption_per_run.csv`.
+**Outputs per firing:** accepted bus outputs / FIRED evaluations of the recorder. Values below 1 are the warm-up of windowed reactors.
+
+**Files:** `consumption.csv`, `consumption_per_run.csv`, `consumption_counts_per_run.csv`, `outputs_per_firing.csv`, `input_consumption.csv`, `input_consumption_per_run.csv`, `discarded.csv`, `discarded_per_run.csv`.
 
 ### Latency distributions (`plot_latency_distribution.py`)
 
@@ -282,7 +286,7 @@ Run after the three analyses, with one `--root` per platform:
 python export_supplement.py --root out/full-amd --root out/full-pi --out out/supplement
 ```
 
-Writes `S1_latency.csv` (from `summary.csv`), `S2_completeness_outputs.csv` (`consumption.csv`), `S3_completeness_inputs.csv` (`input_consumption.csv`), `S4_ordering.csv` (`ordering.csv`), `S5_load.csv` (`load.csv`) and `S6_control.csv` (`control.csv`), each combined over the platforms.
+Writes `S1_latency.csv` (from `summary.csv`), `S2_completeness_outputs.csv` (`consumption.csv`), `S3_completeness_inputs.csv` (`input_consumption.csv`), `S4_ordering.csv` (`ordering.csv`), `S5_load.csv` (`load.csv`), `S6_control.csv` (`control.csv`) and `S7_firings.csv` (`evaluations_summary.csv`), each combined over the platforms.
 
 It also writes `S0_data_dictionary.xlsx` (sheets Tables, Notes, Metrics, Columns) and `PROVENANCE.txt` (results roots, manifest commits, jar hashes, script commit). The dictionary is maintained only in `data_dictionary_notes.csv`, `data_dictionary_metrics.csv` and `data_dictionary_columns.csv`. The script refuses to write when a table has an empty `label`, a column name outside `[A-Za-z0-9_]`, or columns that differ from the dictionary, so a table from an older analysis run or an outdated dictionary is caught.
 
