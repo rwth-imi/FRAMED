@@ -53,7 +53,7 @@ class ReactorFiringRecorderTest {
 
     @Override
     public void reactionFunction(Map<String, Object> snapshot) {
-      publishResult(eventBus, 1, id, List.of(OUT), lastLogicalFireTs);
+      publishResult(eventBus, 1, id, List.of(OUT), outputTag(snapshot));
     }
   }
 
@@ -90,9 +90,9 @@ class ReactorFiringRecorderTest {
     FiringRecord r = recorder.records.get(0);
     assertEquals(FiringRecord.Outcome.FIRED, r.outcome());
     assertEquals(B, r.triggerChannel());
-    assertEquals(at(2), r.triggerTs());
-    assertEquals(at(2), r.logicalTs());
-    assertEquals(Instant.EPOCH, r.gateTs());
+    assertEquals(Tag.of(at(2)), r.triggerTag());
+    assertEquals(Tag.of(at(2)), r.outputTag());
+    assertEquals(Tag.ZERO, r.gateTag(), "first message on B");
     assertEquals(2, r.evaluation());
     assertEquals(List.of(A, B), r.consumed().stream().map(FiringRecord.ConsumedInput::channel).sorted().toList());
     r.consumed().forEach(in -> assertNotNull(in.arrival(), "arrival of " + in.channel()));
@@ -121,33 +121,47 @@ class ReactorFiringRecorderTest {
   }
 
   /**
-   * Regression for the deferral behind the v03 latency outliers: a sample older than the last
-   * firing is gated and consumed only by the next firing.
+   * Formerly gated: a sample older than the last firing, arriving on another channel, is
+   * accepted and fires at once, at the held maximum timestamp with the next microstep.
    */
   @Test
-  void olderSampleIsGatedAndConsumedByTheNextFiring() {
-    new EchoReactor(bus, "gate", List.of(Map.of(A, "*"), Map.of(B, "*")), true);
+  void olderSampleOnAnotherChannelFiresAtTheNextMicrostep() {
+    new EchoReactor(bus, "late", List.of(Map.of(A, "*"), Map.of(B, "*")), true);
 
     bus.publish(A, dp(1, T0.plusSeconds(2)));
     bus.publish(B, dp(2, T0.plusSeconds(1)));
     bus.publish(A, dp(3, T0.plusSeconds(3)));
 
-    assertEquals(3, recorder.records.size());
-    FiringRecord gated = recorder.records.get(1);
-    assertEquals(FiringRecord.Outcome.GATED, gated.outcome());
-    assertEquals(B, gated.triggerChannel());
-    assertEquals(at(2), gated.gateTs());
-    assertNull(gated.reactStart());
-    assertNull(gated.reactEnd());
-    assertEquals(List.of(B), gated.consumed().stream().map(FiringRecord.ConsumedInput::channel).toList());
+    assertEquals(List.of(FiringRecord.Outcome.FIRED, FiringRecord.Outcome.FIRED,
+            FiringRecord.Outcome.FIRED), outcomes());
+    FiringRecord late = recorder.records.get(1);
+    assertEquals(B, late.triggerChannel());
+    assertEquals(new Tag(at(2), 1), late.outputTag());
+    assertEquals(List.of(B), late.consumed().stream().map(FiringRecord.ConsumedInput::channel).toList());
+    assertEquals(Tag.of(at(1)), late.consumed().get(0).tag());
+    assertEquals(Tag.of(at(3)), recorder.records.get(2).outputTag());
+    assertEquals(3, bus.getPublished().stream().filter(p -> p.channel().equals(OUT)).count());
+  }
 
-    FiringRecord next = recorder.records.get(2);
-    assertEquals(FiringRecord.Outcome.FIRED, next.outcome());
-    assertEquals(A, next.triggerChannel());
-    assertTrue(next.consumed().stream().anyMatch(in -> in.channel().equals(B) && in.ts().equals(at(1))),
-            "the gated B sample is consumed by the next firing");
-    assertEquals(2, bus.getPublished().stream().filter(p -> p.channel().equals(OUT)).count(),
-            "only the two FIRED evaluations produce output");
+  /** A duplicate tag on a channel is discarded: recorded, but no evaluation and no output. */
+  @Test
+  void duplicateTagIsRecordedAsDiscarded() {
+    new EchoReactor(bus, "dup", List.of(Map.of(A, "*")), true);
+
+    bus.publish(A, dp(1, T0.plusSeconds(1)));
+    bus.publish(A, dp(2, T0.plusSeconds(1)));
+
+    assertEquals(List.of(FiringRecord.Outcome.FIRED, FiringRecord.Outcome.DISCARDED), outcomes());
+    FiringRecord d = recorder.records.get(1);
+    assertEquals(2, d.evaluation());
+    assertEquals(Tag.of(at(1)), d.triggerTag());
+    assertEquals(Tag.of(at(1)), d.gateTag());
+    assertNull(d.outputTag());
+    assertNull(d.decision());
+    assertNull(d.reactStart());
+    assertTrue(d.consumed().isEmpty());
+    assertNull(recorder.noRule.get("dup"), "a discarded message is not evaluated");
+    assertEquals(1, bus.getPublished().stream().filter(p -> p.channel().equals(OUT)).count());
   }
 
   /** Regression: measurement must not publish anything on the bus. */
@@ -178,61 +192,52 @@ class ReactorFiringRecorderTest {
             "the reactor still fires");
   }
 
-  /** {@link EchoReactor} that opts into firing on an equal logical timestamp. */
-  static final class SameInstantReactor extends Reactor {
-    SameInstantReactor(InMemoryEventBus bus, String id, List<Map<String, String>> rules) {
-      super(bus, id, rules, List.of(A, B), List.of(OUT), true);
-    }
-
-    @Override
-    protected boolean firesOnEqualLogicalTime() {
-      return true;
-    }
-
-    @Override
-    public void reactionFunction(Map<String, Object> snapshot) {
-      publishResult(eventBus, 1, id, List.of(OUT), lastLogicalFireTs);
-    }
-  }
-
   private List<FiringRecord.Outcome> outcomes() {
     return recorder.records.stream().map(FiringRecord::outcome).toList();
   }
 
-  /** Default gate: a second path carrying the same instant does not fire. */
+  /**
+   * Regression: {@code "r:v"} compares the message's {@code "value"}; it used to compare the whole
+   * JSON message and never matched.
+   */
   @Test
-  void sameInstantOverASecondPathIsGatedByDefault() {
-    new EchoReactor(bus, "default", List.of(Map.of(A, "*"), Map.of(B, "*")), true);
+  void requireValueMatchesTheLatestValue() {
+    new EchoReactor(bus, "value", List.of(Map.of(A, "r:1")), true);
+
+    bus.publish(A, dp(0, T0.plusSeconds(1)));
+    assertTrue(recorder.records.isEmpty(), "value 0 does not match");
+    bus.publish(A, dp(1, T0.plusSeconds(2)));
+
+    assertEquals(List.of(FiringRecord.Outcome.FIRED), outcomes());
+    assertEquals(1, recorder.noRule.get("value").get());
+  }
+
+  /** Each path carrying the same instant fires, at increasing microsteps. */
+  @Test
+  void sameInstantOverASecondPathFiresAtTheNextMicrostep() {
+    new EchoReactor(bus, "paths", List.of(Map.of(A, "*"), Map.of(B, "*")), true);
 
     bus.publish(A, dp(1, T0.plusSeconds(1)));
     bus.publish(B, dp(2, T0.plusSeconds(1)));
 
-    assertEquals(List.of(FiringRecord.Outcome.FIRED, FiringRecord.Outcome.GATED), outcomes());
+    assertEquals(List.of(FiringRecord.Outcome.FIRED, FiringRecord.Outcome.FIRED), outcomes());
+    assertEquals(List.of(Tag.of(at(1)), new Tag(at(1), 1)),
+            recorder.records.stream().map(FiringRecord::outputTag).toList());
+    assertEquals(List.of(B), recorder.records.get(1).consumed().stream()
+            .map(FiringRecord.ConsumedInput::channel).toList(), "second firing consumes B only");
   }
 
-  /**
-   * Opt-in gate: every path of an instant fires, and so does a late arrival of an older instant
-   * (the snapshot carries the newer held timestamp); a same-channel duplicate does not.
-   */
+  /** After a microstep firing, a newer timestamp resets the microstep to 0. */
   @Test
-  void optInFiresOnEveryNewInputButNotOnADuplicate() {
-    new SameInstantReactor(bus, "same", List.of(Map.of(A, "*"), Map.of(B, "*")));
+  void newerTimestampResetsTheMicrostep() {
+    new EchoReactor(bus, "reset", List.of(Map.of(A, "*"), Map.of(B, "*")), false);
 
     bus.publish(A, dp(1, T0.plusSeconds(2)));
     bus.publish(B, dp(2, T0.plusSeconds(2)));
-    assertEquals(List.of(FiringRecord.Outcome.FIRED, FiringRecord.Outcome.FIRED), outcomes());
-    assertEquals(List.of(B), recorder.records.get(1).consumed().stream()
-            .map(FiringRecord.ConsumedInput::channel).toList(), "second firing consumes B");
+    bus.publish(A, dp(3, T0.plusSeconds(4)));
+    bus.publish(B, dp(4, T0.plusSeconds(3)));   // late path; held maximum stays t4
 
-    bus.publish(A, dp(3, T0.plusSeconds(2)));   // same channel, same timestamp: not new
-    assertEquals(2, recorder.records.size());
-    assertEquals(1, recorder.noRule.get("same").get());
-
-    bus.publish(A, dp(4, T0.plusSeconds(4)));
-    bus.publish(B, dp(5, T0.plusSeconds(3)));   // late, older path; logical time stays t4
-    FiringRecord late = recorder.records.get(3);
-    assertEquals(FiringRecord.Outcome.FIRED, late.outcome());
-    assertEquals(at(4), late.logicalTs());
-    assertEquals(4, bus.getPublished().stream().filter(p -> p.channel().equals(OUT)).count());
+    assertEquals(List.of(Tag.of(at(2)), new Tag(at(2), 1), Tag.of(at(4)), new Tag(at(4), 1)),
+            recorder.records.stream().map(FiringRecord::outputTag).toList());
   }
 }

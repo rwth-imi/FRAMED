@@ -26,20 +26,20 @@ class CsvFiringRecorderTest {
 
   private static FiringRecord fired(long evaluation) {
     return new FiringRecord("R", evaluation, FiringRecord.Outcome.FIRED, true, CHANNEL,
-            T, T.plusNanos(10), T, Instant.EPOCH, T.plusNanos(20), T.plusNanos(30), T.plusNanos(40),
-            List.of(new FiringRecord.ConsumedInput(CHANNEL, 1, T, T.plusNanos(10))));
+            Tag.of(T), T.plusNanos(10), new Tag(T, 2), Tag.ZERO, T.plusNanos(20), T.plusNanos(30),
+            T.plusNanos(40), List.of(new FiringRecord.ConsumedInput(CHANNEL, 1, Tag.of(T), T.plusNanos(10))));
   }
 
-  private static FiringRecord gated(long evaluation) {
-    return new FiringRecord("R", evaluation, FiringRecord.Outcome.GATED, false, "B",
-            T, T.plusNanos(10), T, T.plusSeconds(1), T.plusNanos(20), null, null, List.of());
+  private static FiringRecord discarded(long evaluation) {
+    return new FiringRecord("R", evaluation, FiringRecord.Outcome.DISCARDED, false, "B",
+            Tag.of(T), T.plusNanos(10), null, Tag.of(T.plusSeconds(1)), null, null, null, List.of());
   }
 
   @Test
   void writesFiringsInputsAndSummary(@TempDir Path dir) throws IOException {
     CsvFiringRecorder recorder = new CsvFiringRecorder(dir, "run 1", 100);
     recorder.record(fired(1));
-    recorder.record(gated(2));
+    recorder.record(discarded(2));
     recorder.countNoRule("R");
     recorder.close();
 
@@ -47,18 +47,20 @@ class CsvFiringRecorderTest {
     assertEquals(3, firings.size(), "header + 2 rows");
     assertTrue(firings.get(0).startsWith("run,reactor,evaluation,outcome,"));
     long tNanos = T.getEpochSecond() * 1_000_000_000L;
-    assertEquals("\"run 1\",\"R\",1,FIRED,true,\"" + CHANNEL + "\"," + tNanos + "," + (tNanos + 10)
-            + "," + tNanos + ",0," + (tNanos + 20) + "," + (tNanos + 30) + "," + (tNanos + 40) + ",1",
+    assertEquals("\"run 1\",\"R\",1,FIRED,true,\"" + CHANNEL + "\"," + tNanos + ",0," + (tNanos + 10)
+            + "," + tNanos + ",2,0,0," + (tNanos + 20) + "," + (tNanos + 30) + "," + (tNanos + 40) + ",1",
             firings.get(1));
-    assertTrue(firings.get(2).contains(",GATED,false,\"B\","), firings.get(2));
-    assertTrue(firings.get(2).endsWith(",,,0"), "a gated row has no reaction times: " + firings.get(2));
+    assertEquals("\"run 1\",\"R\",2,DISCARDED,false,\"B\"," + tNanos + ",0," + (tNanos + 10)
+            + ",,," + (tNanos + 1_000_000_000L) + ",0,,,,0", firings.get(2),
+            "a discarded row has no output tag and no reaction times");
 
     List<String> inputs = Files.readAllLines(dir.resolve("run_1_inputs.csv"));
     assertEquals(2, inputs.size(), "header + 1 consumed input");
-    assertTrue(inputs.get(1).startsWith("\"run 1\",\"R\",1,\"" + CHANNEL + "\",1,"));
+    assertEquals("\"run 1\",\"R\",1,\"" + CHANNEL + "\",1," + tNanos + ",0," + (tNanos + 10),
+            inputs.get(1));
 
     List<String> summary = Files.readAllLines(dir.resolve("run_1_summary.csv"));
-    assertEquals(List.of("run,reactor,fired,gated,no_rule", "\"run 1\",\"R\",1,1,1",
+    assertEquals(List.of("run,reactor,fired,discarded,no_rule", "\"run 1\",\"R\",1,1,1",
             "\"run 1\",\"*dropped*\",0,,"), summary);
   }
 

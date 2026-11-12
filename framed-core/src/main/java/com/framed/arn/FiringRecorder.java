@@ -26,14 +26,15 @@ public interface FiringRecorder {
   boolean enabled();
 
   /**
-   * Records one evaluation that satisfied at least one rule, whether it fired or was gated.
+   * Records one handled message: an evaluation that satisfied at least one rule and fired, or
+   * a message discarded by the logical-time gate.
    *
    * @param firing the evaluation's timing
    */
   void record(FiringRecord firing);
 
   /**
-   * Counts an evaluation in which no rule was satisfied. Such evaluations get no
+   * Counts an accepted message for which no rule was satisfied. Such evaluations get no
    * {@link FiringRecord}; only their number per reactor is kept.
    *
    * @param reactorId id of the evaluating reactor
