@@ -95,6 +95,19 @@ S5,firings_per_s_steady_pooled,"As firings_per_s, after warm-up exclusion. Poole
 S5,busy_us_per_firing_steady_pooled,"Mean reaction-function plus firing-decision time per firing, after warm-up exclusion. Pooled over all firings of all runs.",µs
 S5,busy_share_pct_steady_pooled,"As busy_share_pct, after warm-up exclusion. Pooled over all firings of all runs.",%
 S5,latency_mean_ms_steady_pooled,"Mean trigger_net latency per firing, after warm-up exclusion. Pooled over all firings of all runs.",ms
+S5,cpu_runs,Number of runs with CPU samples (metrics/<run>_cpu.csv).,count
+S5,ncpu,Logical CPUs of the platform.,count
+S5,cpu_cores_steady_median,"JVM CPU time (user + system, all threads) per wall second after warm-up exclusion; 1.0 = one core fully used. Per run; median over runs.",cores
+S5,cpu_cores_steady_max,"JVM CPU time (user + system, all threads) per wall second after warm-up exclusion; 1.0 = one core fully used. Per run; maximum over runs.",cores
+S5,host_cpu_pct_steady_median,"Busy share of all CPUs of the host (all processes) after warm-up exclusion. Per run; median over runs.",%
+S5,host_cpu_pct_steady_max,"Busy share of all CPUs of the host (all processes) after warm-up exclusion. Per run; maximum over runs.",%
+S5,proc_rss_mb_max_median,Peak resident set size of the JVM (1 Hz samples). Per run; median over runs.,MiB
+S5,proc_rss_mb_max_max,Peak resident set size of the JVM (1 Hz samples). Per run; maximum over runs.,MiB
+S5,cpu_cores_steady_pooled,"As cpu_cores_steady: total JVM CPU time / total wall time over all runs.",cores
+S5,cpu_us_per_event_steady_pooled,"JVM CPU time per replayed device event after warm-up exclusion (reactors, event bus, replay, sink, GC, JIT). Pooled over all runs.",µs
+S5,cpu_us_per_firing_steady_pooled,"JVM CPU time per FIRED evaluation after warm-up exclusion (whole JVM, not only the reactors). Pooled over all runs.",µs
+S5,cpu_headroom_1core_x_steady_pooled,"1 / cpu_cores_steady_pooled: factor by which the offered load could grow before one core is saturated, assuming CPU time scales linearly with the load (extrapolation, not a measured capacity).",factor
+S5,cpu_headroom_x_steady_pooled,"ncpu / cpu_cores_steady_pooled: as cpu_headroom_1core_x for all logical CPUs; an upper bound, since serial sections (evaluation locks, bus dispatch) limit throughput earlier (extrapolation, not a measured capacity).",factor
 S6,platform,"Platform (AMD, PI).",
 S6,recording,Recording replayed.,
 S6,reactor,Reactor id.,

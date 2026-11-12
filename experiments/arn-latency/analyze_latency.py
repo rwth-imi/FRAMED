@@ -73,8 +73,8 @@ Further outputs:
   side by side per reactor (median over runs of the per-run p50, p99, p999 and max), with
   the wake-up correction ``consumption − consumption_net`` at p50.
 
-**Load indicators** (``load*.csv``). CPU usage was not recorded; these columns indicate how far the
-reactor network is from saturation at the replayed load, per run over its whole duration
+**Load indicators** (``load*.csv``). These columns indicate how far the reactor network is from
+saturation at the replayed load, per run over its whole duration
 (``duration_s`` = last − first actual send instant of the replay, from ``emits.csv``):
 
 - ``device_events_per_s``: replayed events per second (offered load);
@@ -95,6 +95,27 @@ evaluation lock and descheduling, and the work outside the reactors (event bus, 
 JVM) and evaluations without a satisfied rule (no timing recorded) are not included. GC pauses
 come from ``gc/<run>.log`` (unified JVM logging, lines ``GC(n) Pause … <ms>ms``):
 ``gc_pauses``, ``gc_pause_ms_total``, ``gc_pause_ms_max``, ``gc_pause_share_pct``.
+
+**CPU** (``cpu*`` columns; runs recorded with ``metrics/<run>_cpu.csv``, 1 Hz samples of the JVM's
+cumulative user + system CPU time and of the host's busy/total CPU ticks from ``/proc``). Unlike
+the wall-time indicators above, this is CPU time of the whole JVM: reactors, event bus (TCP
+loopback), replay, JSON-Lines sink, GC and JIT. Per run, between the first and last sample inside
+the window (whole run: first to last send instant; ``_steady``: after ``--warmup-s``):
+
+- ``cpu_cores``: JVM CPU seconds per wall second (1.0 = one core fully used);
+  ``cpu_machine_pct`` the same as a share of all ``ncpu`` logical CPUs;
+- ``host_cpu_pct``: busy share of the whole host (all processes);
+- ``cpu_us_per_event``, ``cpu_us_per_firing``: JVM CPU time per replayed device event and per
+  FIRED evaluation in the window;
+- ``cpu_headroom_1core_x`` = 1 / ``cpu_cores`` and ``cpu_headroom_x`` = ``ncpu`` / ``cpu_cores``:
+  factors by which the offered load could grow before one core, or all cores, would be saturated,
+  **assuming CPU time scales linearly with the load**. These are extrapolations, not measured
+  capacities: serial sections (atomic evaluation locks, the bus dispatch) bound the throughput
+  below ``cpu_headroom_x``, and queueing raises the latency well before saturation.
+
+``load.csv`` reports ``cpu_cores_steady``, ``host_cpu_pct_steady`` and ``proc_rss_mb_max`` (median
+and maximum over runs) and pools the steady state over runs (``*_steady_pooled``: total CPU time /
+total wall time, events or firings). ``cpu_runs`` counts the runs with CPU samples.
 
 Usage::
 
@@ -209,6 +230,47 @@ def load_run(r: Run):
 GC_PAUSE = re.compile(r"GC\(\d+\) Pause .* (\d+(?:\.\d+)?)ms\s*$")
 
 
+def cpu_window(c: pd.DataFrame, start_ns: float, end_ns: float, events: pd.Series,
+               firings: pd.Series) -> dict:
+    """CPU use between the first and the last sample inside ``[start_ns, end_ns]``.
+
+    ``events`` and ``firings`` are epoch-ns instants; those between the two samples are counted.
+    Returns NaNs when fewer than two samples fall inside the window.
+    """
+    w = c[(c["wall_ns"] >= start_ns) & (c["wall_ns"] <= end_ns)]
+    keys = ("cpu_wall_s", "cpu_s", "cpu_events", "cpu_firings", "cpu_cores", "cpu_machine_pct",
+            "host_cpu_pct", "cpu_us_per_event", "cpu_us_per_firing", "cpu_headroom_1core_x",
+            "cpu_headroom_x")
+    if len(w) < 2:
+        return dict.fromkeys(keys, np.nan)
+    a, b = w.iloc[0], w.iloc[-1]
+    wall = (b["wall_ns"] - a["wall_ns"]) / 1e9
+    cpu = ((b["proc_utime"] + b["proc_stime"]) - (a["proc_utime"] + a["proc_stime"])) / a["clk_tck"]
+    n_ev = int(events.between(a["wall_ns"], b["wall_ns"]).sum())
+    n_fi = int(firings.between(a["wall_ns"], b["wall_ns"]).sum())
+    cores = cpu / wall
+    return dict(zip(keys, (
+        wall, cpu, n_ev, n_fi, cores, 100 * cores / a["ncpu"],
+        100 * (b["host_busy"] - a["host_busy"]) / (b["host_total"] - a["host_total"]),
+        1e6 * cpu / n_ev if n_ev else np.nan, 1e6 * cpu / n_fi if n_fi else np.nan,
+        1 / cores if cores > 0 else np.nan, a["ncpu"] / cores if cores > 0 else np.nan)))
+
+
+def cpu_indicators(r: Run, f: pd.DataFrame, emitted_ns: pd.Series, warmup_s: float) -> dict:
+    """CPU indicators of one run from ``metrics/<run>_cpu.csv`` (module docstring, *CPU*)."""
+    path = r.metrics("cpu")
+    if not path.exists():               # recorded before CPU sampling
+        return {"cpu_log": False}
+    c = pd.read_csv(path)
+    fired = f.loc[f["outcome"] == "FIRED", "trigger_arrival_ns"]
+    whole = cpu_window(c, emitted_ns.min(), emitted_ns.max(), emitted_ns, fired)
+    t0 = f["trigger_arrival_ns"].min()
+    steady = cpu_window(c, t0 + warmup_s * 1e9, f["trigger_arrival_ns"].max(), emitted_ns, fired)
+    return {"cpu_log": True, "ncpu": int(c["ncpu"].iloc[0]),
+            "proc_rss_mb_max": c["proc_rss_kb"].max() / 1024, "proc_threads_max": int(c["proc_threads"].max()),
+            **whole, **{k + "_steady": v for k, v in steady.items()}}
+
+
 def load_indicators(r: Run, f: pd.DataFrame, fired_all: pd.DataFrame, warmup_s: float) -> dict:
     """Load indicators of one run (module docstring, *Load indicators*)."""
     e = pd.read_csv(r.metrics("emits"), usecols=["emitted_ns"])
@@ -239,7 +301,8 @@ def load_indicators(r: Run, f: pd.DataFrame, fired_all: pd.DataFrame, warmup_s: 
             "busy_share_pct": 100 * (exec_s + sched_s) / duration,
             "gc_log": gc_log.exists(), "gc_pauses": len(pauses),
             "gc_pause_ms_total": float(sum(pauses)), "gc_pause_ms_max": max(pauses, default=0.0),
-            "gc_pause_share_pct": 100 * sum(pauses) / 1e3 / duration, **steady}
+            "gc_pause_share_pct": 100 * sum(pauses) / 1e3 / duration, **steady,
+            **cpu_indicators(r, f, e["emitted_ns"], warmup_s)}
 
 
 def interpreter_statuses(r: Run) -> list[str]:
@@ -378,6 +441,19 @@ def main() -> int:
     load_tab["busy_us_per_firing_steady_pooled"] = 1e6 * pooled["busy_s_steady"] / pooled["firings_steady"]
     load_tab["busy_share_pct_steady_pooled"] = 100 * pooled["busy_s_steady"] / pooled["window_s_steady"]
     load_tab["latency_mean_ms_steady_pooled"] = pooled["latency_sum_ms_steady"] / pooled["latency_n_steady"]
+    if "cpu_s_steady" in load:
+        cg = load.groupby(["platform", "mode"])
+        load_tab["cpu_runs"] = cg["cpu_s_steady"].count()
+        load_tab["ncpu"] = cg["ncpu"].max()
+        for c in ("cpu_cores_steady", "host_cpu_pct_steady", "proc_rss_mb_max"):
+            load_tab[c + "_median"] = cg[c].median()
+            load_tab[c + "_max"] = cg[c].max()
+        cp = cg[["cpu_s_steady", "cpu_wall_s_steady", "cpu_events_steady", "cpu_firings_steady"]].sum()
+        load_tab["cpu_cores_steady_pooled"] = cp["cpu_s_steady"] / cp["cpu_wall_s_steady"]
+        load_tab["cpu_us_per_event_steady_pooled"] = 1e6 * cp["cpu_s_steady"] / cp["cpu_events_steady"]
+        load_tab["cpu_us_per_firing_steady_pooled"] = 1e6 * cp["cpu_s_steady"] / cp["cpu_firings_steady"]
+        load_tab["cpu_headroom_1core_x_steady_pooled"] = 1 / load_tab["cpu_cores_steady_pooled"]
+        load_tab["cpu_headroom_x_steady_pooled"] = load_tab["ncpu"] / load_tab["cpu_cores_steady_pooled"]
     load_tab.reset_index().to_csv(args.out / "load.csv", index=False)
 
     # consumption latency gross vs net of the replay wake-up delay, side by side
@@ -447,6 +523,12 @@ def main() -> int:
         print("\nSteady state (after --warmup-s), pooled over all firings of all runs")
         print(load_tab[["firings_per_s_steady_pooled", "busy_us_per_firing_steady_pooled",
                         "busy_share_pct_steady_pooled", "latency_mean_ms_steady_pooled"]].to_string())
+        if "cpu_cores_steady_pooled" in load_tab:
+            print("\nCPU of the JVM, steady state, pooled over runs (headroom = linear extrapolation)")
+            print(load_tab[["ncpu", "cpu_cores_steady_pooled", "cpu_us_per_event_steady_pooled",
+                            "cpu_us_per_firing_steady_pooled", "cpu_headroom_1core_x_steady_pooled",
+                            "cpu_headroom_x_steady_pooled", "host_cpu_pct_steady_median",
+                            "proc_rss_mb_max_max"]].to_string())
         if not ctrl.empty:
             print("\nRun-to-run |Δ| of trigger p50/p99 (ms), median over reactors and recordings")
             print(ctrl.groupby("contrast")[["d_p50", "d_p99"]].median().to_string())

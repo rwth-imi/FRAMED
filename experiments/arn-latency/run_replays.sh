@@ -13,8 +13,9 @@
 #   REPLAY_ROOT  unpacked dataset (searched recursively for <recording>.jsonl)
 #   OUT_ROOT     results; per pass <OUT_ROOT>/<LABEL>_<ATOMIC|NON_ATOMIC>/ holds
 #                  *_replay.jsonl        bus output (inputs + reactor outputs)
-#                  metrics/<run>_*.csv   firings, consumed inputs, per-reactor summary, and the
-#                                        replay's actual send instant per event (_emits.csv)
+#                  metrics/<run>_*.csv   firings, consumed inputs, per-reactor summary, the
+#                                        replay's actual send instant per event (_emits.csv) and
+#                                        1 Hz CPU samples of the JVM and the host (_cpu.csv)
 #                  gc/<run>.log          JVM GC log
 #                  config/<run>_*.json   the exact services.json and communication.json of the run
 #                plus <OUT_ROOT>/<LABEL>_runs.csv (one row per run), <LABEL>_manifest.txt and
@@ -184,7 +185,7 @@ run_complete() {
   local mode="$1" run="$2" pass_dir="$3" code f
   code="$(awk -F, -v l="$LABEL" -v m="$mode" -v r="$run" '$1==l && $2==m && $5==r {e=$8} END {print e}' "$RUNS")"
   [[ "$code" == 0 ]] || return 1
-  for f in firings inputs summary emits; do [[ -s "$pass_dir/metrics/${run}_$f.csv" ]] || return 1; done
+  for f in firings inputs summary emits cpu; do [[ -s "$pass_dir/metrics/${run}_$f.csv" ]] || return 1; done
   for f in services communication; do [[ -s "$pass_dir/config/${run}_$f.json" ]] || return 1; done
   [[ -s "$pass_dir/gc/${run}.log" ]] || return 1
   [[ -n "$(replay_outputs "$pass_dir" "$run")" ]]
@@ -199,9 +200,36 @@ replay_outputs() {
 # Removes what an incomplete attempt left behind, so a repetition starts clean.
 clean_partial() {
   local pass_dir="$1" run="$2" f
-  rm -f "$pass_dir/metrics/${run}"_{firings,inputs,summary,emits}.csv "$pass_dir/gc/${run}.log" \
+  rm -f "$pass_dir/metrics/${run}"_{firings,inputs,summary,emits,cpu}.csv "$pass_dir/gc/${run}.log" \
         "$pass_dir/config/${run}"_{services,communication}.json
   while read -r f; do [[ -n "$f" ]] && rm -f "$f"; done < <(replay_outputs "$pass_dir" "$run")
+}
+
+# --- CPU sampling ---------------------------------------------------------------------
+# Samples, once per second until the JVM exits, the cumulative CPU time of the JVM (all threads:
+# reactors, event bus, replay, sink, GC, JIT) and of the whole host, from /proc. Columns:
+#   wall_ns            sample instant (epoch ns, the time base of the metrics files)
+#   proc_utime/stime   JVM user/system CPU time, clock ticks (clk_tck per second)
+#   proc_threads       JVM thread count; proc_rss_kb resident set size
+#   host_busy/total    host CPU ticks summed over all CPUs (busy = total - idle - iowait)
+# Reading /proc costs a few microseconds per sample; the sleep is the only process forked.
+CLK_TCK="$(getconf CLK_TCK)"
+NCPU="$(nproc)"
+PAGE_KB=$(( $(getconf PAGESIZE) / 1024 ))
+cpu_sampler() {
+  local parent="$1" out="$2" pid="" stat f host u n sy id io irq sirq st rest total
+  for _ in $(seq 100); do
+    pid="$(pgrep -P "$parent" -x java | head -n1 || true)"; [[ -n "$pid" ]] && break; sleep 0.05
+  done
+  [[ -n "$pid" ]] || { echo "cpu_sampler: no java child of $parent" >&2; return 0; }
+  echo "wall_ns,proc_utime,proc_stime,proc_threads,proc_rss_kb,host_busy,host_total,clk_tck,ncpu" > "$out"
+  while read -r stat 2>/dev/null < "/proc/$pid/stat"; do
+    read -r -a f <<< "${stat##*) }"            # f[0] = field 3 (state) of proc(5)
+    read -r host u n sy id io irq sirq st rest < /proc/stat
+    total=$(( u + n + sy + id + io + irq + sirq + st ))
+    echo "${EPOCHREALTIME//[!0-9]/}000,${f[11]},${f[12]},${f[17]},$(( f[21] * PAGE_KB )),$(( total - id - io )),$total,$CLK_TCK,$NCPU" >> "$out"
+    sleep 1
+  done
 }
 
 # --- one replay ----------------------------------------------------------------------
@@ -247,11 +275,16 @@ run_one() {
   start="$(date -u +%FT%TZ)"
   echo "==> $(date +%T) ${LABEL} ${mode} ${run}"
   # shellcheck disable=SC2086
-  (cd "$work" && timeout 40m "$JAVA_BIN" $JAVA_OPTS \
+  (cd "$work" && exec timeout 40m "$JAVA_BIN" $JAVA_OPTS \
       "-Xlog:gc*:file=$pass_dir/gc/${run}.log:time,uptime,level,tags" \
       "-Dframed.arn.metrics.dir=$pass_dir/metrics" "-Dframed.arn.metrics.run=${run}" \
       "-Dframed.replay.emitLog=$pass_dir/metrics/${run}_emits.csv" \
-      -jar "$JAR" > "$work/framed.log" 2>&1) || code=$?
+      -jar "$JAR" > "$work/framed.log" 2>&1) &
+  local tpid=$! spid
+  cpu_sampler "$tpid" "$pass_dir/metrics/${run}_cpu.csv" &
+  spid=$!
+  wait "$tpid" || code=$?
+  wait "$spid" || true
   echo "$LABEL,$mode,$rec,$rep,$run,$start,$(date -u +%FT%TZ),$code,$load,$temp0,$(pi_temp),$thr0,$(pi_throttled)" >> "$RUNS"
   if (( code != 0 )); then
     echo "!! ${mode} ${run} exited with ${code}; log kept in $work/framed.log" >&2
