@@ -90,6 +90,16 @@ The CDSS configuration is taken from `config/services_replay.json`. Per run, onl
 
 Measure on an otherwise idle machine, with the same setup for all runs of a platform. The CPUs are not pinned and boost is left at its default, so that the setup stays representative of a deployment. All of the following settings are runtime-only, and a reboot restores them.
 
+`run_isolated.sh` applies these settings and starts the runs detached in one step (the label defaults to `PI` on aarch64, else `AMD`):
+
+```bash
+experiments/arn-latency/run_isolated.sh <REPLAY_ROOT> <OUT_ROOT> [LIST]   # LIST defaults to full_recordings.txt
+experiments/arn-latency/run_isolated.sh --status                         # progress
+experiments/arn-latency/run_isolated.sh --restore                        # undo the isolation
+```
+
+The manual equivalent:
+
 ```bash
 sudo systemctl isolate multi-user.target                                    # no desktop
 echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
