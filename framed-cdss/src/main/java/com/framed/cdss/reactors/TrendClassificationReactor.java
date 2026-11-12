@@ -6,6 +6,7 @@
 package com.framed.cdss.reactors;
 
 import com.framed.arn.Reactor;
+import com.framed.arn.Tag;
 import com.framed.cdss.utils.SlopeUtils;
 import com.framed.cdss.utils.TrendDirection;
 import com.framed.core.EventBus;
@@ -171,14 +172,14 @@ public class TrendClassificationReactor extends Reactor {
                 // Need a full window to evaluate trend
                 if (window.size() >= windowSize) {
                     double slope = computeSlope(curWindow);
-                    decideWarning(slope);
+                    decideWarning(slope, outputTag(latestSnapshot));
                 }
 
             }
         }
     }
 
-    private void decideWarning(double slope) {
+    private void decideWarning(double slope, Tag tag) {
         boolean conditionMet = false;
         switch (direction) {
             case DOWN ->  conditionMet = slope <= -delta;
@@ -199,7 +200,7 @@ public class TrendClassificationReactor extends Reactor {
         if (conditionMet && hits >= persistWindows){
             warnValue = 1;
         }
-        publishResult(eventBus, warnValue, id, outputChannels, lastLogicalFireTs);
+        publishResult(eventBus, warnValue, id, outputChannels, tag);
 
 
     }

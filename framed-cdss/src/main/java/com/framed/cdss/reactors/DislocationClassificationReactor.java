@@ -92,7 +92,7 @@ public class DislocationClassificationReactor extends Reactor {
                warnValue = 3; // correctly intubated but non-optimal spo2 / SF values
            }
         }
-        publishResult(eventBus, warnValue, id, outputChannels, lastLogicalFireTs);
+        publishResult(eventBus, warnValue, id, outputChannels, outputTag(latestSnapshot));
     }
 
 

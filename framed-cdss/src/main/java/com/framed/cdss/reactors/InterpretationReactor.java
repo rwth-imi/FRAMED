@@ -5,6 +5,7 @@
 package com.framed.cdss.reactors;
 
 import com.framed.arn.Reactor;
+import com.framed.arn.Tag;
 import com.framed.core.EventBus;
 
 import java.util.EnumSet;
@@ -87,8 +88,14 @@ public class InterpretationReactor extends Reactor {
 
   /** Collects what one firing did; confined to the firing thread. */
   private static final class Outcome {
+    /** Output tag of the firing; every message of the firing is published with it. */
+    private final Tag tag;
     private boolean warned;
     private final Set<Gate> gates = EnumSet.noneOf(Gate.class);
+
+    private Outcome(Tag tag) {
+      this.tag = tag;
+    }
 
     private String status() {
       String base = warned ? "WARNING" : "NO_WARNING";
@@ -165,21 +172,6 @@ public class InterpretationReactor extends Reactor {
   }
 
   /**
-   * Fires again when another classification of the same logical instant arrives. One source
-   * sample reaches the interpreter over several classifier paths with the same logical
-   * timestamp; with the default gate only the first arrival would fire, and the other paths'
-   * results of that instant would be used only at the next, newer firing. Re-firing makes the
-   * last firing per instant interpret the complete state, at the cost of several firings (and
-   * status records) per instant.
-   *
-   * @return {@code true}
-   */
-  @Override
-  protected boolean firesOnEqualLogicalTime() {
-    return true;
-  }
-
-  /**
    * Evaluates all inputs, publishes the resulting warnings and one status record on
    * {@value #STATUS_CHANNEL}.
    *
@@ -191,7 +183,7 @@ public class InterpretationReactor extends Reactor {
   public void reactionFunction(Map<String, Object> latestSnapshot) {
     fireLock.lock();
     try {
-      Outcome out = new Outcome();
+      Outcome out = new Outcome(outputTag(latestSnapshot));
       if (interpretEtCO2Limit(latestSnapshot.get(etCO2LimitChannel), out)) {
         interpretRRMismatch(latestSnapshot.get(rrMismatchChannel), out);
       }
@@ -204,7 +196,7 @@ public class InterpretationReactor extends Reactor {
         interpretSFLimit(latestSnapshot.get(sfLimitChannel),
                 latestSnapshot.get(spo2LimitChannel), out);
       }
-      publishResult(eventBus, out.status(), id, List.of(STATUS_CHANNEL), lastLogicalFireTs);
+      publishResult(eventBus, out.status(), id, List.of(STATUS_CHANNEL), out.tag);
     } finally {
       fireLock.unlock();
     }
@@ -212,7 +204,7 @@ public class InterpretationReactor extends Reactor {
 
   private void warn(Outcome out, String channel, String message) {
     out.warned = true;
-    publishResult(eventBus, message, id, List.of(channel), lastLogicalFireTs);
+    publishResult(eventBus, message, id, List.of(channel), out.tag);
   }
 
   /** Returns {@code false} if the etCO2 gate applies. */

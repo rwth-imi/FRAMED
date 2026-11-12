@@ -83,6 +83,6 @@ public class HemodynamicRhythmClassificationReactor extends Reactor {
                 warnValue = 2;
             }
         }
-        publishResult(eventBus, warnValue, id, outputChannels, lastLogicalFireTs);
+        publishResult(eventBus, warnValue, id, outputChannels, outputTag(latestSnapshot));
     }
 }
