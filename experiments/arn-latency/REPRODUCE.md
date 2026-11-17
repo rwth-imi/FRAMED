@@ -235,7 +235,7 @@ Mean and std are dominated by a few deferred samples; the percentiles are the pr
 
 **Out of order (Definition 5):** an event on a channel whose tag `(timestamp, microstep)` is lexicographically smaller than that of the previous event on the same channel, in the order the sink received them. Equal consecutive tags are not out of order and are counted separately as `ties`; reactor output tags strictly increase, so ties occur only on device channels (duplicate device timestamps in the recordings). `ord = 1 − out_of_order / total`; the out-of-order rate is `(1 − ord) · 10^6` ppm. Bus output without a `microstep` field (runs recorded before the sink wrote it) is read as microstep 0.
 
-Scope `reactor` = CDSS outputs; scope `device` = replayed device channels.
+Scope `reactor` = CDSS outputs; scope `device` = replayed device channels. A13 is measured on `Interpretation-Status` (one record per firing), as for completeness; its warning channels are listed in `ordering_per_run.csv` (`counted = False`) but not summed into `ordering.csv`.
 
 **Files:** `ordering_per_run.csv`, `ordering.csv` (correctness in %, out-of-order events per million, runs with any out-of-order event).
 

@@ -55,7 +55,7 @@ S4,label,"Reactor label A1–A13, or device.",
 S4,className,Producing reactor id (scope reactor) or device message class (scope device).,
 S4,out_of_order,"Events whose tag (timestamp, microstep) is lexicographically smaller than that of the previous event on the same channel, in the order received by the data sink (Definition 5); summed over runs.",count
 S4,ties,Events whose tag equals that of the previous event on the same channel (not out of order).,count
-S4,total,"Events, summed over runs.",count
+S4,total,"Events, summed over runs. A13: Interpretation-Status records only (one per firing).",count
 S4,runs,Number of runs.,count
 S4,runs_with_ooo,Runs with at least one out-of-order event.,count
 S4,ordering_correctness_pct,"100 · ord, with ord = 1 − out_of_order / total (Definition 5).",%

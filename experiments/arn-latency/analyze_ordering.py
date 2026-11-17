@@ -26,9 +26,14 @@ parts per million is ``(1 − ord) · 10^6``.
 Scope ``reactor`` = CDSS outputs (``deviceID == "CDSS"``); scope
 ``device`` = replayed device channels (supplementary; checks the replay itself).
 
+A13 (Interpreter) is measured on ``Interpretation-Status``, one record per firing, as in
+``analyze_consumption.py``. Its warning channels stay in ``ordering_per_run.csv`` but are not
+counted in ``ordering.csv``.
+
 Outputs (``--out``):
 
-- ``ordering_per_run.csv``: one row per run and channel;
+- ``ordering_per_run.csv``: one row per run and channel (all channels, column ``counted``: whether
+  the row enters ``ordering.csv``);
 - ``ordering.csv``: per platform, mode and reactor (or device class): sums over runs, ordering
   correctness ``100 · ord`` with ``ord = 1 − out_of_order / total``, the out-of-order rate
   ``(1 − ord) · 10^6`` ppm, and the number of runs with any out-of-order event.
@@ -50,9 +55,14 @@ from pathlib import Path
 
 import pandas as pd
 
-from framed_runs import LABELS, Run, discover, load_replay, order_labels, tag_flags
+from framed_runs import LABELS, STATUS_CHANNEL, Run, discover, load_replay, order_labels, tag_flags
 
 KEYS = ["deviceID", "className", "channelID"]
+
+
+def counted(className: str, channelID: str) -> bool:
+    """Whether a channel enters ``ordering.csv``: A13 only by its status channel."""
+    return className != "Interpreter" or channelID == STATUS_CHANNEL
 
 
 def ordering_of_run(r: Run) -> list[dict]:
@@ -69,7 +79,7 @@ def ordering_of_run(r: Run) -> list[dict]:
         out_of_order=("ooo", "sum"), ties=("tie", "sum"), total=("ooo", "size"))
     return [{**r.key, "scope": "reactor" if dev == "CDSS" else "device", "deviceID": dev,
              "className": cls, "channelID": ch, "out_of_order": int(row.out_of_order),
-             "ties": int(row.ties), "total": int(row.total)}
+             "ties": int(row.ties), "total": int(row.total), "counted": counted(cls, ch)}
             for (dev, cls, ch), row in agg.iterrows()]
 
 
@@ -88,6 +98,7 @@ def main() -> int:
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
         per_run = pd.DataFrame([row for rows in pool.map(ordering_of_run, runs) for row in rows])
     per_run.to_csv(args.out / "ordering_per_run.csv", index=False)
+    per_run = per_run[per_run["counted"]].copy()
 
     per_run["any_ooo"] = per_run["out_of_order"] > 0
     run_flags = (per_run.groupby(["platform", "mode", "scope", "className", "recording", "rep"])
