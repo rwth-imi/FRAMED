@@ -5,6 +5,7 @@
 package com.framed.communicator.driver.protocol.replay;
 
 import com.framed.core.EventBus;
+import com.framed.core.utils.MonotonicClock;
 import com.framed.io.protocol.Protocol;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -26,6 +27,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.locks.LockSupport;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -45,8 +47,10 @@ import java.util.logging.Logger;
  * <pre>{@code   emit(t) = replayStart + (t - firstRecordedTimestamp) / speed}</pre>
  * <p>computed in nanoseconds and stamped at microsecond resolution — the resolution
  * {@code Timer.formatter} renders — so a recording timestamped to the microsecond is reproduced to
- * the microsecond. Pacing itself is only as fine as {@code Thread.sleep}, but the stamp does not
- * inherit that coarseness.</p>
+ * the microsecond. The replay thread waits until the scheduled instant with nanosecond resolution
+ * (a coarse sleep followed by {@link LockSupport#parkNanos(long)}), so <b>an event is never
+ * published before its stamp</b>. Publishing early would make a downstream {@code now − timestamp}
+ * negative and bias every sub-millisecond latency.</p>
  * <p>and that scheduled instant is also the {@code timestamp} the event carries on the bus. Two
  * consequences make this the load-bearing design decision of the class:</p>
  * <ul>
@@ -62,6 +66,9 @@ import java.util.logging.Logger;
  *       {@code now − timestamp} at a sink is an emit&rarr;sink latency (for a sink sharing the
  *       producer's clock) rather than the age of the recording.</li>
  * </ul>
+ * <p>The schedule is computed from {@link MonotonicClock}, the clock a reactor's
+ * {@link com.framed.arn.FiringRecorder} measures with, so stamp and measurement cannot be
+ * separated by a wall-clock step during the run.</p>
  * <p>The stamp is the <em>scheduled</em> emit time, not the actual one, so any lag of the replay
  * thread itself is included in that latency instead of being hidden by re-stamping. The lag is
  * reported separately by {@link #stats()} and in the summary logged at the end of the replay.</p>
@@ -107,6 +114,14 @@ import java.util.logging.Logger;
  *       is one service among others that should outlive it.</li>
  * </ul>
  *
+ * <h2>Emission log</h2>
+ * <p>Because the stamp is the scheduled instant, a consumer's {@code arrival − timestamp} includes
+ * the replay thread's own wake-up delay, which is an artefact of the replay and not part of the
+ * system under test. Setting the system property {@value #EMIT_LOG_PROPERTY} to a file path makes
+ * the replay keep the actual publication instant of every event ({@link MonotonicClock}) in memory
+ * and write {@code address, scheduled_ns, emitted_ns} to that CSV file after the last event, so
+ * no I/O happens during the replay. An analysis can then subtract the replay delay exactly.</p>
+ *
  * <p><b>Threading:</b> {@link #connect()} starts one daemon-less replay thread; every publication
  * happens on it. {@link #stop()} interrupts that thread and returns without waiting for the
  * remaining events.</p>
@@ -117,6 +132,15 @@ public class ReplayProtocol extends Protocol {
 
   /** Settle time between announcing the addresses and publishing the first sample. */
   private static final long ANNOUNCE_SETTLE_MILLIS = 100L;
+
+  /** System property naming the CSV file for the per-event emission log; unset disables it. */
+  public static final String EMIT_LOG_PROPERTY = "framed.replay.emitLog";
+
+  /** Upper bound on logged events, so a long repeat sweep cannot exhaust the heap. */
+  private static final long EMIT_LOG_MAX_EVENTS = 20_000_000L;
+
+  /** Remaining wait below which the replay parks instead of sleeping, to hit its schedule. */
+  private static final long PARK_MARGIN_NANOS = 2_000_000L;
 
   private final Path filePath;
   private final Set<String> devices = new HashSet<>();
@@ -275,7 +299,7 @@ public class ReplayProtocol extends Protocol {
     // Truncated to microseconds because that is the resolution Timer.formatter renders: a start
     // instant with nanoseconds would be rounded on the wire, and the recorded intervals — which
     // this recording carries to the microsecond — would no longer be reproduced exactly.
-    Instant replayStart = Instant.now().truncatedTo(ChronoUnit.MICROS);
+    Instant replayStart = MonotonicClock.now().truncatedTo(ChronoUnit.MICROS);
     long lagSumMillis = 0;
     long lagMaxMillis = Long.MIN_VALUE;
     long count = 0;
@@ -285,6 +309,16 @@ public class ReplayProtocol extends Protocol {
     // is walked again rather than copied: a sweep repeats the recording once per unit of speed, so
     // materialising the concatenation would cost hundreds of megabytes on the very JVM whose
     // latency is being measured.
+    String emitLogPath = System.getProperty(EMIT_LOG_PROPERTY);
+    long planned = (long) events.size() * repeatCount;
+    boolean logEmits = emitLogPath != null && !emitLogPath.isBlank() && planned <= EMIT_LOG_MAX_EVENTS;
+    if (emitLogPath != null && !logEmits) {
+      LOGGER.warning("Emission log disabled: %d events exceed %d".formatted(planned, EMIT_LOG_MAX_EVENTS));
+    }
+    String[] logAddress = logEmits ? new String[(int) planned] : null;
+    long[] logScheduled = logEmits ? new long[(int) planned] : null;
+    long[] logEmitted = logEmits ? new long[(int) planned] : null;
+
     long seamGapNanos = seamGapNanos(events);
     long cycleNanos = Duration.between(firstRecorded, events.get(events.size() - 1).timestamp())
             .toNanos() + seamGapNanos;
@@ -302,15 +336,20 @@ public class ReplayProtocol extends Protocol {
                   (Duration.between(firstRecorded, event.timestamp()).toNanos() + cycleOffsetNanos)
                           / speed);
           emit = replayStart.plusNanos(offsetNanos);
-          long delay = Duration.between(Instant.now(), emit).toMillis();
-          if (delay > 0 && !sleepMillis(delay)) break replay;
+          if (!awaitInstant(emit)) break replay;
         } else {
-          emit = Instant.now().truncatedTo(ChronoUnit.MICROS);
+          emit = MonotonicClock.now().truncatedTo(ChronoUnit.MICROS);
         }
 
-        long lag = Duration.between(emit, Instant.now()).toMillis();
+        long lag = Duration.between(emit, MonotonicClock.now()).toMillis();
         lagSumMillis += lag;
         lagMaxMillis = Math.max(lagMaxMillis, lag);
+        if (logEmits) {
+          int k = (int) count;
+          logAddress[k] = event.address();
+          logScheduled[k] = MonotonicClock.toEpochNanos(emit);
+          logEmitted[k] = MonotonicClock.toEpochNanos(MonotonicClock.now());
+        }
         count++;
         this.published = count;
 
@@ -318,7 +357,10 @@ public class ReplayProtocol extends Protocol {
       }
     }
 
-    long wallMillis = Math.max(1L, Duration.between(replayStart, Instant.now()).toMillis());
+    long wallMillis = Math.max(1L, Duration.between(replayStart, MonotonicClock.now()).toMillis());
+    if (logEmits) {
+      writeEmitLog(Path.of(emitLogPath), logAddress, logScheduled, logEmitted, (int) count);
+    }
     // First-to-last across every pass: whole cycles for the repetitions, minus the trailing seam
     // gap that no event occupies. At repeat = 1 this is exactly the recording's own span, so the
     // reported target rate is unchanged by the existence of this feature.
@@ -361,6 +403,44 @@ public class ReplayProtocol extends Protocol {
     parsed.put("value", event.value());
     parsed.put("className", event.className());
     eventBus.publish(event.address(), parsed);
+  }
+
+  /**
+   * Blocks until {@link MonotonicClock#now()} has reached {@code target}. Sleeps coarsely until
+   * {@link #PARK_MARGIN_NANOS} before the target, then parks for the remainder, so the wait
+   * never ends early (a truncated millisecond sleep would release up to 1 ms early).
+   *
+   * @return {@code false} if the thread was interrupted
+   */
+  private boolean awaitInstant(Instant target) {
+    while (true) {
+      if (Thread.currentThread().isInterrupted()) return false;
+      long remaining = Duration.between(MonotonicClock.now(), target).toNanos();
+      if (remaining <= 0) return true;
+      if (remaining > PARK_MARGIN_NANOS) {
+        if (!sleepMillis((remaining - PARK_MARGIN_NANOS) / 1_000_000L)) return false;
+      } else {
+        LockSupport.parkNanos(remaining);
+      }
+    }
+  }
+
+  /** Writes the emission log after the replay; failures are logged, never thrown. */
+  private static void writeEmitLog(Path file, String[] address, long[] scheduled, long[] emitted,
+                                   int n) {
+    try {
+      Path parent = file.toAbsolutePath().getParent();
+      if (parent != null) Files.createDirectories(parent);
+      try (var out = Files.newBufferedWriter(file)) {
+        out.write("address,scheduled_ns,emitted_ns\n");
+        for (int k = 0; k < n; k++) {
+          out.write('"' + address[k].replace("\"", "\"\"") + "\"," + scheduled[k] + ',' + emitted[k] + '\n');
+        }
+      }
+      LOGGER.info("Wrote emission log of %d events to %s".formatted(n, file));
+    } catch (IOException e) {
+      LOGGER.log(Level.SEVERE, "Cannot write emission log %s".formatted(file), e);
+    }
   }
 
   /** Sleeps, reporting whether the replay may continue. */

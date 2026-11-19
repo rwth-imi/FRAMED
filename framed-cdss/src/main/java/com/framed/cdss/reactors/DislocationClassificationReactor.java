@@ -82,7 +82,8 @@ public class DislocationClassificationReactor extends Reactor {
         int etCO2State = (int) rawEtCO2State;
         int spo2State = (int) rawSpo2State;
         int sfState = (int) rawSfState;
-        if (spo2State == 1 && sfState >= 1) {
+        // Eq. 10: SpO2 decreasing and S/F moderate or severe (class <= 1)
+        if (spo2State == 1 && sfState <= 1) {
            if (etCO2State == 0){
                warnValue = 1; // possibly esophagus intubated
            } else if (etCO2State == 2) {
@@ -91,7 +92,7 @@ public class DislocationClassificationReactor extends Reactor {
                warnValue = 3; // correctly intubated but non-optimal spo2 / SF values
            }
         }
-        publishResult(eventBus, warnValue, id, outputChannels, lastLogicalFireTs);
+        publishResult(eventBus, warnValue, id, outputChannels, outputTag(latestSnapshot));
     }
 
 

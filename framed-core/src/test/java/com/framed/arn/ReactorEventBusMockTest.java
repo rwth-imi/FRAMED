@@ -17,8 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * EventBus-oriented tests:
- * - Verifies that publish calls occur (latency/global/rule-participation),
- *   without asserting the exact envelope (implementation detail of CDSSUtils).
+ * - Verifies that a firing publishes nothing beyond inputs and declared outputs.
  */
 public class ReactorEventBusMockTest {
 
@@ -47,9 +46,13 @@ public class ReactorEventBusMockTest {
         reactor = new TestReactor(bus, "lat", rules, List.of(A, B), List.of("OUT"));
     }
 
+    /**
+     * Regression: measurement no longer publishes latency on the bus, so a firing leaves only
+     * the inputs (and any declared outputs) there.
+     */
     @Test
-    void publishesLatencyOnFire() {
-        ZonedDateTime t0 = ZonedDateTime.now(ZoneOffset.UTC);;
+    void publishesOnlyInputsAndOutputs() {
+        ZonedDateTime t0 = ZonedDateTime.now(ZoneOffset.UTC);
         ZonedDateTime t1 = t0.plusSeconds(1);
 
         // Only when both have new data should the rule fire
@@ -59,8 +62,9 @@ public class ReactorEventBusMockTest {
         bus.publish(B, dp(2, t1));
         assertEquals(1, reactor.getFireCount(), "Rule satisfied, one fire expected");
 
-        // We expect some publish calls happened (latency, global, and rule participation)
-        assertFalse(bus.getPublished().isEmpty(),
-                "EventBus should have publish calls (latency metrics)");
+        java.util.Set<String> allowed = java.util.Set.of(A, B, "OUT",
+                com.framed.core.Service.addressRegistry("CDSS"));
+        bus.getPublished().forEach(p -> assertTrue(allowed.contains(p.channel()),
+                "unexpected publication on " + p.channel()));
     }
 }

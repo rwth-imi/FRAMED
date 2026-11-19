@@ -21,10 +21,12 @@ public class DataPointParser {
   /**
    * Converts a JSON bus message into a {@link DataPoint}.
    *
-   * <p>The timestamp is parsed using {@link Timer#formatter} and interpreted as UTC.</p>
+   * <p>The timestamp is parsed using {@link Timer#formatter} and interpreted as UTC. A missing
+   * {@code microstep} field is read as 0.</p>
    *
    * @param jsonObject the JSON object carrying {@code value}, {@code timestamp},
-   *                   {@code channelID}, {@code deviceID} and {@code className}
+   *                   {@code channelID}, {@code deviceID} and {@code className}, and
+   *                   optionally {@code microstep}
    * @return the datapoint decoded from the given JSON object
    * @throws Exception if a required field is missing or the timestamp cannot be parsed
    */
@@ -37,6 +39,7 @@ public class DataPointParser {
     String channelID = jsonObject.getString("channelID");
     String deviceID = jsonObject.getString("deviceID");
     String className = jsonObject.getString("className");
-    return new DataPoint<>(timestamp, value, channelID, deviceID, className);
+    long microstep = jsonObject.optLong("microstep", 0L);
+    return new DataPoint<>(timestamp, value, channelID, deviceID, className, microstep);
   }
 }

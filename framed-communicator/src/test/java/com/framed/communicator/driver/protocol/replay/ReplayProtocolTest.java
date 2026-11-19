@@ -5,6 +5,7 @@
 package com.framed.communicator.driver.protocol.replay;
 
 import com.framed.core.EventBus;
+import com.framed.core.utils.MonotonicClock;
 import com.framed.core.utils.DispatchMode;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -45,9 +46,11 @@ class ReplayProtocolTest {
     final List<String[]> announced = new ArrayList<>();     // [registry topic, address]
     final List<String> addresses = new ArrayList<>();       // address per sample
     final List<JSONObject> samples = new ArrayList<>();
+    final List<Instant> received = new ArrayList<>();       // MonotonicClock at publication
 
     @Override public synchronized void publish(String address, Object message) {
       if (message instanceof JSONObject json) {
+        received.add(MonotonicClock.now());
         addresses.add(address);
         samples.add(json);
       } else {
@@ -130,6 +133,55 @@ class ReplayProtocolTest {
     long ageMillis = System.currentTimeMillis() - bus.millisOf(0);
     assertTrue(ageMillis >= 0 && ageMillis < 30_000,
             "stamps must be shifted to replay time, was %d ms old".formatted(ageMillis));
+  }
+
+  /**
+   * Regression: the schedule was awaited in whole milliseconds, so about half of the events were
+   * published up to 1 ms before their own stamp, which made downstream latencies negative.
+   */
+  @Test
+  void neverPublishesBeforeTheStamp() throws Exception {
+    List<String> lines = new ArrayList<>();
+    for (int i = 0; i < 40; i++) {
+      long micros = i * 7_321L;   // 7.321 ms apart: never on a millisecond boundary
+      lines.add(line(Instant.parse("2026-04-01T17:49:33Z").plusNanos(micros * 1_000L).toString(),
+              "RealTime", "Vent", "Paw", i));
+    }
+    CapturingBus bus = new CapturingBus();
+    replay(recording(lines.toArray(String[]::new)), new JSONArray(), new JSONArray(), 1.0, bus);
+
+    assertEquals(40, bus.samples.size());
+    for (int i = 0; i < 40; i++) {
+      Instant r = bus.received.get(i);
+      long receivedMicros = r.getEpochSecond() * 1_000_000L + r.getNano() / 1_000L;
+      assertTrue(receivedMicros >= bus.microsOf(i),
+              "event %d published %d us before its stamp".formatted(i, bus.microsOf(i) - receivedMicros));
+    }
+  }
+
+  /** The emission log records every event, never before its schedule. */
+  @Test
+  void emissionLogRecordsActualPublicationInstants() throws Exception {
+    Path log = dir.resolve("emit.csv");
+    Path file = recording(
+            line("2026-04-01T17:49:33.000Z", "RealTime", "Vent", "Paw, airway", 5.0),
+            line("2026-04-01T17:49:33.020Z", "RealTime", "Vent", "Flow", 6.0),
+            line("2026-04-01T17:49:33.020Z", "RealTime", "Vent", "Paw, airway", 7.0));
+    System.setProperty(ReplayProtocol.EMIT_LOG_PROPERTY, log.toString());
+    try {
+      replay(file, new JSONArray(), new JSONArray(), 1.0, new CapturingBus());
+    } finally {
+      System.clearProperty(ReplayProtocol.EMIT_LOG_PROPERTY);
+    }
+
+    List<String> rows = Files.readAllLines(log);
+    assertEquals("address,scheduled_ns,emitted_ns", rows.get(0));
+    assertEquals(4, rows.size(), "header + one row per event");
+    assertTrue(rows.get(1).startsWith("\"RealTime.Vent.Paw, airway.parsed\","), rows.get(1));
+    for (String row : rows.subList(1, rows.size())) {
+      String[] cols = row.substring(row.lastIndexOf('"') + 2).split(",");
+      assertTrue(Long.parseLong(cols[1]) >= Long.parseLong(cols[0]), "emitted before scheduled: " + row);
+    }
   }
 
   /**

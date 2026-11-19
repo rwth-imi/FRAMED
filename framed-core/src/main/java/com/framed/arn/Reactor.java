@@ -6,15 +6,14 @@ package com.framed.arn;
 
 import com.framed.core.EventBus;
 import com.framed.core.Service;
+import com.framed.core.utils.MonotonicClock;
 import org.json.JSONObject;
 
-import java.time.*;
+import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static com.framed.arn.RuleUtils.extractTimestamp;
-import static com.framed.arn.RuleUtils.publishResult;
+import static com.framed.arn.RuleUtils.extractTag;
 
 /**
  * A reactive multi-input {@link Service} that evaluates a set of firing rules on incoming
@@ -23,64 +22,78 @@ import static com.framed.arn.RuleUtils.publishResult;
  *
  * <p>Concrete reactors extend this class, supply their firing rules and input/output channels
  * via the constructor, and implement {@link #reactionFunction(Map)} to compute and publish
- * derived results (typically via {@link RuleUtils#publishResult}).</p>
+ * derived results via {@link RuleUtils#publishResult}, with the firing's output tag
+ * ({@link #OUTPUT_TAG_KEY}).</p>
  *
  * <h2>Core semantics</h2>
  * <ul>
- *   <li>Each input channel maintains:
+ *   <li><b>Tags.</b> Every message carries a {@link Tag} {@code (t, m)}, read by
+ *       {@link RuleUtils#extractTag(Object)}; tags are ordered lexicographically. Device and
+ *       parser messages carry {@code m = 0}.</li>
+ *
+ *   <li><b>Logical-time gate (per input channel).</b> A message on channel {@code C} is
+ *       <em>accepted</em> only if its tag is strictly greater than the last tag accepted on
+ *       {@code C} by this reactor. Otherwise (a duplicate, an older message, or a message without
+ *       timestamp) it is <em>discarded</em>: the held value and tag of {@code C}, the sequence
+ *       counter {@code seq(C)} and all rule pointers stay unchanged, no rule is evaluated, and the
+ *       message is recorded as {@link FiringRecord.Outcome#DISCARDED}.</li>
+ *
+ *   <li><b>Sequence counters.</b> {@code seq(C)} counts the messages accepted on {@code C}. It is
+ *       never reset.</li>
+ *
+ *   <li><b>Rules.</b> Each rule is a map of <code>channel → token</code>; a rule is satisfied if
+ *       every channel in it satisfies its condition (AND). With
+ *       {@code delta = seq(C) − lastSeq[rule][C]}:
  *     <ul>
- *       <li>a monotonic absolute sequence counter (never reset), and</li>
- *       <li>the latest JSON message value.</li>
+ *       <li><b>"*"</b> = ANY: {@code delta >= 1}</li>
+ *       <li><b>"N"</b> = AT_LEAST(N): {@code delta >= N}</li>
+ *       <li><b>"r:v"</b> = REQUIRE_VALUE(v): {@code delta >= 1} and the latest value matches
+ *           {@code v} ({@link #valueMatchesExpected(Object, String)})</li>
  *     </ul>
  *   </li>
  *
- *   <li>Each rule is a map of <code>channel → token</code> where tokens:
- *     <ul>
- *       <li><b>"*"</b> = ANY: at least 1 new message since this rule last fired</li>
- *       <li><b>"N"</b> = AT_LEAST(N): at least N new messages since last fired</li>
- *       <li><b>"r:v"</b> = REQUIRE_VALUE(v): at least 1 new message AND latest value == v</li>
- *     </ul>
- *   </li>
+ *   <li><b>Firing.</b> Rules are evaluated after every accepted message. The reactor fires once if
+ *       at least one rule is satisfied (OR over rules). After the firing, every satisfied rule
+ *       sets {@code lastSeq[rule][C] = seq(C)} for each of its channels; rules that were not
+ *       satisfied keep their pending deltas.</li>
  *
- *   <li>Each rule maintains its own <b>last-consumed</b> sequence pointer per channel.
- *       This gives each rule independent delta semantics.</li>
- *
- *   <li>On each incoming message:
- *     <ul>
- *       <li>all rules are evaluated against a stable snapshot of latest data + seq counters;</li>
- *       <li>every satisfied rule updates its per-channel pointers;</li>
- *       <li>a single snapshot is created;</li>
- *       <li>{@link #reactionFunction(Map)} is called once;</li>
- *       <li>latency is published according to all three modes (A, B, C2).</li>
- *     </ul>
- *   </li>
+ *   <li><b>Output tag.</b> With {@code T} the maximum timestamp over all held inputs (input
+ *       microsteps are ignored) and {@code lastOut} the previous output tag, a firing gets the tag
+ *       {@code (T, 0)} if {@code T > lastOut.t}, and {@code (T, lastOut.m + 1)} otherwise. Output
+ *       tags of a reactor are therefore strictly increasing.</li>
  * </ul>
  *
  * <h2>Snapshot semantics</h2>
- * The snapshot contains:
+ * The snapshot handed to {@link #reactionFunction(Map)} is immutable and contains:
  * <ul>
- *     <li><b>channel → value</b> extracted from the JSON field "value"</li>
- *     <li><b>channel-timestamp → Instant</b> parsed from JSON "timestamp"</li>
+ *     <li><b>channel → value</b> extracted from the JSON field "value" of the latest accepted
+ *         message</li>
+ *     <li><b>channel-timestamp → Instant</b>, the timestamp {@code t} of that message's tag</li>
+ *     <li><b>{@value #OUTPUT_TAG_KEY} → {@link Tag}</b>, the output tag of this firing</li>
  * </ul>
  *
- * This snapshot is immutable and provided to {@link #reactionFunction(Map)}.
- *
- * <h2>Latency publishing modes</h2>
- * After a firing, the reactor publishes:
- * <ol>
- *   <li><b>(A) Per-channel latency</b>: For every input channel.</li>
- *   <li><b>(B) One global latency</b>: Based on the earliest channel timestamp.</li>
- *   <li><b>(C2) Rule-participation latency</b>: Only for channels whose delta ≥ 1
- *       for at least one satisfied rule.</li>
- * </ol>
- *
- * The latency messages are deduplicated per timestamp to avoid double publications.
+ * <h2>Timing measurement</h2>
+ * Every firing and every discarded message is reported to the {@link FiringRecorder} obtained
+ * from {@link FiringRecorders#current()} at construction, as a {@link FiringRecord}. The record
+ * holds the trigger channel, arrival, decision and reaction instants, the tags, and the consumed
+ * inputs. Nothing is published on the event bus for measurement, so the measurement adds no bus
+ * load. With the default no-op recorder, no clock is read.
  *
  * <h2>Thread safety</h2>
- * All rule evaluation and delta accounting is done under a single lock, while
- * {@link #reactionFunction(Map)} is executed outside the lock.
+ * The gate, the held values, rule evaluation and pointer updates are done under a single lock, so
+ * acceptance and evaluation of one message are atomic with respect to the others. For atomic
+ * reactors {@link #reactionFunction(Map)} runs inside that lock; for non-atomic reactors it runs
+ * after the lock is released, so several reactions of one reactor may overlap and publish out of
+ * tag order. The recorder is called after the lock is released.
  */
 public abstract class Reactor extends Service {
+
+  /**
+   * Snapshot key under which {@link #reactionFunction(Map)} finds the {@link Tag} of the current
+   * firing. Reactors publish their results with this tag.
+   */
+  public static final String OUTPUT_TAG_KEY = "@outputTag";
+
   private final boolean atomic;
 
   /**
@@ -90,23 +103,23 @@ public abstract class Reactor extends Service {
    * constructor parameter to support multiple reactor groups.
    */
   protected final String addressGroup = "CDSS";
-  /** Last logical timestamp at which this reactor fired. */
-  protected volatile Instant lastLogicalFireTs = Instant.EPOCH;
 
   /**
-   * An immutable evaluation snapshot handed to {@link #reactionFunction(Map)}.
+   * Output tag of the latest firing; {@link Tag#ZERO} before the first firing. Written under the
+   * evaluation lock before the reaction runs. In a non-atomic reactor a reaction may observe the
+   * tag of a later firing here; reactions should use the snapshot's {@link #OUTPUT_TAG_KEY}.
+   */
+  protected volatile Tag lastOutTag = Tag.ZERO;
+
+  /**
+   * An immutable evaluation snapshot.
    *
-   * @param values   channel → latest value, plus {@code "<channel>-timestamp"} → {@link Instant}
-   * @param logicalTs the latest (maximum) channel timestamp in this snapshot
+   * @param values    channel → latest value, {@code "<channel>-timestamp"} → {@link Instant},
+   *                  and {@link #OUTPUT_TAG_KEY} → {@link #outputTag}
+   * @param outputTag the output tag of the firing
    */
-  public record Snapshot(Map<String, Object> values, Instant logicalTs) {
+  public record Snapshot(Map<String, Object> values, Tag outputTag) {
   }
-
-  /**
-   * Per-rule, per-channel last consumed logical timestamp.
-   * lastConsumedTsByRule.get(ruleIndex).get(channel)
-   */
-  private final List<Map<String, Instant>> lastConsumedTsByRule = new ArrayList<>();
 
   /** Raw firing rule definitions. */
   private final List<Map<String, String>> firingRules;
@@ -120,29 +133,40 @@ public abstract class Reactor extends Service {
   /** Output channels this reactor may publish to. */
   protected final List<String> outputChannels;
 
-  /** Tracks timestamps previously published for latency reporting. */
-  private final Map<String, Instant> lastTsPublishedByChannel = new ConcurrentHashMap<>();
+  /** Receives the timing of every evaluation; read once at construction. */
+  private final FiringRecorder recorder;
 
   /** Compiled rules: channel → structured FiringRule. */
   private final List<Map<String, FiringRule>> compiledRules = new ArrayList<>();
 
-  /** Latest JSON message per input channel. */
-  private final Map<String, Object> latestByChannel = new ConcurrentHashMap<>();
+  // ---- state below is guarded by evalLock ----
 
-  /** Absolute message counter per channel (never reset). */
-  private final Map<String, Long> channelSeq = new ConcurrentHashMap<>();
+  /** Handled messages of this reactor so far (accepted and discarded). */
+  private long evaluationCount;
+
+  /** Latest accepted JSON message per input channel. */
+  private final Map<String, Object> latestByChannel = new HashMap<>();
+
+  /** Tag of the latest accepted message per input channel. */
+  private final Map<String, Tag> lastAcceptedTag = new HashMap<>();
+
+  /** Arrival instant of the latest accepted message per input channel; only when recording. */
+  private final Map<String, Instant> arrivalByChannel = new HashMap<>();
+
+  /** Accepted-message counter per channel (never reset). */
+  private final Map<String, Long> channelSeq = new HashMap<>();
 
   /**
-   * Per-rule, per-channel last consumed sequence number.
+   * Per-rule, per-channel sequence number at the rule's last firing.
    * lastConsumedSeqByRule.get(ruleIndex).get(channel)
    */
   private final List<Map<String, Long>> lastConsumedSeqByRule = new ArrayList<>();
 
-  /** Lock protecting evaluation and pointer updates. */
+  /** Lock protecting the gate, held values, evaluation and pointer updates. */
   private final ReentrantLock evalLock = new ReentrantLock();
 
   /**
-   * Constructs a rule-based Actor.
+   * Constructs an atomic rule-based reactor.
    *
    * @param eventBus        the event bus providing input messages and publishing outputs
    * @param id              reactor identifier
@@ -166,9 +190,9 @@ public abstract class Reactor extends Service {
    * @param firingRules     list of rules (channel → token)
    * @param inputChannels   list of channels this reactor subscribes to
    * @param outputChannels  list of channels this reactor may publish to
-   * @param atomic          if {@code true}, {@link #reactionFunction(Map)} and latency
-   *                        publishing run inside the evaluation lock (serialized); if
-   *                        {@code false}, they run after the lock is released
+   * @param atomic          if {@code true}, {@link #reactionFunction(Map)} runs inside the
+   *                        evaluation lock (serialized); if {@code false}, it runs after the lock
+   *                        is released
    */
   protected Reactor(EventBus eventBus,
                     String id,
@@ -180,6 +204,7 @@ public abstract class Reactor extends Service {
     super(eventBus);
     this.id = id;
     this.atomic = atomic;
+    this.recorder = FiringRecorders.current();
     this.firingRules = firingRules;
     this.inputChannels = List.copyOf(inputChannels);
     this.outputChannels = List.copyOf(outputChannels);
@@ -194,17 +219,32 @@ public abstract class Reactor extends Service {
 
     for (String ch : this.inputChannels) {
       channelSeq.put(ch, 0L);
+      lastAcceptedTag.put(ch, Tag.ZERO);
       latestByChannel.put(ch, new JSONObject());
       this.eventBus.register(ch, msg -> onMessage(ch, msg));
     }
   }
 
   /**
-   * Called once per evaluation cycle when any rule is satisfied.
+   * Called once per firing, i.e. per accepted message for which at least one rule is satisfied.
    *
-   * @param latestSnapshot immutable snapshot of latest channel values and timestamps
+   * @param latestSnapshot immutable snapshot of latest channel values and timestamps, plus the
+   *                       firing's output tag under {@link #OUTPUT_TAG_KEY}
    */
   public abstract void reactionFunction(Map<String, Object> latestSnapshot);
+
+  /**
+   * Returns the output tag of the firing a snapshot belongs to: the value under
+   * {@link #OUTPUT_TAG_KEY}. Reactions pass it to {@link RuleUtils#publishResult}.
+   *
+   * @param snapshot the snapshot handed to {@link #reactionFunction(Map)}
+   * @return the firing's output tag
+   * @throws IllegalArgumentException if the map is no reactor snapshot
+   */
+  protected static Tag outputTag(Map<String, Object> snapshot) {
+    if (snapshot.get(OUTPUT_TAG_KEY) instanceof Tag tag) return tag;
+    throw new IllegalArgumentException("Snapshot carries no output tag");
+  }
 
   /**
    * Returns the input channels this reactor listens to.
@@ -221,167 +261,174 @@ public abstract class Reactor extends Service {
   public List<String> getOutputChannels() { return outputChannels; }
 
   /**
-   * Handles an incoming message:
-   * <ul>
-   *     <li>Stores latest JSON object</li>
-   *     <li>Increments sequence counter</li>
-   *     <li>Evaluates all rules</li>
-   * </ul>
+   * Handles an incoming message: applies the per-channel gate, and for an accepted message stores
+   * it, increments the channel's sequence counter, evaluates all rules and fires at most once.
    */
   private void onMessage(String channel, Object msg) {
-    latestByChannel.put(channel, msg);
-    channelSeq.merge(channel, 1L, Long::sum);
-    evaluateRules();
-  }
+    final boolean recording = recorder.enabled();
+    final Instant arrival = recording ? MonotonicClock.now() : null;
+    final Tag tag = extractTag(msg);
 
-    /**
-   * Main evaluation procedure. Produces exactly one snapshot + one fire
-   * per evaluation cycle, regardless of how many rules were satisfied.
-   * Corrected to:
-   *   • Only treat a channel as "new" if its sequence number actually advanced.
-   *   • Update lastConsumedSeqByRule only for channels with real deltas.
-   *   • Preserve true AND semantics for multi-input rules.
-   */
-  private void evaluateRules() {
+    long evaluation = 0;
+    Tag gateTag = null;
+    boolean discarded = false;
     Snapshot snapshotToFire = null;
-    boolean shouldFire = false;
+    Instant decision = null;
+    Instant reactStart = null;
+    Instant reactEnd = null;
+    List<FiringRecord.ConsumedInput> consumed = List.of();
 
     evalLock.lock();
     try {
-      // --- Build stable snapshot of state at call ---
-      Map<String, Long> seqAtCall = new HashMap<>();
-      Map<String, Object> latestAtCall = new HashMap<>();
+      evaluation = ++evaluationCount;
+      gateTag = lastAcceptedTag.get(channel);
 
-      for (String ch : inputChannels) {
-        seqAtCall.put(ch, channelSeq.getOrDefault(ch, 0L));
-        latestAtCall.put(ch, latestByChannel.get(ch));
+      // --- per-channel logical-time gate ---
+      if (tag == null || !tag.isAfter(gateTag)) {
+        discarded = true;
+        return;
       }
+      lastAcceptedTag.put(channel, tag);
+      latestByChannel.put(channel, msg);
+      channelSeq.merge(channel, 1L, Long::sum);
+      if (recording) arrivalByChannel.put(channel, arrival);
 
-      // --- Evaluate rules ---
+      // --- evaluate rules on sequence deltas ---
       List<Integer> satisfiedRules = new ArrayList<>();
-
       for (int i = 0; i < compiledRules.size(); i++) {
-        Map<String, FiringRule> rule = compiledRules.get(i);
+        if (ruleSatisfied(i)) satisfiedRules.add(i);
+      }
 
-        boolean satisfied = true;
+      if (satisfiedRules.isEmpty()) {
+        if (recording) recorder.countNoRule(id);
+        return;
+      }
 
-        // AND semantics: every channel in the rule must satisfy its condition
-        for (var e : rule.entrySet()) {
-          String ch = e.getKey();
-          FiringRule cond = e.getValue();
+      // --- output tag ---
+      Tag outTag = nextOutputTag();
+      snapshotToFire = buildSnapshot(outTag);
 
-          Object latest = latestAtCall.get(ch);
-          Instant ts = extractTimestamp(latest);
-          Instant lastTs = lastConsumedTsByRule.get(i).get(ch);
+      if (recording) {
+        // before the pointers advance: afterwards the consumed deltas are gone
+        consumed = pendingInputs(satisfiedRules);
+        decision = MonotonicClock.now();
+      }
 
-          /* A channel is "new" iff its timestamp is strictly newer */
-          /* A channel is "new" iff its timestamp is strictly newer */
-          boolean isNew = ts != null && ts.isAfter(lastTs);
-
-// FIX: AT_LEAST(N) must use sequence deltas, not timestamp newness
-          if (cond.type() == RuleType.AT_LEAST) {
-            long curSeq = seqAtCall.getOrDefault(ch, 0L);
-            long lastSeq = lastConsumedSeqByRule.get(i).getOrDefault(ch, 0L);
-            long delta = curSeq - lastSeq;
-
-            if (delta < cond.n()) {   // <-- correct AT_LEAST(N)
-              satisfied = false;
-              break;
-            }
-          } else {
-            if (!testCondition(cond, isNew, latest)) {
-              satisfied = false;
-              break;
-            }
-          }
-        }
-
-        if (satisfied) {
-          satisfiedRules.add(i);
+      lastOutTag = outTag;
+      for (int ruleIndex : satisfiedRules) {
+        Map<String, Long> ptr = lastConsumedSeqByRule.get(ruleIndex);
+        for (String ch : compiledRules.get(ruleIndex).keySet()) {
+          ptr.put(ch, channelSeq.get(ch));
         }
       }
 
-      // after evaluating satisfiedRules
-      if (!satisfiedRules.isEmpty()) {
-        Snapshot snap = buildSnapshotFrom(latestAtCall);
-
-        // LIFO logical-time gate
-        if (snap.logicalTs.isAfter(lastLogicalFireTs)) {
-          lastLogicalFireTs = snap.logicalTs;
-          snapshotToFire = snap;
-          shouldFire = true;
-
-          // advance per-rule per-channel timestamps + sequence pointers
-          for (int ruleIndex : satisfiedRules) {
-            Map<String, Instant> lastPtrTs = lastConsumedTsByRule.get(ruleIndex);
-            Map<String, Long> lastPtrSeq = lastConsumedSeqByRule.get(ruleIndex);
-            Map<String, FiringRule> rule = compiledRules.get(ruleIndex);
-
-            for (String ch : rule.keySet()) {
-              // Timestamp pointer (UNCHANGED)
-              Instant ts = extractTimestamp(latestAtCall.get(ch));
-              if (ts != null && ts.isAfter(lastPtrTs.get(ch))) {
-                lastPtrTs.put(ch, ts);
-              }
-
-              // Sequence pointer (NEW, needed for AT_LEAST semantics)
-              long curSeq = seqAtCall.getOrDefault(ch, 0L);
-              long lastSeq = lastPtrSeq.getOrDefault(ch, 0L);
-              if (curSeq > lastSeq) {
-                lastPtrSeq.put(ch, curSeq);
-              }
-            }
-          }
-          if (atomic) {
-            reactionFunction(snapshotToFire.values);
-            publishAllLatencyModes(snapshotToFire.values);
-          }
-        }
+      if (atomic) {
+        if (recording) reactStart = MonotonicClock.now();
+        reactionFunction(snapshotToFire.values());
+        if (recording) reactEnd = MonotonicClock.now();
       }
     } finally {
       evalLock.unlock();
-    }
-
-    // --- Fire and publish latency outside lock ---
-    if (!atomic && shouldFire && snapshotToFire != null) {
-      reactionFunction(snapshotToFire.values);
-      publishAllLatencyModes(snapshotToFire.values);
-    }
-
-  }
-
-  /**
-   * Builds an immutable latest-value snapshot from the provided map.
-   * Extracts:
-   * <ul>
-   *   <li>value   under channel name</li>
-   *   <li>Instant under "channel-timestamp"</li>
-   * </ul>
-   */
-  private Snapshot buildSnapshotFrom(Map<String, Object> latestAtCall) {
-    Map<String, Object> snapshot = new LinkedHashMap<>();
-    Instant maxTs = Instant.EPOCH;
-
-    for (String ch : inputChannels) {
-      JSONObject dp = (JSONObject) latestAtCall.get(ch);
-
-      Object value = dp.has("value") ? dp.get("value") : null;
-      snapshot.put(ch, value);
-
-      if (dp.has("timestamp")) {
-        Instant ts = LocalDateTime
-                .parse(dp.getString("timestamp"), formatter)
-                .atZone(ZoneOffset.UTC)
-                .toInstant();
-
-        snapshot.put("%s-timestamp".formatted(ch), ts);
-        if (ts.isAfter(maxTs)) {
-          maxTs = ts;
-        }
+      if (discarded && recording) {
+        recorder.record(new FiringRecord(id, evaluation, FiringRecord.Outcome.DISCARDED, atomic,
+                channel, tag, arrival, null, gateTag, null, null, null, List.of()));
       }
     }
 
-    return new Snapshot(Collections.unmodifiableMap(snapshot), maxTs);
+    // --- fire outside lock (non-atomic) ---
+    if (!atomic) {
+      if (recording) reactStart = MonotonicClock.now();
+      reactionFunction(snapshotToFire.values());
+      if (recording) reactEnd = MonotonicClock.now();
+    }
+
+    if (recording) {
+      recorder.record(new FiringRecord(id, evaluation, FiringRecord.Outcome.FIRED, atomic,
+              channel, tag, arrival, snapshotToFire.outputTag(), gateTag, decision, reactStart,
+              reactEnd, consumed));
+    }
+  }
+
+  /** Whether rule {@code i} is satisfied by the current sequence deltas. Under {@link #evalLock}. */
+  private boolean ruleSatisfied(int i) {
+    Map<String, Long> lastSeq = lastConsumedSeqByRule.get(i);
+    for (var e : compiledRules.get(i).entrySet()) {
+      String ch = e.getKey();
+      FiringRule cond = e.getValue();
+      long delta = channelSeq.get(ch) - lastSeq.get(ch);
+      boolean ok = switch (cond.type()) {
+        case ANY -> delta >= 1;
+        case AT_LEAST -> delta >= cond.n();
+        case REQUIRE_VALUE -> delta >= 1
+                && valueMatchesExpected(valueOf(latestByChannel.get(ch)), cond.value());
+      };
+      if (!ok) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Computes the output tag of a firing from the held inputs and {@link #lastOutTag}. Under
+   * {@link #evalLock}.
+   *
+   * @throws IllegalStateException if the tag would not be strictly greater than the previous one
+   *                               (unreachable while the per-channel gate holds)
+   */
+  private Tag nextOutputTag() {
+    Instant maxT = Instant.EPOCH;
+    for (String ch : inputChannels) {
+      Instant t = lastAcceptedTag.get(ch).t();
+      if (t.isAfter(maxT)) maxT = t;
+    }
+    Tag last = lastOutTag;
+    Tag out = maxT.isAfter(last.t()) ? Tag.of(maxT) : new Tag(maxT, last.m() + 1);
+    if (!out.isAfter(last)) {
+      throw new IllegalStateException("Reactor %s: output tag %s not after previous %s"
+              .formatted(id, out, last));
+    }
+    return out;
+  }
+
+  /**
+   * Collects the inputs that carry new data ({@code delta >= 1}) for at least one satisfied rule.
+   * Must be called under {@link #evalLock}, before the consumed pointers advance.
+   */
+  private List<FiringRecord.ConsumedInput> pendingInputs(List<Integer> satisfiedRules) {
+    Map<String, FiringRecord.ConsumedInput> pending = new LinkedHashMap<>();
+    for (int ruleIndex : satisfiedRules) {
+      Map<String, Long> lastSeq = lastConsumedSeqByRule.get(ruleIndex);
+      for (String ch : compiledRules.get(ruleIndex).keySet()) {
+        if (pending.containsKey(ch)) continue;
+        long seq = channelSeq.get(ch);
+        if (seq > lastSeq.get(ch)) {
+          pending.put(ch, new FiringRecord.ConsumedInput(ch, seq, lastAcceptedTag.get(ch),
+                  arrivalByChannel.get(ch)));
+        }
+      }
+    }
+    return new ArrayList<>(pending.values());
+  }
+
+  /**
+   * Builds the immutable snapshot of the held inputs: value under the channel name, timestamp
+   * under {@code "<channel>-timestamp"} (only for channels that have accepted a message), and the
+   * output tag under {@link #OUTPUT_TAG_KEY}. Under {@link #evalLock}.
+   */
+  private Snapshot buildSnapshot(Tag outTag) {
+    Map<String, Object> snapshot = new LinkedHashMap<>();
+    for (String ch : inputChannels) {
+      snapshot.put(ch, valueOf(latestByChannel.get(ch)));
+      if (channelSeq.get(ch) > 0) {
+        snapshot.put("%s-timestamp".formatted(ch), lastAcceptedTag.get(ch).t());
+      }
+    }
+    snapshot.put(OUTPUT_TAG_KEY, outTag);
+    return new Snapshot(Collections.unmodifiableMap(snapshot), outTag);
+  }
+
+  /** The {@code "value"} field of a held message, or {@code null}. */
+  private static Object valueOf(Object msg) {
+    return msg instanceof JSONObject dp && dp.has("value") ? dp.get("value") : null;
   }
 
   /** Compiles rule tokens ("*", "N", "r:v") into structured FiringRule objects. */
@@ -411,13 +458,10 @@ public abstract class Reactor extends Service {
   /** Initializes per-rule per-channel last-consumed pointers to zero. */
   private void initLastConsumedPointers() {
     for (int i = 0; i < firingRules.size(); i++) {
-      Map<String, Instant> ptrTs = new HashMap<>();
       Map<String, Long> ptrSeq = new HashMap<>();
       for (String ch : inputChannels) {
-        ptrTs.put(ch, Instant.EPOCH);
         ptrSeq.put(ch, 0L);
       }
-      lastConsumedTsByRule.add(ptrTs);
       lastConsumedSeqByRule.add(ptrSeq);
     }
   }
@@ -442,165 +486,16 @@ public abstract class Reactor extends Service {
     throw new IllegalArgumentException("Unsupported token: %s".formatted(token));
   }
 
-  /** Tests whether a given rule condition is satisfied according to delta + latest value. */
-  private boolean testCondition(FiringRule cond, boolean isNew, Object latest) {
-    return switch (cond.type()) {
-      case ANY -> isNew;
-      case AT_LEAST -> isNew; // AT_LEAST(N) collapses to timestamp ordering in LIFO mode
-      case REQUIRE_VALUE -> isNew && valueMatchesExpected(latest, cond.value());
-    };
-  }
-
   /**
-   * Default equality check for the {@code "r:v"} (REQUIRE_VALUE) token: compares the latest
-   * value's string form against the expected value. Override to customize matching.
+   * Equality check for the {@code "r:v"} (REQUIRE_VALUE) token: compares the string form of the
+   * latest accepted value (the message's {@code "value"} field) against the expected value.
+   * Override to customize matching. Called under the evaluation lock.
    *
-   * @param actual   the latest value received on the channel
+   * @param actual   the latest accepted value on the channel, or {@code null}
    * @param expected the expected value string from the rule token
    * @return {@code true} if the value matches
    */
   protected boolean valueMatchesExpected(Object actual, String expected) {
     return Objects.equals(Objects.toString(actual, null), expected);
-  }
-
-  // --------------------------------------------------------------------------
-  // LATENCY PUBLISHING (A + B + C2)
-  // --------------------------------------------------------------------------
-
-  /**
-   * Publishes latency in all three modes:
-   * <ol>
-   *   <li>(A) per channel latency</li>
-   *   <li>(B) global latency (earliest timestamp)</li>
-   *   <li>(C2) rule-participation latency (channels with delta >= 1)</li>
-   * </ol>
-   */
-  private void publishAllLatencyModes(Map<String, Object> snapshot) {
-    Instant now = Instant.now();
-
-    publishPerChannelLatency(snapshot, now);
-    publishGlobalLatency(snapshot, now);
-    publishRuleParticipationLatency(snapshot, now);
-  }
-
-  /**
-   * (A) Publishes latency per input channel.
-   */
-  private void publishPerChannelLatency(Map<String, Object> snapshot, Instant benchmarkTs) {
-    for (String ch : inputChannels) {
-      String timeKey = "%s-timestamp".formatted(ch);
-      Object v = snapshot.get(timeKey);
-      if (!(v instanceof Instant ts)) {
-        // No timestamp present for this channel in the snapshot → nothing to do
-        continue;
-      }
-
-      // Guard: datapoint claims to be in the future (clock skew or bad source)
-      if (ts.isAfter(benchmarkTs)) {
-        logger.warning("Timestamp from future: %s > %s".formatted(ts, benchmarkTs));
-        continue;
-      }
-
-      Instant lastPublished = lastTsPublishedByChannel.get(ch);
-
-      // Skip if we already published this exact datapoint OR a newer one.
-      // (Older or equal timestamps should not be republished.)
-      if (lastPublished != null && !ts.isAfter(lastPublished)) {
-        continue;  // <-- IMPORTANT: was 'return' before, which aborted the whole method
-      }
-
-      double seconds = Duration.between(ts, benchmarkTs).toNanos() / 1_000_000_000d;
-
-      publishResult(
-              eventBus,
-              seconds,
-              "Latency",
-              List.of("Latency-%s.%s".formatted(ch, id)),
-              benchmarkTs
-      );
-
-      lastTsPublishedByChannel.put(ch, ts);
-    }
-  }
-
-  /**
-   * (B) Publishes a global latency value using the earliest timestamp
-   * across all channels in the snapshot.
-   */
-  private void publishGlobalLatency(Map<String, Object> snapshot, Instant benchmarkTs) {
-    Instant earliest = null;
-
-    for (String ch : inputChannels) {
-      Instant ts = (Instant) snapshot.get("%s-timestamp".formatted(ch));
-      if (ts != null) {
-        if (earliest == null || ts.isBefore(earliest)) {
-          earliest = ts;
-        }
-      }
-    }
-
-    // No channel in the snapshot carried a timestamp → nothing to publish.
-    if (earliest == null) {
-      return;
-    }
-
-    if (earliest.isAfter(benchmarkTs)) {
-      logger.warning("Timestamp from future: %s > %s".formatted(earliest, benchmarkTs));
-      return;
-    }
-
-    double seconds = Duration.between(earliest, benchmarkTs).toNanos() / 1_000_000_000d;
-
-    publishResult(
-            eventBus,
-            seconds,
-            "Latency-Global",
-            List.of("Latency-Global.%s".formatted(id)),
-            benchmarkTs
-    );
-  }
-
-  /**
-   * (C) Publishes latency only for channels that contributed delta >= 1
-   * in at least one satisfied rule during this evaluation.
-   */
-  private void publishRuleParticipationLatency(Map<String, Object> snapshot, Instant benchmarkTs) {
-    // Determine participating channels (delta >= 1 for satisfied rules)
-    Set<String> participating = new HashSet<>();
-
-    for (int i = 0; i < compiledRules.size(); i++) {
-      Map<String, Long> lastPtr = lastConsumedSeqByRule.get(i);
-      Map<String, FiringRule> rule = compiledRules.get(i);
-
-      for (var e : rule.entrySet()) {
-        String ch = e.getKey();
-        long last = lastPtr.get(ch);
-        long cur = channelSeq.get(ch);
-
-        if (cur - last >= 1) {
-          participating.add(ch);
-        }
-      }
-    }
-
-    // Publish latency for participating channels only
-    for (String ch : participating) {
-      String timeKey = "%s-timestamp".formatted(ch);
-      Instant ts = (Instant) snapshot.get(timeKey);
-      if (ts.isAfter(benchmarkTs)){
-        logger.warning("Timestamp from future: %s > %s".formatted(ts, benchmarkTs));
-        continue;
-      }
-
-      double seconds = Duration.between(ts, benchmarkTs).toNanos() / 1_000_000_000d;
-
-      publishResult(
-              eventBus,
-              seconds,
-              "Latency-RuleParticipation",
-              List.of("Latency-Rule-%s.%s".formatted(ch, id)),
-              benchmarkTs
-      );
-    }
   }
 }

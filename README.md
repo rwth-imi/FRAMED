@@ -257,9 +257,11 @@ public class UppercaseParser extends Parser<String> {
 
 ### A reaction — `Reactor`
 
-A `Reactor` watches input channels and fires `reactionFunction` once per evaluation cycle
-when its **firing rules** are satisfied. It receives an immutable snapshot of the latest
-value per channel (plus `"<channel>-timestamp"` → `Instant`).
+A `Reactor` watches input channels and fires `reactionFunction` once per accepted message
+for which its **firing rules** are satisfied. Every message carries a tag `(timestamp,
+microstep)`; a message whose tag is not newer than the last one accepted on its channel is
+discarded. The reaction receives an immutable snapshot of the latest value per channel (plus
+`"<channel>-timestamp"` → `Instant`) and the firing's output tag, which it publishes with.
 
 ```java
 import com.framed.arn.Reactor;
@@ -279,7 +281,7 @@ public class HighTempReactor extends Reactor {
   @Override public void reactionFunction(Map<String, Object> snapshot) {
     double v = ((Number) snapshot.get(getInputChannels().get(0))).doubleValue();
     int level = v > 24 ? 1 : 0;
-    publishResult(eventBus, level, id, getOutputChannels(), lastLogicalFireTs);
+    publishResult(eventBus, level, id, getOutputChannels(), outputTag(snapshot));
   }
 }
 ```
@@ -289,9 +291,9 @@ within a rule are AND):
 
 | Token  | Meaning |
 |--------|---------|
-| `"*"`  | ANY — at least one new message on the channel since this rule last fired |
-| `"N"`  | AT_LEAST(N) — at least N new messages since last fired |
-| `"r:v"`| REQUIRE_VALUE — a new message **and** latest value equals `v` |
+| `"*"`  | ANY — at least one newly accepted message on the channel since this rule last fired |
+| `"N"`  | AT_LEAST(N) — at least N newly accepted messages since this rule last fired |
+| `"r:v"`| REQUIRE_VALUE — a newly accepted message **and** latest value equals `v` |
 
 ### A sink — `Dispatcher`
 

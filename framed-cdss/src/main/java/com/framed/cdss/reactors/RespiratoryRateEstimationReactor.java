@@ -5,6 +5,7 @@
 package com.framed.cdss.reactors;
 
 import com.framed.arn.Reactor;
+import com.framed.arn.Tag;
 import com.framed.cdss.utils.SlopeUtils;
 import com.framed.core.EventBus;
 import org.json.JSONArray;
@@ -302,7 +303,7 @@ public class RespiratoryRateEstimationReactor extends Reactor {
         }
 
         // After updating detections, compute and publish RR if possible
-        computeAndPublishRR();
+        computeAndPublishRR(outputTag(snapshot));
     }
 
 
@@ -382,11 +383,12 @@ public class RespiratoryRateEstimationReactor extends Reactor {
      * RR [breaths/min] = 60000 / median(inter_breath_interval_ms)
      * </pre>
      *
-     * <p>If no valid intervals remain after filtering, nothing is published.</p>
+     * <p>If fewer than two peaks are known, or no valid interval remains after filtering, 0 is
+     * published.</p>
      */
-    private void computeAndPublishRR() {
+    private void computeAndPublishRR(Tag tag) {
         if (detectedPeaks.size() < 2) {
-            publishResult(eventBus, 0, id, outputChannels, lastLogicalFireTs);
+            publishResult(eventBus, 0, id, outputChannels, tag);
             return;
         }
 
@@ -402,13 +404,16 @@ public class RespiratoryRateEstimationReactor extends Reactor {
                 intervalsMs.add(d);
             }
         }
-        if (intervalsMs.isEmpty()) publishResult(eventBus, 0, id, outputChannels, lastLogicalFireTs);
+        if (intervalsMs.isEmpty()) {
+            publishResult(eventBus, 0, id, outputChannels, tag);
+            return;
+        }
 
         intervalsMs.sort(Long::compareTo);
         double medianMs = intervalsMs.get(intervalsMs.size() / 2);
         double rr = 60000.0 / medianMs;
 
-        publishResult(eventBus, rr, id, outputChannels, lastLogicalFireTs);
+        publishResult(eventBus, rr, id, outputChannels, tag);
     }
 
     /**

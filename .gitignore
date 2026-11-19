@@ -22,3 +22,6 @@ CLAUDE.md
 # from the conventional commit history, not from this file.
 docs/CHANGELOG.md
 benchmark/
+
+# Generated experiment outputs (results, logs); the scripts are tracked.
+experiments/*/out/
