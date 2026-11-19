@@ -52,7 +52,7 @@ over runs: the median of the per-run values, with a percentile-bootstrap 95 % CI
 ``summary.csv`` additionally reports the **pooled** mean and standard deviation over all samples
 of all runs (``mean_pooled``, ``std_pooled``; sample std, ddof = 1), as reported in the v03
 manuscript. They are derived exactly from the per-run n, mean and std. Both are dominated by a few
-deferred samples (see ``out/diagnose_v03/FINDINGS.md``); the percentiles are the primary measure.
+deferred samples; the percentiles are the primary measure.
 
 Further outputs:
 

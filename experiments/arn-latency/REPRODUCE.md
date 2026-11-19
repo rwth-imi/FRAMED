@@ -15,7 +15,6 @@ The experiments replay every recording of the ventilation and pulse-oximetry dat
 | `export_supplement.py` | combines the analysis tables of all platforms into the supplementary material |
 | `data_dictionary_*.csv` | data dictionary of the supplementary tables (notes, metrics, columns); rendered to `S0_data_dictionary.xlsx` |
 | `framed_runs.py` | helpers shared by the analyses |
-| `diagnose_v03.py` | diagnosis of the earlier v03 latency data; not needed for new runs |
 
 ## 1. Requirements
 
