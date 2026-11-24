@@ -162,6 +162,10 @@ Implementations:
 `DispatchMode` (`com.framed.core.utils`) controls how local handlers run:
 `SEQUENTIAL` (inline), `PARALLEL` (shared pool), `PER_HANDLER` (one FIFO thread per handler).
 
+`send` is point-to-point across the whole deployment: the first local handler registered for the
+address receives it; if there is none, `SocketEventBus` forwards it to the first peer added, whose
+first handler receives it. `publish` reaches every local handler and every peer.
+
 ### Service
 
 ```java
@@ -523,7 +527,12 @@ FRAMED ships one such validator: `com.framed.arn.ARN`, which verifies that the d
 
 Use `SocketEventBus` with a `Transport` (`TCPTransport`/`UDPTransport` or their NIO
 variants) and add `Peer`s. Anything `publish`ed is also forwarded to peers, so services on
-different nodes share channels transparently. The config-driven launcher does this for you
+different nodes share channels transparently.
+
+Forwarding is ordered: messages from one publishing thread reach a remote handler in the order
+they were published (each peer has one writer thread, each receiving handler one dispatch
+thread). UDP may still lose or reorder datagrams on the network. Messages from different threads
+or instances have no defined relative order. The config-driven launcher does this for you
 from `communication.json` (`type`, `port`, `peers`).
 
 ---
