@@ -22,7 +22,6 @@ import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 import static com.framed.core.utils.RemoteUtils.parseAndDispatch;
-import static com.framed.core.utils.RemoteUtils.parseAndDispatchAsync;
 
 
 /** A {@link Transport} implementation using UDP datagrams for lightweight, connectionless messaging.
@@ -169,7 +168,6 @@ public class UDPTransport implements Transport {
   @Override
   public void register(String address, Consumer<Object> handler) {
     handlers.computeIfAbsent(address, k -> new CopyOnWriteArrayList<>()).add(handler);
-    handlerExecutors.put(handler, Executors.newSingleThreadExecutor());
   }
 
   /**
@@ -182,6 +180,8 @@ public class UDPTransport implements Transport {
     if (socket != null && !socket.isClosed()) {
       socket.close();
     }
-    workerPool.shutdownNow(); // stop handler tasks
+    workerPool.shutdownNow();
+    handlerExecutors.values().forEach(ExecutorService::shutdownNow);
+    handlerExecutors.clear();
   }
 }

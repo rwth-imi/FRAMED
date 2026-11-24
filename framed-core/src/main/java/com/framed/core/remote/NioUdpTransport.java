@@ -24,7 +24,7 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 
-import static com.framed.core.utils.RemoteUtils.parseAndDispatchAsync;
+import static com.framed.core.utils.RemoteUtils.parseAndDispatch;
 
 
 /** A {@link Transport} implementation using Java NIO over UDP for lightweight, connectionless
@@ -82,6 +82,8 @@ public class NioUdpTransport implements Transport {
   private static final Charset charset = StandardCharsets.UTF_8;
   private final ExecutorService workerPool = Executors.newCachedThreadPool();
   private final Map<String, List<Consumer<Object>>> handlers = new ConcurrentHashMap<>();
+  /** One single-thread executor per handler, so each handler sees datagrams in arrival order. */
+  private final Map<Consumer<Object>, ExecutorService> handlerExecutors = new ConcurrentHashMap<>();
   private volatile boolean running = true;
 
 
@@ -110,8 +112,9 @@ public class NioUdpTransport implements Transport {
    * above {@value #MAX_DATAGRAM_BYTES} bytes are truncated by the kernel and will therefore be
    * skipped as malformed.</p>
    * <p><b>Threading:</b> runs on a single thread borrowed from the transport's cached pool for the
-   * transport's lifetime; handler invocation is handed off to that same pool, so handlers never
-   * block the receive loop.</p>
+   * transport's lifetime; handler invocation is handed to one single-thread executor per handler,
+   * so handlers never block the receive loop and each handler sees datagrams in arrival order.
+   * UDP itself may still lose or reorder datagrams on the network.</p>
    */
   @Override
   public void start() {
@@ -131,7 +134,7 @@ public class NioUdpTransport implements Transport {
               String jsonStr = charset.decode(buffer).toString().trim();
               if (jsonStr.isEmpty()) continue;
               try {
-                parseAndDispatchAsync(jsonStr, handlers, workerPool);
+                parseAndDispatch(jsonStr, handlers, handlerExecutors);
               } catch (RuntimeException malformed) {
                 // A truncated or corrupt datagram must not take the receive loop down with it.
                 logger.warning("UDP receive failed: " + malformed);
@@ -211,6 +214,9 @@ public class NioUdpTransport implements Transport {
     } catch (IOException e) {
       logger.severe("Failed to close selector: " + e.getMessage());
     }
+    workerPool.shutdownNow();
+    handlerExecutors.values().forEach(ExecutorService::shutdownNow);
+    handlerExecutors.clear();
   }
 
   /**

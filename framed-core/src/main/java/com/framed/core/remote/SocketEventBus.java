@@ -7,10 +7,15 @@ package com.framed.core.remote;
 import com.framed.core.EventBus;
 import com.framed.core.utils.DispatchMode;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 
@@ -41,6 +46,28 @@ import java.util.logging.Logger;
  * {@link #dispatchLocally(String, Object)}. Remote dispatch is delegated to the underlying
  * {@link Transport}, which may invoke handlers on its own threads.</p>
  *
+ * <h2>Send and publish</h2>
+ * <ul>
+ *   <li>{@link #publish(String, Object)} reaches every local handler of the address and is
+ *       forwarded to every peer, where every handler of the address receives it.</li>
+ *   <li>{@link #send(String, Object)} is point-to-point: it reaches exactly one handler in the
+ *       deployment. If the address has a local handler, the first one registered receives it and
+ *       nothing is forwarded. Otherwise it is forwarded to the first peer added to this bus, whose
+ *       first handler for the address receives it. The bus does not know which peers have handlers,
+ *       so a send to a peer without one is lost; deployments that send across instances should
+ *       list the receiving instance first.</li>
+ * </ul>
+ *
+ * <h2>Ordering</h2>
+ * <p>Messages forwarded to one peer leave in the order this bus was called with them: each peer has
+ * a single-thread executor that performs every write to it, sends and publications alike. With
+ * the receiving transport dispatching per handler in arrival order, a remote handler sees one
+ * sender thread's messages in the order they were sent (UDP may still lose or reorder datagrams on
+ * the network). This matters to a {@code Reactor}: its logical-time gate discards a message whose
+ * tag is not newer than the last one accepted on its channel, so a reordered pair costs a
+ * firing. Messages from different sender threads, or from different instances, have no defined
+ * order relative to each other.</p>
+ *
  * <h2>Lifecycle</h2>
  * <p>Call {@link #shutdown()} to stop the transport and terminate all executors created/used by this bus.</p>
  */
@@ -49,8 +76,18 @@ public class SocketEventBus implements EventBus {
     /** Underlying transport used for remote communication. */
     private final Transport transport;
 
-    /** Connected remote peers that receive forwarded messages. */
-    private final Set<Peer> peers = ConcurrentHashMap.newKeySet();
+    /**
+     * Connected remote peers that receive forwarded messages, in the order they were added; the
+     * first one is the target of a {@link #send} without a local handler.
+     */
+    private final Set<Peer> peers = new CopyOnWriteArraySet<>();
+
+    /**
+     * One single-thread executor per peer, performing every write to that peer in submission
+     * order. Writes block while the peer's receive window is full; doing them here keeps that
+     * backpressure off the publishing thread without letting writes overtake each other.
+     */
+    private final Map<Peer, ExecutorService> peerExecutors = new ConcurrentHashMap<>();
 
     /**
      * Local handler registry: address -> list of handlers.
@@ -70,7 +107,6 @@ public class SocketEventBus implements EventBus {
      * Shared pool used for:
      * <ul>
      *   <li>{@link DispatchMode#PARALLEL} local dispatch</li>
-     *   <li>asynchronous remote publish fan-out</li>
      * </ul>
      */
     private final ExecutorService parallelPool = Executors.newCachedThreadPool();
@@ -111,6 +147,12 @@ public class SocketEventBus implements EventBus {
         peers.add(peer);
     }
 
+    /** The single-thread executor that performs every write to {@code peer}. */
+    private ExecutorService peerExecutor(Peer peer) {
+        return peerExecutors.computeIfAbsent(peer, p -> Executors.newSingleThreadExecutor(
+                r -> new Thread(r, "SocketEventBus-peer-%s:%d".formatted(p.host(), p.port()))));
+    }
+
     /**
      * Removes a remote peer from the event bus.
      *
@@ -118,6 +160,10 @@ public class SocketEventBus implements EventBus {
      */
     public void removePeer(Peer peer) {
         peers.remove(peer);
+        ExecutorService executor = peerExecutors.remove(peer);
+        if (executor != null) {
+            executor.shutdown();   // messages already queued for the peer still go out
+        }
     }
 
     // --------------------------------------------------------------------------
@@ -170,27 +216,34 @@ public class SocketEventBus implements EventBus {
     // --------------------------------------------------------------------------
 
     /**
-     * Sends a point-to-point message to all registered peers and dispatches it locally.
+     * Sends a point-to-point message: exactly one handler in the deployment receives it.
      *
-     * <p>Uses {@code send} semantics: only the first handler on the remote side will process the message,
-     * depending on transport semantics.</p>
+     * <p>If the address has a local handler, the first one registered receives the message and it
+     * is not forwarded. Otherwise it is forwarded to the first peer added to this bus, whose first
+     * handler for the address receives it. See the class documentation for the consequences.</p>
      *
      * @param address the logical address/topic
      * @param message the payload to send
      */
     @Override
     public void send(String address, Object message) {
-        dispatchLocally(address, message);
-        for (Peer peer : peers) {
-            transport.send(peer.host(), peer.port(), address, message);
+        List<Consumer<Object>> handlers = localHandlers.get(address);
+        if (handlers != null && !handlers.isEmpty()) {
+            dispatchToHandler(handlers.get(0), message);
+            return;
+        }
+        Iterator<Peer> inOrderAdded = peers.iterator();
+        if (inOrderAdded.hasNext()) {
+            Peer first = inOrderAdded.next();
+            forward(first, () -> transport.send(first.host(), first.port(), address, message), "send", address);
         }
     }
 
     /**
-     * Publishes a message to all registered peers and dispatches it locally.
+     * Publishes a message to all local handlers and forwards it to every peer.
      *
-     * <p>Uses {@code publish} semantics: all handlers on the remote side will process the message,
-     * depending on transport semantics.</p>
+     * <p>Uses {@code publish} semantics: all handlers on the remote side receive the message.
+     * Forwarding is asynchronous but ordered per peer (see the class documentation).</p>
      *
      * @param address the logical address/topic
      * @param message the payload to publish
@@ -199,7 +252,23 @@ public class SocketEventBus implements EventBus {
     public void publish(String address, Object message) {
         dispatchLocally(address, message);
         for (Peer peer : peers) {
-            parallelPool.submit(() -> transport.publish(peer.host(), peer.port(), address, message));
+            forward(peer, () -> transport.publish(peer.host(), peer.port(), address, message), "publish", address);
+        }
+    }
+
+    /** Queues one write on the peer's executor; a failing write is logged, not propagated. */
+    private void forward(Peer peer, Runnable write, String type, String address) {
+        try {
+            peerExecutor(peer).execute(() -> {
+                try {
+                    write.run();
+                } catch (RuntimeException e) {
+                    logger.warning("Transport %s to %s:%d [%s] failed: %s"
+                            .formatted(type, peer.host(), peer.port(), address, e));
+                }
+            });
+        } catch (java.util.concurrent.RejectedExecutionException shutDown) {
+            // the peer was removed or the bus shut down concurrently; the message is dropped
         }
     }
 
@@ -228,17 +297,22 @@ public class SocketEventBus implements EventBus {
         if (handlers == null) return;
 
         for (Consumer<Object> handler : handlers) {
-            DispatchMode effective = handlerModeOverrides.getOrDefault(handler, this.dispatchMode);
+            dispatchToHandler(handler, message);
+        }
+    }
 
-            switch (effective) {
-                case SEQUENTIAL -> handler.accept(message);
+    /** Runs one handler according to its effective dispatch mode (override or bus default). */
+    private void dispatchToHandler(Consumer<Object> handler, Object message) {
+        DispatchMode effective = handlerModeOverrides.getOrDefault(handler, this.dispatchMode);
 
-                case PARALLEL -> parallelPool.submit(() -> handler.accept(message));
+        switch (effective) {
+            case SEQUENTIAL -> handler.accept(message);
 
-                case PER_HANDLER -> handlerExecutors
-                        .computeIfAbsent(handler, h -> Executors.newSingleThreadExecutor())
-                        .submit(() -> handler.accept(message));
-            }
+            case PARALLEL -> parallelPool.submit(() -> handler.accept(message));
+
+            case PER_HANDLER -> handlerExecutors
+                    .computeIfAbsent(handler, h -> Executors.newSingleThreadExecutor())
+                    .submit(() -> handler.accept(message));
         }
     }
 
@@ -253,7 +327,7 @@ public class SocketEventBus implements EventBus {
      * <ul>
      *   <li>Stops the underlying {@link Transport}</li>
      *   <li>Clears local handler and peer state</li>
-     *   <li>Terminates the shared thread pool</li>
+     *   <li>Terminates the shared thread pool and the per-peer writers (queued writes are dropped)</li>
      *   <li>Terminates all per-handler executors</li>
      * </ul>
      *
@@ -265,6 +339,8 @@ public class SocketEventBus implements EventBus {
         peers.clear();
 
         parallelPool.shutdownNow();
+        peerExecutors.values().forEach(ExecutorService::shutdownNow);
+        peerExecutors.clear();
         handlerExecutors.values().forEach(ExecutorService::shutdownNow);
         handlerExecutors.clear();
         handlerModeOverrides.clear();

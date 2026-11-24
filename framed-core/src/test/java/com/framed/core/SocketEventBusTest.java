@@ -28,14 +28,29 @@ public class SocketEventBusTest {
   }
 
   @Test
-  public void testSendMessageToPeer() {
+  public void testSendPrefersALocalHandler() {
     AtomicReference<Object> received = new AtomicReference<>();
-
-    mockTransport.register("test.address", received::set);
     eventBus.register("test.address", received::set);
 
     eventBus.send("test.address", "Hello");
 
+    assertEquals("Hello", received.get());
+    assertTrue(mockTransport.getSentMessages().isEmpty(),
+            "a send taken by a local handler must not be forwarded");
+  }
+
+  @Test
+  public void testSendWithoutLocalHandlerGoesToPeer() throws InterruptedException {
+    AtomicReference<Object> received = new AtomicReference<>();
+    mockTransport.register("test.address", received::set);   // the peer's side, simulated
+
+    eventBus.send("test.address", "Hello");
+
+    // Forwarding runs on the peer's writer thread; wait up to 1s for it to land.
+    long deadline = System.currentTimeMillis() + 1_000;
+    while (received.get() == null && System.currentTimeMillis() < deadline) {
+      Thread.sleep(10);
+    }
     assertEquals("Hello", received.get());
     assertTrue(mockTransport.getSentMessages().contains("SEND:test.address:Hello"));
   }

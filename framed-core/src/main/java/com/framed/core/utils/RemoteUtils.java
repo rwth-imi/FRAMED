@@ -38,12 +38,17 @@ public class RemoteUtils {
   }
 
   /**
-   * Parses a JSON message and submits it to registered handlers, creating a thread per handler.
+   * Parses a JSON message and submits it to registered handlers on a shared pool.
    *
    * @param jsonStr    the JSON string representing the message to parse and dispatch
    * @param handlers   map of address to the handlers registered for that address
    * @param workerPool the worker pool of the transport used to run each handler invocation
+   * @deprecated does not preserve order: consecutive messages for one handler run as independent
+   *             tasks and can overtake each other, which a {@code Reactor}'s logical-time gate turns
+   *             into silently discarded messages. Use
+   *             {@link #parseAndDispatch(String, Map, Map)}; no transport calls this method any more.
    */
+  @Deprecated
   public static void parseAndDispatchAsync(String jsonStr, Map<String, List<Consumer<Object>>> handlers, ExecutorService workerPool) {
     RemoteMessage result = RemoteUtils.parseMessage(jsonStr);
 
@@ -60,10 +65,17 @@ public class RemoteUtils {
   }
 
   /**
-   * Parses a JSON message and submits it to registered handlers.
+   * Parses a JSON message and hands it to the handlers registered for its address, in order.
    *
-   * <p>Each handler is dispatched on its own dedicated single-thread executor (created on
-   * demand and cached in {@code handlerExecutors}), preserving per-handler FIFO ordering.</p>
+   * <p>A {@code "send"} message goes to the first handler registered for the address only
+   * (point-to-point); any other type goes to every handler (broadcast).</p>
+   *
+   * <p>Each handler runs on its own single-thread executor, created on first use and cached in
+   * {@code handlerExecutors}. A handler therefore receives the messages of one connection in the
+   * order this method is called with them, while different handlers proceed concurrently — the
+   * guarantee {@code DispatchMode.PER_HANDLER} gives local dispatch. Callers must call this method
+   * from one thread per connection (the transports' reader threads do), since order across callers
+   * is the order they reach the executor.</p>
    *
    * @param jsonStr          the JSON string representing the message to parse and dispatch
    * @param handlers         map of address to the handlers registered for that address
@@ -75,13 +87,29 @@ public class RemoteUtils {
                                       Map<Consumer<Object>, ExecutorService> handlerExecutors) {
     RemoteMessage result = RemoteUtils.parseMessage(jsonStr);
     List<Consumer<Object>> list = handlers.get(result.address());
-    if (list != null) {
-      for (Consumer<Object> handler : list) {
-        handlerExecutors.computeIfAbsent(handler, h ->
-          Executors.newSingleThreadExecutor(r -> new Thread(r, "Handler-" + h.hashCode()))
-        ).submit(() -> handler.accept(result.payload()));
-      }
+    if (list == null || list.isEmpty()) {
+      return;
     }
+    if ("send".equals(result.type())) {
+      Consumer<Object> first = list.get(0);
+      handlerExecutor(handlerExecutors, first).submit(() -> first.accept(result.payload()));
+      return;
+    }
+    for (Consumer<Object> handler : list) {
+      handlerExecutor(handlerExecutors, handler).submit(() -> handler.accept(result.payload()));
+    }
+  }
 
+  /**
+   * Returns the single-thread executor of a handler, creating it on first use.
+   *
+   * @param handlerExecutors the transport's handler-to-executor map
+   * @param handler          the handler
+   * @return the handler's executor
+   */
+  public static ExecutorService handlerExecutor(Map<Consumer<Object>, ExecutorService> handlerExecutors,
+                                                Consumer<Object> handler) {
+    return handlerExecutors.computeIfAbsent(handler, h ->
+            Executors.newSingleThreadExecutor(r -> new Thread(r, "Handler-" + h.hashCode())));
   }
 }

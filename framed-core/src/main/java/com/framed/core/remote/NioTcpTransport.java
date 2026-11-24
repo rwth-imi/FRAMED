@@ -27,7 +27,7 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 
-import static com.framed.core.utils.RemoteUtils.parseAndDispatchAsync;
+import static com.framed.core.utils.RemoteUtils.parseAndDispatch;
 
 /**
  * A {@link Transport} implementation using Java NIO for TCP-based communication.
@@ -81,7 +81,9 @@ import static com.framed.core.utils.RemoteUtils.parseAndDispatchAsync;
  * <em>different</em> peers proceed in parallel. A write blocks its calling thread while the peer's
  * receive window is full, which is the intended backpressure; callers must therefore not write from
  * an event-bus handler thread ({@code SocketEventBus} already publishes to peers on its own pool).
- * Reading happens on the single selector thread; handler invocation is handed to the worker pool.</p>
+ * Reading happens on the single selector thread, which preserves each connection's order; handler
+ * invocation is handed to one single-thread executor per handler, so a handler receives a
+ * connection's messages in the order they were written.</p>
  *
  * <p><b>Note:</b> Always call {@link #shutdown()} to release resources when done.</p>
  */
@@ -123,6 +125,8 @@ public class NioTcpTransport implements Transport {
   private final ServerSocketChannel serverChannel;
   private final ExecutorService workerPool = Executors.newCachedThreadPool();
   private final Map<String, List<Consumer<Object>>> handlers = new ConcurrentHashMap<>();
+  /** One single-thread executor per handler, so each handler sees a connection's messages in order. */
+  private final Map<Consumer<Object>, ExecutorService> handlerExecutors = new ConcurrentHashMap<>();
   private static final Charset charset = StandardCharsets.UTF_8;
   private volatile boolean running = true;
 
@@ -273,7 +277,7 @@ public class NioTcpTransport implements Transport {
         continue;
       }
       try {
-        parseAndDispatchAsync(jsonStr, handlers, workerPool);
+        parseAndDispatch(jsonStr, handlers, handlerExecutors);
       } catch (RuntimeException malformed) {
         // One corrupt message must not cost the rest of the stream.
         logger.warning("Discarding malformed TCP message: " + malformed);
@@ -475,6 +479,8 @@ public class NioTcpTransport implements Transport {
       logger.severe("Failed to close selector: " + e.getMessage());
     }
     workerPool.shutdownNow();
+    handlerExecutors.values().forEach(ExecutorService::shutdownNow);
+    handlerExecutors.clear();
   }
 
   /**

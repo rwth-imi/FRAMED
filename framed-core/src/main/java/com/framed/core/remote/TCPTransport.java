@@ -9,13 +9,13 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
@@ -24,7 +24,6 @@ import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 import static com.framed.core.utils.RemoteUtils.parseAndDispatch;
-import static com.framed.core.utils.RemoteUtils.parseAndDispatchAsync;
 
 /**
  * A {@link Transport} implementation using traditional blocking I/O over TCP sockets.
@@ -39,6 +38,13 @@ import static com.framed.core.utils.RemoteUtils.parseAndDispatchAsync;
  *   <li>Supports point-to-point ({@link #send}) and broadcast ({@link #publish}) messaging.</li>
  *   <li>Graceful shutdown via {@link #shutdown()}.</li>
  * </ul>
+ *
+ * <h2>Connection model and ordering</h2>
+ * <p>One outbound connection is kept per target {@code host:port} and reused for every message, and
+ * writes to it are serialized. Each accepted connection is read by one thread, and every handler
+ * runs on its own single-thread executor, so a handler receives the messages of one sender in the
+ * order they were sent. (An earlier version opened a connection per message; the receiver read
+ * each on its own thread, so consecutive messages could overtake each other.)</p>
  *
  * <h2>Message Format:</h2>
  * <pre>{@code
@@ -72,6 +78,10 @@ public class TCPTransport implements Transport {
   private final ExecutorService workerPool = Executors.newCachedThreadPool();
   private final Map<Consumer<Object>, ExecutorService> handlerExecutors = new ConcurrentHashMap<>();
   private ServerSocket serverSocket;
+  /** Outbound connections, one per {@code host:port}, opened on first use and reused. */
+  private final Map<String, PeerConnection> connections = new ConcurrentHashMap<>();
+  /** Accepted inbound connections, closed on shutdown. */
+  private final Set<Socket> clients = ConcurrentHashMap.newKeySet();
 
 
   /**
@@ -94,6 +104,7 @@ public class TCPTransport implements Transport {
         serverSocket = new ServerSocket(port);
         while (running) {
           Socket client = serverSocket.accept();
+          clients.add(client);
           workerPool.submit(() -> handleClient(client));
         }
       } catch (IOException e) {
@@ -116,10 +127,21 @@ public class TCPTransport implements Transport {
     try (BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8))) {
       String line;
       while ((line = reader.readLine()) != null) {
-        parseAndDispatch(line, handlers, handlerExecutors);
+        if (line.isBlank()) {
+          continue;
+        }
+        try {
+          parseAndDispatch(line, handlers, handlerExecutors);
+        } catch (RuntimeException malformed) {
+          // One corrupt line must not end the connection: it now carries every later message.
+          logger.warning("Discarding malformed TCP message: " + malformed);
+        }
       }
     } catch (IOException e) {
-      logger.warning("Error while handling client " + client);
+      if (running) {
+        logger.warning("Error while handling client " + client);
+      }
+    } finally {
       closeClient(client);
     }
   }
@@ -134,6 +156,8 @@ public class TCPTransport implements Transport {
       client.close();
     } catch (IOException e) {
       logger.warning("Failed to close client: " + e.getMessage());
+    } finally {
+      clients.remove(client);
     }
   }
 
@@ -174,17 +198,75 @@ public class TCPTransport implements Transport {
    * @param type    message type; typically {@code "send"} or {@code "publish"}
    */
   private void sendMessage(String host, int port, String address, Object message, String type) {
-    try (Socket socket = new Socket(host, port)) {
-      JSONObject json = new JSONObject();
-      json.put("address", address);
-      json.put("payload", message);
-      json.put("type", type);
-
-      String msg = "%s\n".formatted(json);        // <-- ADD NEWLINE
-      PrintWriter writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8);
-      writer.println(msg);
+    if (!running) {
+      logger.warning("Dropping message to %s:%d: transport is shut down.".formatted(host, port));
+      return;
+    }
+    JSONObject json = new JSONObject();
+    json.put("address", address);
+    json.put("payload", message);
+    json.put("type", type);
+    byte[] line = "%s\n".formatted(json).getBytes(StandardCharsets.UTF_8);
+    try {
+      connections.computeIfAbsent(host + ":" + port, k -> new PeerConnection(host, port)).write(line);
     } catch (IOException e) {
-      logger.warning("Failed to send message " + e.getMessage());
+      logger.warning("Failed to send message to %s:%d: %s".formatted(host, port, e.getMessage()));
+    }
+  }
+
+  /**
+   * A reused outbound connection to one peer. Writes are serialized, so concurrent senders cannot
+   * interleave partial lines, and the order of the writes is the order of the messages.
+   */
+  private final class PeerConnection {
+    private final String host;
+    private final int port;
+    private volatile Socket socket;
+    private OutputStream out;
+
+    private PeerConnection(String host, int port) {
+      this.host = host;
+      this.port = port;
+    }
+
+    /** Writes one line, (re)opening the connection as needed; retries once on a stale one. */
+    private synchronized void write(byte[] line) throws IOException {
+      if (socket == null || socket.isClosed()) {
+        open();
+      }
+      try {
+        out.write(line);
+        out.flush();
+      } catch (IOException stale) {
+        if (!running) {
+          throw stale;
+        }
+        // A cached connection can have died since its last use; that shows only on write.
+        close();
+        open();
+        out.write(line);
+        out.flush();
+      }
+    }
+
+    private void open() throws IOException {
+      Socket s = new Socket(host, port);
+      s.setTcpNoDelay(true);
+      socket = s;
+      out = s.getOutputStream();
+    }
+
+    /** Not synchronized, so shutdown can unblock a write stuck on a full receive window. */
+    private void close() {
+      Socket s = socket;
+      socket = null;
+      if (s != null) {
+        try {
+          s.close();
+        } catch (IOException e) {
+          logger.warning("Failed to close connection to %s:%d: %s".formatted(host, port, e.getMessage()));
+        }
+      }
     }
   }
 
@@ -195,7 +277,11 @@ public class TCPTransport implements Transport {
   @Override
   public void shutdown() {
     running = false;
+    connections.values().forEach(PeerConnection::close);
+    connections.clear();
+    clients.forEach(this::closeClient);
     handlerExecutors.values().forEach(ExecutorService::shutdownNow);
+    handlerExecutors.clear();
     workerPool.shutdownNow();
     try {
       if (serverSocket != null && !serverSocket.isClosed()) {
@@ -208,15 +294,14 @@ public class TCPTransport implements Transport {
   }
 
   /**
-   * Registers a handler for messages received on the specified address.
-   * Creates a single threaded executor for that handler.
+   * Registers a handler for messages received on the specified address. Its single-thread
+   * executor is created on the first message for it.
    * @param address the logical address/topic to listen on
    * @param handler the handler to process incoming payloads
    */
   @Override
   public void register(String address, Consumer<Object> handler) {
     handlers.computeIfAbsent(address, k -> new CopyOnWriteArrayList<>()).add(handler);
-    handlerExecutors.put(handler, Executors.newSingleThreadExecutor());
   }
 
 }
